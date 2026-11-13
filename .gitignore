@@ -1,6 +1,9 @@
-# --- Segredos e dados locais (NUNCA versionar) --------------------------
-data/
-!.gitkeep
+# --- Dados locais (versionados de propósito: instalação de um único operador) --
+# data/ contém o banco SQLite, o secret.key e o estado dos labs.
+# ATENÇÃO: data/secret.key deriva TODAS as flags. Este repo é privado e de uso
+# pessoal. Se ele virar público ou ganhar colaboradores, remova data/ do Git.
+data/labs/state/
+data/labs/logs/
 
 # --- Python --------------------------------------------------------------
 __pycache__/
@@ -26,8 +29,4 @@ htmlcov/
 
 # --- Logs / temporários --------------------------------------------------
 *.log
-*.db
-*.db-wal
-*.db-shm
-*.sqlite3
 /tmp/
