@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}{{ doc.title }} · Biblioteca{% endblock %}
+{% block crumb %}BIBLIOTECA / {{ doc.category.title|upper if doc.category else "GERAL" }}{% endblock %}
+{% block page_title %}{{ doc.title }}{% endblock %}
+
+{% block content %}
+<a class="detail-back" href="/kb">{{ m.icon("arrow-right", 12, "rot180") }} BIBLIOTECA TÉCNICA</a>
+
+<div class="article-shell">
+  <article id="top">
+    <header class="article-head">
+      <div class="meta-row">
+        {% if doc.category %}<a class="tag" href="/kb/c/{{ doc.category.slug }}">{{ doc.category.title|upper }}</a>{% endif %}
+        <span class="kb-origin kb-origin-{{ doc.origin }}">{{ doc.origin }}</span>
+        <span class="kb-lang">{{ doc.language|upper }}</span>
+        <span class="kb-status kb-status-{{ doc.translation_status }}">{{ doc.translation_status }}</span>
+        {% if doc.review_status != "pending" %}<span class="kl-status-review">{{ doc.review_status }}</span>{% endif %}
+      </div>
+      <h1>{{ doc.title }}</h1>
+      {% if doc.summary %}<p>{{ doc.summary }}</p>{% endif %}
+      <div class="article-meta">
+        <span>{{ doc.word_count }} PALAVRAS</span>
+        {% if doc.imported_at %}<span>IMPORTADO {{ doc.imported_at.strftime("%Y-%m-%d") }}</span>{% endif %}
+        {% if doc.cwe %}<span>CWE {{ doc.cwe }}</span>{% endif %}
+        {% if doc.owasp %}<span>{{ doc.owasp }}</span>{% endif %}
+      </div>
+      <form method="post" action="/kb/d/{{ doc.slug }}/favorite" class="kb-fav-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button class="btn btn-sm {% if bookmarked %}btn-primary{% else %}btn-ghost{% endif %}" type="submit">
+          {{ m.icon("bookmark", 12) }} {{ "NOS FAVORITOS" if bookmarked else "ADICIONAR AOS FAVORITOS" }}
+        </button>
+      </form>
+    </header>
+
+    {% if source and doc.origin == "imported" %}
+    <div class="kb-provenance">
+      <div class="kb-prov-head">{{ m.icon("shield", 13) }} ORIGEM DO CONTEÚDO</div>
+      <dl class="kb-prov-grid">
+        <dt>Projeto</dt><dd><a href="{{ source.repo_url }}" target="_blank" rel="noopener">{{ source.name }}</a></dd>
+        <dt>Licença</dt><dd>{{ source.license_name }}</dd>
+        <dt>Autor</dt><dd>{{ source.author }}</dd>
+        <dt>Commit</dt><dd><code>{{ (doc.source_commit or source.commit_sha)[:12] }}</code></dd>
+        <dt>Arquivo</dt><dd><code>{{ doc.source_path }}</code></dd>
+      </dl>
+      <p class="kb-prov-note">Texto importado verbatim, preservando o original e os créditos. Tradução: {{ doc.translation_status }}. Revisão: {{ doc.review_status }}.</p>
+    </div>
+    {% elif doc.origin == "reference" %}
+    <div class="kb-provenance kb-prov-reference">
+      <div class="kb-prov-head">{{ m.icon("external", 13) }} REFERÊNCIA EXTERNA</div>
+      <p>Este documento resume uma técnica cujo material original pertence a terceiros e não é redistribuído aqui. O texto é uma síntese própria em PT-BR; a fonte primária está linkada abaixo.</p>
+    </div>
+    {% endif %}
+
+    <div class="article-callout">
+      <strong>Nota de campo:</strong> conteúdo apenas para testes autorizados. Aponte comandos e payloads somente para alvos seus ou com permissão explícita.
+    </div>
+
+    <div class="prose kb-prose">
+      {{ html|safe }}
+    </div>
+
+    {% if payloads %}
+    <section class="kb-payload-section" id="payloads">
+      <div class="section-head">
+        <div><span class="eyebrow">EXTRAÍDO DO DOCUMENTO</span><h3>Payloads desta técnica</h3></div>
+        <a class="link-arrow" href="/kb/payloads">BIBLIOTECA COMPLETA {{ m.icon("arrow-right", 12) }}</a>
+      </div>
+      {% for payload in payloads %}
+      <div class="payload-card">
+        <div class="payload-head">
+          <span class="payload-technique">{{ payload.technique or "geral" }}</span>
+          <span class="payload-lang">{{ payload.language }}</span>
+          <button class="btn btn-sm btn-ghost js-copy" type="button" data-copy="{{ payload.code }}" title="Copiar payload">{{ m.icon("copy", 11) }} COPIAR</button>
+        </div>
+        {% if payload.description %}<p class="payload-desc">{{ payload.description }}</p>{% endif %}
+        <pre class="codeblock"><code class="language-{{ payload.language }}">{{ payload.code }}</code></pre>
+        <dl class="payload-meta">
+          {% if payload.context %}<dt>Contexto</dt><dd>{{ payload.context }}</dd>{% endif %}
+          {% if payload.expected %}<dt>Resultado esperado</dt><dd>{{ payload.expected }}</dd>{% endif %}
+          {% if payload.limitations %}<dt>Limitações</dt><dd>{{ payload.limitations }}</dd>{% endif %}
+          {% if payload.source_ref %}<dt>Fonte</dt><dd><a href="{{ payload.source_ref }}" target="_blank" rel="noopener">{{ payload.source_ref }}</a></dd>{% endif %}
+        </dl>
+      </div>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    {% if references %}
+    <section class="kb-references">
+      <div class="section-head"><div><span class="eyebrow">FONTES VERIFICÁVEIS</span><h3>Referências</h3></div></div>
+      <ul class="ref-list">
+        {% for ref in references %}
+        <li>
+          <a href="{{ ref.url }}" target="_blank" rel="noopener">{{ ref.title }}</a>
+          <span class="ref-org">{{ ref.organization }}</span>
+          <span class="ref-kind ref-kind-{{ ref.kind }}">{{ ref.kind }}</span>
+          {% if ref.verified %}<span class="ref-ok">verificado</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    {% if challenges %}
+    <section class="kb-labs">
+      <div class="section-head"><div><span class="eyebrow">PRATIQUE AGORA</span><h3>Labs desta técnica</h3></div></div>
+      <div class="kb-strip">
+        {% for challenge in challenges %}
+        <a class="kb-chip-card" href="/lab/{{ challenge.slug }}">
+          <strong>{{ challenge.title }}</strong>
+          <small>{{ "MÁQUINA" if challenge.kind != "challenge" else "DESAFIO" }} · {{ challenge.xp }} XP</small>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if related or siblings %}
+    <section class="related-articles">
+      <div class="section-head"><div><span class="eyebrow">MESMA FAMÍLIA TÉCNICA</span><h3>Conteúdo relacionado</h3></div></div>
+      <div class="related-grid">
+        {% for item in related %}
+        <a class="article-card" href="/kb/d/{{ item.slug }}"><h3>{{ item.title }}</h3><p>{{ item.summary[:120] }}</p></a>
+        {% endfor %}
+        {% for item in siblings %}
+        {% if item not in related %}
+        <a class="article-card" href="/kb/d/{{ item.slug }}"><h3>{{ item.title }}</h3><p>{{ item.summary[:120] }}</p></a>
+        {% endif %}
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </article>
+
+  <aside class="article-toc">
+    <h4>NESTA PÁGINA</h4>
+    {% if toc %}<div class="toc kb-toc">{{ toc|safe }}</div>{% endif %}
+    <div class="kb-toc-actions">
+      <a class="btn btn-sm btn-ghost btn-block" href="#top">VOLTAR AO TOPO</a>
+    </div>
+    {% if source %}
+    <div class="kb-toc-source">
+      <span class="mono-label">FONTE</span>
+      <a href="{{ doc.source_url or source.repo_url }}" target="_blank" rel="noopener">{{ source.name }} {{ m.icon("external", 10) }}</a>
+    </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}

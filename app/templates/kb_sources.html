@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Fontes e licenças{% endblock %}
+{% block crumb %}BIBLIOTECA / FONTES{% endblock %}
+{% block page_title %}Fontes e licenças{% endblock %}
+
+{% block content %}
+<a class="detail-back" href="/kb">{{ m.icon("arrow-right", 12, "rot180") }} BIBLIOTECA TÉCNICA</a>
+
+<section class="detail-hero" style="margin-bottom:18px">
+  <span class="eyebrow">RASTREABILIDADE</span>
+  <h2>De onde vem cada documento</h2>
+  <p style="color:var(--muted);font-size:12px;max-width:820px;margin:0">A biblioteca só importa texto de projetos cuja licença permite redistribuição. Fontes sem licença permissiva aparecem como referência externa — o texto é síntese própria e o material original fica linkado.</p>
+</section>
+
+<div class="kb-doc-list">
+  {% for row in rows %}
+  {% set source = row.source %}
+  <div class="kb-source-card">
+    <div class="kb-source-head">
+      <div>
+        <strong>{{ source.name }}</strong>
+        <small>{{ source.author }}</small>
+      </div>
+      <span class="kb-license {% if source.redistributable %}kb-license-ok{% else %}kb-license-no{% endif %}">
+        {{ source.license_name }}
+      </span>
+    </div>
+    <dl class="kb-prov-grid">
+      <dt>Repositório</dt><dd><a href="{{ source.repo_url }}" target="_blank" rel="noopener">{{ source.repo_url }}</a></dd>
+      <dt>Licença</dt><dd><a href="{{ source.license_url }}" target="_blank" rel="noopener">{{ source.license_name }}</a></dd>
+      <dt>Redistribuível</dt><dd>{{ "Sim — importado e traduzido" if source.redistributable else "Não — apenas referenciado" }}</dd>
+      <dt>Branch / commit</dt><dd><code>{{ source.branch or "—" }}</code> · <code>{{ (source.commit_sha or "—")[:12] }}</code></dd>
+      <dt>Documentos</dt><dd>{{ row.documents }}</dd>
+      <dt>Última sincronização</dt><dd>{{ source.last_synced.strftime("%Y-%m-%d %H:%M") if source.last_synced else "nunca" }}</dd>
+    </dl>
+    {% if source.notes %}<p class="kb-prov-note">{{ source.notes }}</p>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

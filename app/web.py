@@ -307,6 +307,23 @@ async def machine_detail(request: Request, slug: str, db: Session = Depends(get_
     return _render_item(request, db, user, challenge, "machines")
 
 
+def _kb_doc_for(challenge: Challenge):
+    """The knowledge-base document backing this challenge, if any."""
+    try:
+        from .kb_links import document_for_challenge
+        from .database import SessionLocal
+
+        with SessionLocal() as kb_db:
+            return document_for_challenge(
+                kb_db,
+                challenge.category.slug if challenge.category else "",
+                challenge.tags or [],
+                challenge.tech or [],
+            )
+    except Exception:  # noqa: BLE001 - academy link must never break a lab page
+        return None
+
+
 def _render_item(request: Request, db: Session, user: User, challenge: Challenge, active: str, lab_mode: bool = False):
     progress = db.scalar(select(Progress).where(Progress.user_id == user.id, Progress.challenge_id == challenge.id))
     if not progress:
@@ -348,6 +365,7 @@ def _render_item(request: Request, db: Session, user: User, challenge: Challenge
         solved_flags=solved, objective_states=objective_states, lab=lab_row,
         lab_url=lab_url(lab_row.port) if lab_row else "",
         lan_share=lan_share_enabled(),
+        kb_doc=_kb_doc_for(challenge),
         lab_lifetime_minutes=LAB_MAX_LIFETIME // 60,
         lab_idle_minutes=LAB_IDLE_TIMEOUT // 60,
         submissions=submissions, all_hints_unlocked=all_hints_unlocked,
@@ -530,6 +548,44 @@ async def academy_article(request: Request, slug: str, db: Session = Depends(get
         raise HTTPException(status_code=404, detail="Artigo não encontrado")
     related = [a for a in load_articles() if a["category"] == article["category"] and a["slug"] != slug][:4]
     return render(request, db, "article.html", user, "academy", article=article, related=related)
+
+
+# ---------------------------------------------------------------------------
+# Knowledge base (Academy 2.0)
+# ---------------------------------------------------------------------------
+
+from . import kb_views  # noqa: E402
+
+@router.get("/kb", response_class=HTMLResponse)
+async def kb_home(request: Request, q: str = "", group: str = "", tag: str = "", db: Session = Depends(get_db)):
+    return kb_views.library_home(request, db, q=q, group=group, tag=tag)
+
+
+@router.get("/kb/c/{slug}", response_class=HTMLResponse)
+async def kb_category(slug: str, request: Request, db: Session = Depends(get_db)):
+    return kb_views.category_page(request, db, slug)
+
+
+@router.get("/kb/d/{slug}", response_class=HTMLResponse)
+async def kb_document(slug: str, request: Request, db: Session = Depends(get_db)):
+    return kb_views.document_page(request, db, slug)
+
+
+@router.post("/kb/d/{slug}/favorite")
+async def kb_favorite(slug: str, request: Request, db: Session = Depends(get_db)):
+    form = await request.form()
+    check_csrf(request, str(form.get("_csrf", "")))
+    return kb_views.toggle_bookmark(request, db, slug)
+
+
+@router.get("/kb/payloads", response_class=HTMLResponse)
+async def kb_payloads(request: Request, q: str = "", language: str = "", technique: str = "", page: int = 1, db: Session = Depends(get_db)):
+    return kb_views.payload_library(request, db, q=q, language=language, technique=technique, page=page)
+
+
+@router.get("/kb/sources", response_class=HTMLResponse)
+async def kb_sources(request: Request, db: Session = Depends(get_db)):
+    return kb_views.sources_page(request, db)
 
 
 # ---------------------------------------------------------------------------

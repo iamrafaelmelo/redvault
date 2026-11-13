@@ -51,7 +51,10 @@
         </a>
 
         <div class="nav-label">INTELIGÊNCIA</div>
-        <a class="nav-item {% if active == 'academy' and not request.url.path.startswith('/academy/tools') %}active{% endif %}" href="/academy">
+        <a class="nav-item {% if request.url.path.startswith('/kb') %}active{% endif %}" href="/kb">
+          {{ m.icon("database", 17) }}<span>Biblioteca técnica</span>
+        </a>
+        <a class="nav-item {% if active == 'academy' and request.url.path in ('/academy',) %}active{% endif %}" href="/academy">
           {{ m.icon("book", 17) }}<span>Academia</span>
         </a>
         <a class="nav-item {% if request.url.path.startswith('/academy/tools') %}active{% endif %}" href="/academy/tools">

@@ -4,6 +4,9 @@
 # pessoal. Se ele virar público ou ganhar colaboradores, remova data/ do Git.
 data/labs/state/
 data/labs/logs/
+# SQLite WAL sidecar files are runtime state, not part of the tracked DB.
+*.db-shm
+*.db-wal
 
 # --- Python --------------------------------------------------------------
 __pycache__/

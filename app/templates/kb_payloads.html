@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Biblioteca de payloads{% endblock %}
+{% block crumb %}BIBLIOTECA / PAYLOADS{% endblock %}
+{% block page_title %}Biblioteca de payloads{% endblock %}
+
+{% block content %}
+<a class="detail-back" href="/kb">{{ m.icon("arrow-right", 12, "rot180") }} BIBLIOTECA TÉCNICA</a>
+
+<section class="detail-hero" style="margin-bottom:18px">
+  <div class="detail-top">
+    <span class="tag red">PAYLOADS</span>
+    <span class="tag">{{ total }} PAYLOADS{% if pages > 1 %} · PÁGINA {{ page }}/{{ pages }}{% endif %}</span>
+  </div>
+  <h2>Payloads contextualizados</h2>
+  <p style="color:var(--muted);font-size:12px;max-width:760px;margin:0 0 14px">Cada payload aparece com a técnica a que pertence, o documento que o explica e a origem. Sem contexto, não é payload — é snippet.</p>
+  <form class="academy-search" method="get" action="/kb/payloads">
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Filtrar por código ou descrição (ex.: union select, {{7*7}})" aria-label="Filtrar payloads">
+    <select class="filter-select" name="language" aria-label="Linguagem">
+      <option value="">Todas as linguagens</option>
+      {% for lang in languages %}<option value="{{ lang }}" {% if filters.language == lang %}selected{% endif %}>{{ lang }}</option>{% endfor %}
+    </select>
+    <select class="filter-select" name="technique" aria-label="Técnica">
+      <option value="">Todas as técnicas</option>
+      {% for tech in techniques %}<option value="{{ tech }}" {% if filters.technique == tech %}selected{% endif %}>{{ tech }}</option>{% endfor %}
+    </select>
+    <button class="btn btn-primary" type="submit">{{ m.icon("search", 13) }} FILTRAR</button>
+  </form>
+</section>
+
+{% if payloads %}
+<div class="payload-list">
+  {% for payload in payloads %}
+  <div class="payload-card">
+    <div class="payload-head">
+      <span class="payload-technique">{{ payload.technique or "geral" }}</span>
+      <span class="payload-lang">{{ payload.language }}</span>
+      {% if payload.document %}<a class="payload-doc" href="/kb/d/{{ payload.document.slug }}">{{ payload.document.title }}</a>{% endif %}
+      <button class="btn btn-sm btn-ghost js-copy" type="button" data-copy="{{ payload.code }}" title="Copiar payload">{{ m.icon("copy", 11) }} COPIAR</button>
+    </div>
+    {% if payload.description %}<p class="payload-desc">{{ payload.description }}</p>{% endif %}
+    <pre class="codeblock"><code class="language-{{ payload.language }}">{{ payload.code }}</code></pre>
+    <dl class="payload-meta">
+      {% if payload.context %}<dt>Contexto</dt><dd>{{ payload.context }}</dd>{% endif %}
+      {% if payload.expected %}<dt>Resultado</dt><dd>{{ payload.expected }}</dd>{% endif %}
+      {% if payload.source_ref %}<dt>Fonte</dt><dd><a href="{{ payload.source_ref }}" target="_blank" rel="noopener">{{ payload.source_ref }}</a></dd>{% endif %}
+    </dl>
+  </div>
+  {% endfor %}
+</div>
+{% if pages > 1 %}
+<nav class="kb-pager" aria-label="Paginação de payloads">
+  {% if page > 1 %}<a class="btn btn-sm btn-ghost" href="{{ page_url(page - 1) }}">{{ m.icon("arrow-right", 11, "rot180") }} ANTERIOR</a>{% endif %}
+  <span class="kb-pager-info">{{ (page - 1) * page_size + 1 }}–{{ [page * page_size, total]|min }} DE {{ total }}</span>
+  {% if page < pages %}<a class="btn btn-sm btn-ghost" href="{{ page_url(page + 1) }}">PRÓXIMA {{ m.icon("arrow-right", 11) }}</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}
+{{ m.empty_state("terminal", "Nenhum payload catalogado ainda", "Os payloads aparecem aqui quando um documento importado traz blocos de código tagueados. Importe o PayloadsAllTheThings com scripts/import_kb.py.", "/kb", "VOLTAR À BIBLIOTECA") }}
+{% endif %}
+{% endblock %}

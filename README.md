@@ -19,6 +19,9 @@ The original target was **150–200 challenge labs and at least 15 multi-stage m
 | Total working catalog items | 165+ | **97** | In progress (68 to go) |
 | Categories covered | 12 | **12** | Covered |
 | Academy articles | — | **17** | Covered |
+| Library documents | — | **135** | Imported (MIT) |
+| Library payloads | — | **477** | With context |
+| Document ↔ lab links | — | **291** | Implemented |
 | Standalone exploit tests | one per lab | **95** | Passing |
 | Platform integration tests | auth, flags, labs | **23** | Passing |
 | Progressive hints | 3 per item | **291** | Implemented |
@@ -78,6 +81,7 @@ Recon & Discovery, Authentication, Access Control, SQL Injection, XSS, Server-Si
 - **Progressive hints** with XP penalties, locked until requested, and a full walkthrough that requires all hints (or a completed target).
 - **Progress, XP, levels, achievements, notes, heartbeat time tracking, activity feed and JSON export.**
 - **Learning paths** built from real catalog slugs.
+- **Biblioteca técnica (`/kb`)**, a searchable knowledge base next to the Academy: 135 imported documents, 477 contextualised payloads, FTS5 full-text search, licence/commit provenance per document and 291 links to platform labs. See [Library](#library-academy-20).
 - **Academy** with 17 articles and 94 lab references from OWASP, PortSwigger, CWE, RFC, MDN, MITRE ATT&CK, NIST, HackTricks and other primary sources.
 - **Real browser victim** for XSS/postMessage/upload labs through a loopback-only Selenium/Chromium bot.
 - **Server-side validation, CSRF protection, CSP and security headers.**
@@ -115,7 +119,7 @@ python3 -m pytest tests/test_platform.py -q
 python3 run_tests.py
 ```
 
-The tested suite is **118 tests** in four modules: 61 Phase 1–2 lab tests, 34 Phase 3 lab tests, 13 platform tests and 10 Phase 3 platform tests. Each module runs in its own process because `REDVAULT_DATA` is read once at import time; `run_tests.py` handles that. Platform tests use a temporary `REDVAULT_DATA` directory and do not touch the operator database.
+The tested suite is **153 tests** in seven modules: 61 Phase 1–2 lab tests, 34 Phase 3 lab tests, 13 platform tests, 10 Phase 3 platform tests, 15 knowledge-base tests, 3 LAN-mode tests and 5 traffic tests. Each module runs in its own process because `REDVAULT_DATA` is read once at import time; `run_tests.py` handles that. Platform and knowledge-base tests use a temporary `REDVAULT_DATA` directory and do not touch the operator database; the knowledge-base tests build a tiny local git repository instead of cloning anything.
 
 Each Phase 3 lab was additionally verified by an independent exploit script (34/34 passing) before its test was added to the suite.
 
@@ -133,6 +137,13 @@ redvault/
 │   ├── lab_manager.py     Process lifecycle, ports, bwrap, prlimit
 │   ├── flags.py           HMAC flag derivation and objective gating
 │   ├── content.py         Manifest discovery, validation and seeding
+│   ├── kb_models.py       Library schema (sources, categories, docs, payloads, links)
+│   ├── kb_import.py       Offline importer with licence gate and provenance
+│   ├── kb_seed.py         Canonical category tree, payload extraction, lab links
+│   ├── kb_search.py       FTS5 index and query builder
+│   ├── kb_sync.py         Upstream change handling that preserves reviewed work
+│   ├── kb_views.py        Library routes (/kb, reader, payloads, sources)
+│   ├── kb_links.py        Challenge → documentation mapping
 │   ├── security.py        Sessions, CSRF, bcrypt, flash, rate limits
 │   ├── models.py          SQLAlchemy schema
 │   ├── services/          Progress, XP and achievements
@@ -140,6 +151,7 @@ redvault/
 │   └── static/            CSS and vanilla JS
 ├── content/
 │   ├── academy/           Markdown articles with frontmatter
+│   ├── kb_licenses/       Upstream licence texts kept with the import
 │   ├── cves.json          Curated real CVE index
 │   ├── glossary.json      Terminology
 │   ├── paths.json         Learning paths
@@ -152,6 +164,7 @@ redvault/
 ├── tests/
 │   ├── conftest.py        Lab process fixture
 │   ├── test_labs.py       Exploit tests for all 61 labs
+│   ├── test_kb.py         Library: import, licence gate, search, sync, UI
 │   └── test_platform.py   Auth, CSRF, flags, lifecycle, UI
 ├── data/                  Runtime database, secret, lab state (gitignored)
 ├── docs/                  Supplementary notes
@@ -192,6 +205,53 @@ Read [ARCHITECTURE.md](ARCHITECTURE.md) for the full design and [SECURITY.md](SE
 
 ---
 
+## Library (Academy 2.0)
+
+`/kb` is the technical library: a hierarchical catalog of techniques, a document reader, a payload library, and a provenance page. The original `/academy` (17 articles) is still there; the library is the part that scales.
+
+| Surface | What it does |
+| --- | --- |
+| `/kb` | Library home: groups, categories, recently read, favourites, full-text search |
+| `/kb/c/<slug>` | Category listing with breadcrumbs |
+| `/kb/d/<slug>` | Document reader: table of contents, provenance block, payloads, references, related docs, linked labs |
+| `/kb/payloads` | Payload library, filterable by technique and language, paginated |
+| `/kb/sources` | Every upstream project with its licence, commit and sync state |
+
+### Where the content comes from
+
+Only projects whose licence allows redistribution are imported. Anything else is cited, never copied.
+
+| Source | Licence | Handling |
+| --- | --- | --- |
+| PayloadsAllTheThings | MIT | imported verbatim (English), with commit, path and author |
+| HackTricks | none declared | reference only: links + our own PT-BR synthesis |
+| OWASP WSTG | CC BY-SA 4.0 | reference only |
+
+This is enforced in code, not by convention: `kb_sources.redistributable` is `False` for HackTricks and WSTG, and the importer raises `ImportRefused` for them. The upstream `LICENSE` is copied to `content/kb_licenses/` at import time so attribution survives even if the clone is deleted.
+
+Every imported document stores `origin`, `source_path`, `source_url` (pinned to the commit SHA), `source_commit`, `content_hash` and `imported_at`.
+
+### Importing or syncing
+
+```bash
+git clone --depth 1 https://github.com/swisskyrepo/PayloadsAllTheThings /tmp/patt
+python3 scripts/import_kb.py --path /tmp/patt --rebuild-index
+```
+
+The real import into this installation produced: **135 documents, 64 categories, 477 payloads, 291 document↔lab links**, FTS5 index rebuilt over all 135 documents (commit `08ea40e77db3f42ef8f20c65196f3936a19b6c86`).
+
+Re-running the import is safe. A document marked `reviewed` is never overwritten: the new upstream hash is recorded and `review_status` becomes `needs_review`, so a human decides.
+
+### Translation states
+
+Documents are `untranslated` → `translated` → `reviewed`. Imports arrive `untranslated` and the UI says so on the page and in the category listing. Imported payloads are never machine-translated: a payload is code, and translated code is broken code. Translations are written by hand into `body_md`; the original stays in `body_original_md`.
+
+### Payload extraction
+
+Fenced code blocks under a technique heading become payload rows only if they contain something runnable — SQL, HTML/JS, a request line, a shell command, an encoded value. Prose, markdown headings and credit lines are rejected, so the library does not fill up with blocks that only *describe* an attack.
+
+---
+
 ## Documentation
 
 - [INSTALL.md](INSTALL.md) — prerequisites, setup, environment variables, troubleshooting.
@@ -209,6 +269,7 @@ Read [ARCHITECTURE.md](ARCHITECTURE.md) for the full design and [SECURITY.md](SE
 - Labs are intentionally vulnerable; do not reuse their code in production.
 - Do not point lab payloads, scanners or callbacks at third-party systems.
 - Treat the flag database, master secret and session cookies as sensitive local data.
+- Imported library text keeps its upstream licence (see `content/kb_licenses/`); do not re-publish it under another licence.
 - Reset lab state after experiments.
 
 ## License

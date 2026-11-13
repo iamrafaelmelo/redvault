@@ -16,6 +16,11 @@
     <span class="cat-chip">{{ m.category_icon(challenge.category.slug, 12) }} {{ challenge.category.name }}</span>
     <span class="tag">{{ {"machine": "MÁQUINA", "realistic": "REALISTA"}.get(challenge.kind, "DESAFIO") }}</span>
     {% if completed %}<span class="tag" style="color:var(--green);border-color:var(--green-dim)">● CONCLUÍDO</span>{% endif %}
+    {% if kb_doc %}
+    <a class="tag kb-doc-tag" href="/kb/d/{{ kb_doc.slug }}" title="Ler a documentação desta técnica">
+      {{ m.icon("book", 11) }} ESTUDAR A TÉCNICA
+    </a>
+    {% endif %}
     {% if not lab_mode %}
     <a class="tag" style="margin-left:auto" href="/lab/{{ challenge.slug }}" title="Abrir em página dedicada">
       {{ m.icon("external", 11) }} PÁGINA DO DESAFIO

@@ -39,6 +39,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 
 def init_db() -> None:
     from . import models  # noqa: F401  (register mappers)
+    from . import kb_models  # noqa: F401  (register knowledge-base mappers)
 
     Base.metadata.create_all(engine)
 

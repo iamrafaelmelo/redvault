@@ -2,6 +2,30 @@
 
 All notable changes to REDVAULT are documented here. The project follows a pragmatic version sequence; it is pre-1.0 and the content catalog is incomplete.
 
+## [1.4.0] — 2026-11-13
+
+### Added
+
+- **Biblioteca técnica (Academy 2.0), in `/kb`.** A searchable, cross-linked knowledge base beside the original `/academy`: a hierarchical catalog (7 groups, 99 categories), a document reader with a per-document table of contents, a payload library with copy buttons, and a provenance page listing every upstream source with its licence and commit. The original Academy and its 17 articles are untouched.
+- **Real import from PayloadsAllTheThings (MIT).** `scripts/import_kb.py --path <clone>` reads a local checkout offline, records the exact commit SHA, the original path, the licence and the author per document, and copies the upstream `LICENSE` into `content/kb_licenses/`. No network access during import, so a sync is reproducible. Imported text is stored **verbatim in English** with `translation_status = 'untranslated'`; the pagination, navigation and provenance UI are in pt-BR.
+- **Licence gate.** `kb_sources` marks each upstream project `redistributable`. PayloadsAllTheThings is `True` (MIT); HackTricks (no declared licence) and OWASP WSTG (CC BY-SA) are `False` and are refused by the importer with `ImportRefused`. Non-redistributable projects appear only as links and as our own PT-BR synthesis, never as copied text.
+- **FTS5 search.** SQLite's `unicode61 remove_diacritics 2` tokeniser, every term quoted and prefix-matched, terms ANDed. Searching `union based` or `jinja2` finds text inside documents, not just titles, and returns a highlighted snippet. Malformed input (`"`, `AND OR`, `'; DROP TABLE`) returns an empty list instead of an error.
+- **Translation states and sync that never loses human work.** `untranslated → translated → reviewed`. `apply_upstream_change()` refreshes untranslated documents in place and, for a reviewed translation, only records the new upstream hash and sets `review_status = 'needs_review'`. A document whose upstream file disappeared is marked `upstream_removed`, never deleted.
+- **Docs ↔ labs in both directions.** 291 explicit links from documents to platform challenges (`kb_topic_links`), and every lab page now shows **ESTUDAR A TÉCNICA** pointing at the document that explains it.
+- **Payload extraction with context.** Fenced blocks under a technique heading become payload rows only when they contain something runnable; prose, markdown headings and credit lines are rejected. Each payload keeps its technique, language, context, expected result and source URL. 477 payloads from 135 documents.
+
+### Fixed
+
+- Imported sections mapped to the same category (e.g. `XSLT Injection` and `External Variable Modification`) produced colliding slugs. Slugs are now derived from the full relative path (`patt-<section>-<file>`), unique by construction.
+- Imported categories were all landing in `Web Application Security`. Imported-only sections now declare a group (`CATEGORY_GROUPS`), and `seed_categories()` treats the canonical tree as the source of truth for grouping, so JWT lives under API Security and account takeover under Authentication.
+- The reader repeated the document H1 as the first TOC entry. The duplicate is pruned and its children promoted; documents that start at H2 keep their TOC.
+- The document sidebar grew past the viewport on long pages (the XSS page has 80+ headings). It now scrolls internally with the source link pinned.
+- `/kb/payloads` rendered all payloads in one response. It is paginated (40 per page) with a real count.
+
+### Tests
+
+- New module `tests/test_kb.py` (15 tests): import provenance and commit SHA, licence gate, FTS search inside bodies, hostile query syntax, payload context, reviewed-translation preservation, `upstream_removed`, page rendering, category hierarchy, TOC pruning and payload pagination. The importer is tested against a tiny local git repository, so the suite never needs the network or a 14 MB checkout. Suite: 153 tests, 7 modules, all green.
+
 ## [1.3.0] — 2026-11-13
 
 ### Added

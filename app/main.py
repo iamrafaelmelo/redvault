@@ -31,6 +31,20 @@ async def lifespan(app: FastAPI):
             for error in result["errors"]:
                 logger.warning("content: %s", error)
         logger.info("content synced: %s challenges", result["challenges"])
+    # Knowledge base: categories, challenge links, search index (idempotent).
+    try:
+        from .kb_search import ensure_index, rebuild
+        from .kb_seed import seed_all
+
+        with SessionLocal() as db:
+            kb_stats = seed_all(db)
+            db.commit()
+        ensure_index()
+        rebuild()
+        logger.info("kb synced: %s categories, %s payloads, %s challenge links",
+                    kb_stats["categories"], kb_stats["payloads"], kb_stats["challenge_links"])
+    except Exception as exc:  # noqa: BLE001 - kb must never block boot
+        logger.warning("kb seed skipped: %s", exc)
     lab_manager.reconcile_startup()
     yield
     lab_manager.shutdown()

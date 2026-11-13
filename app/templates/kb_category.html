@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}{{ category.title }} · Biblioteca{% endblock %}
+{% block crumb %}BIBLIOTECA / {{ group_label|upper }}{% endblock %}
+{% block page_title %}{{ category.title }}{% endblock %}
+
+{% block content %}
+<a class="detail-back" href="/kb">{{ m.icon("arrow-right", 12, "rot180") }} BIBLIOTECA TÉCNICA</a>
+
+<nav class="kb-breadcrumb" aria-label="Trilha de navegação">
+  <a href="/kb">BIBLIOTECA</a>
+  {% for crumb in breadcrumbs %}
+  <span aria-hidden="true">/</span>
+  {% if not loop.last %}<a href="/kb/c/{{ crumb.slug }}">{{ crumb.title|upper }}</a>{% else %}<span>{{ crumb.title|upper }}</span>{% endif %}
+  {% endfor %}
+</nav>
+
+<section class="detail-hero" style="margin-bottom:18px">
+  <div class="detail-top">
+    <span class="tag">{{ group_label|upper }}</span>
+    <span class="tag">{{ documents|length }} DOCUMENTO{{ "S" if documents|length != 1 }}</span>
+  </div>
+  <h2>{{ category.title }}</h2>
+  {% if category.description %}<p style="color:var(--muted);font-size:12px;max-width:760px;margin:0">{{ category.description }}</p>{% endif %}
+</section>
+
+{% if documents %}
+<div class="kb-doc-list">
+  {% for doc in documents %}
+  <a class="kb-doc-row" href="/kb/d/{{ doc.slug }}">
+    <div class="kb-doc-main">
+      <strong>{{ doc.title }}</strong>
+      <small>{{ doc.summary[:190] if doc.summary else "Sem resumo importado." }}</small>
+    </div>
+    <div class="kb-doc-side">
+      <span class="kb-origin kb-origin-{{ doc.origin }}">{{ doc.origin }}</span>
+      <span class="kb-lang">{{ doc.language|upper }}</span>
+      <span class="kb-status kb-status-{{ doc.translation_status }}">{{ doc.translation_status }}</span>
+      {{ m.icon("chevron", 14) }}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+{{ m.empty_state("book", "Categoria sem documentos", "Nenhum conteúdo importado para esta categoria ainda.", "/kb", "VOLTAR") }}
+{% endif %}
+{% endblock %}

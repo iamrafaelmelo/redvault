@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Biblioteca técnica{% endblock %}
+{% block crumb %}INTELIGÊNCIA / BIBLIOTECA TÉCNICA{% endblock %}
+{% block page_title %}Biblioteca técnica{% endblock %}
+
+{% block content %}
+<section class="academy-hero">
+  <span class="eyebrow">BASE DE CONHECIMENTO / {{ total }} DOCUMENTOS INDEXADOS</span>
+  <h2>Vulnerabilidade aberta, resposta completa.</h2>
+  <p>Técnicas, payloads, bypasses, ferramentas, mitigação e os labs da plataforma no mesmo lugar. Todo documento importado carrega origem, licença e commit de rastreio.</p>
+  <form class="academy-search" method="get" action="/kb">
+    <input type="search" name="q" value="{{ q }}" placeholder="Buscar dentro dos documentos: union based, jinja2, xxe, cloud metadata…" aria-label="Buscar na biblioteca">
+    <button class="btn btn-primary" type="submit">{{ m.icon("search", 13) }} BUSCAR</button>
+  </form>
+</section>
+
+<div class="academy-layout">
+  <aside class="academy-side">
+    <div class="academy-side-head">GRUPOS</div>
+    <a class="academy-cat {% if not group %}active{% endif %}" href="/kb">
+      <span>Todos</span><span class="count">{{ total }}</span>
+    </a>
+    {% for key, label in groups %}
+      {% set items = grouped.get(key, []) %}
+      {% if items %}
+      <a class="academy-cat {% if group == key %}active{% endif %}" href="/kb?group={{ key }}">
+        <span>{{ label }}</span><span class="count">{{ items|sum(attribute="count") }}</span>
+      </a>
+      {% endif %}
+    {% endfor %}
+    <div class="academy-side-head" style="border-top:1px solid var(--line)">ACESSO RÁPIDO</div>
+    <a class="academy-cat" href="/kb/payloads"><span>Biblioteca de payloads</span>{{ m.icon("terminal", 11) }}</a>
+    <a class="academy-cat" href="/kb/sources"><span>Fontes e licenças</span>{{ m.icon("shield", 11) }}</a>
+    <a class="academy-cat" href="/academy"><span>Academia original</span>{{ m.icon("book", 11) }}</a>
+  </aside>
+
+  <div>
+    {% if q %}
+    <div class="section-head" style="margin-top:0">
+      <div>
+        <span class="eyebrow">BUSCA FULL-TEXT · {{ results|length }} RESULTADO{{ "S" if results|length != 1 }}</span>
+        <h3>“{{ q }}”</h3>
+      </div>
+      <a class="link-arrow" href="/kb">LIMPAR {{ m.icon("x", 12) }}</a>
+    </div>
+    {% if results %}
+    <div class="kb-result-list">
+      {% for hit in results %}
+      <a class="kb-result" href="/kb/d/{{ hit.slug }}">
+        <strong>{{ hit.title }}</strong>
+        <span class="kb-result-snip">{{ hit.snip|safe }}</span>
+        <span class="kb-result-slug">{{ hit.slug }}</span>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    {{ m.empty_state("search", "Nenhum documento encontrado", "A busca cobre o corpo completo dos documentos. Tente termos mais curtos.", "/kb", "LIMPAR BUSCA") }}
+    {% endif %}
+    {% else %}
+
+    {% if recent %}
+    <div class="section-head" style="margin-top:0">
+      <div><span class="eyebrow">CONTINUE DE ONDE PAROU</span><h3>Lidos recentemente</h3></div>
+    </div>
+    <div class="kb-strip">
+      {% for item in recent %}
+      <a class="kb-chip-card" href="/kb/d/{{ item.doc.slug }}">
+        <strong>{{ item.doc.title }}</strong>
+        <small>{{ item.doc.word_count }} palavras</small>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if favourites %}
+    <div class="section-head">
+      <div><span class="eyebrow">MARCADOS</span><h3>Favoritos</h3></div>
+    </div>
+    <div class="kb-strip">
+      {% for doc in favourites %}
+      <a class="kb-chip-card" href="/kb/d/{{ doc.slug }}">
+        <strong>{{ doc.title }}</strong>
+        <small>{{ doc.translation_status }}</small>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if tag %}
+    <div class="section-head">
+      <div><span class="eyebrow">TAG #{{ tag|upper }}</span><h3>{{ tagged|length }} documento{{ "s" if tagged|length != 1 }}</h3></div>
+      <a class="link-arrow" href="/kb">LIMPAR {{ m.icon("x", 12) }}</a>
+    </div>
+    <div class="article-grid">
+      {% for doc in tagged %}
+      <a class="article-card" href="/kb/d/{{ doc.slug }}">
+        <h3>{{ doc.title }}</h3>
+        <p>{{ doc.summary[:140] }}</p>
+        <div class="article-card-foot"><span>{{ doc.word_count }} palavras</span><span class="kb-origin kb-origin-{{ doc.origin }}">{{ doc.origin }}</span></div>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% for key, label in groups %}
+      {% set items = grouped.get(key, []) %}
+      {% if items and (not group or group == key) %}
+      <div class="section-head">
+        <div><span class="eyebrow">{{ items|sum(attribute="count") }} DOCUMENTOS</span><h3>{{ label }}</h3></div>
+      </div>
+      <div class="kb-cat-grid">
+        {% for item in items %}
+        <a class="kb-cat-card" href="/kb/c/{{ item.category.slug }}">
+          <div class="kb-cat-top">
+            <strong>{{ item.category.title }}</strong>
+            <span class="count">{{ item.count }}</span>
+          </div>
+          {% if item.category.description %}<p>{{ item.category.description }}</p>{% endif %}
+          <span class="kb-cat-go">ABRIR {{ m.icon("arrow-right", 11) }}</span>
+        </a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+    {% if group and not grouped.get(group) %}
+    {{ m.empty_state("book", "Nenhum documento neste grupo ainda", "Importe uma fonte ou escreva a primeira página desta área. Nada é exibido como conteúdo vazio.", "/kb", "VER TODOS OS GRUPOS") }}
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
