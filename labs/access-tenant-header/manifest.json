@@ -1,0 +1,79 @@
+{
+  "slug": "access-tenant-header",
+  "title": "O header de tenant",
+  "codename": "LEDGERLINE",
+  "summary": "A Ledgerline limita faturas ao tenant logado, exceto quando o cliente envia um header X-Tenant-ID. Falsifique o header, abra a fatura 2 da Globex e recupere o segredo da liquidação.",
+  "category": "access",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "access-tenant-header",
+  "estimated_minutes": 16,
+  "xp": 110,
+  "tech": [
+    "Flask",
+    "HTTP",
+    "Multi-tenancy"
+  ],
+  "tags": [
+    "broken-access-control",
+    "tenant-isolation",
+    "header-trust"
+  ],
+  "story": "A Ledgerline hospeda o faturamento de várias empresas em uma única API. Alice, da Acme, vê as faturas da Acme, como esperado. O cliente mobile também envia um seletor de tenant para conseguir cachear responses por workspace, e a API trata esse seletor como autoritativo.",
+  "objective": "Entre como alice / alice123, chame `/api/invoices` com `X-Tenant-ID: globex` e envie a flag da fatura 2 da Globex.",
+  "rules": "Fique na origem loopback designada. Use a conta fornecida; o header de tenant é a trust boundary em teste.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo da liquidação da Globex",
+      "flag_type": "api",
+      "points": 110,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Mapeie a fronteira",
+      "body": "Entre com a conta preenchida da Alice e faça uma request para `/api/invoices`. Observe qual tenant o JSON informa e quais faturas são retornadas.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "O seletor fornecido pelo cliente",
+      "body": "A API de faturas prioriza um header de request `X-Tenant-ID` em relação ao tenant armazenado na sua sessão. Tente `X-Tenant-ID: globex` e compare a response.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Leia a fatura 2 da Globex",
+      "body": "Repita a request autenticada com o header e inspecione a segunda fatura da Globex. Exemplo: `curl -b cookies.txt -H 'X-Tenant-ID: globex' http://127.0.0.1:<port>/api/invoices`.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Faça POST de `username=alice&password=alice123` em `/login` e mantenha o cookie de sessão.\n2. Faça GET em `/api/invoices`; a response fica limitada a `acme`.\n3. Repita a request com `X-Tenant-ID: globex`.\n4. A segunda fatura da Globex (id 2) contém o campo `flag`.\n\n```bash\ncurl -c cookies.txt -d 'username=alice&password=alice123' http://127.0.0.1:PORT/login\ncurl -b cookies.txt -H 'X-Tenant-ID: globex' http://127.0.0.1:PORT/api/invoices\n```",
+    "root_cause": "A aplicação deriva o tenant de um header de request controlado pelo cliente em vez do principal autenticado. A autenticação funciona, mas a autorização de tenant nunca é verificada contra a associação da Alice, então o header seleciona dados de outro tenant.",
+    "mitigation": "Resolva o tenant a partir da sessão autenticada ou das claims do token no servidor, nunca a partir de um seletor fornecido pelo chamador. Autorize cada fatura contra o tenant resolvido, ignore ou rejeite headers de tenant desconhecidos e adicione testes que tentem leituras entre tenants com headers forjados."
+  },
+  "references": [
+    {
+      "title": "OWASP API Security Top 10 2023 — A1: Broken Object Level Authorization",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/",
+      "source_type": "standard",
+      "description": "Decisões de autorização devem vincular objetos ao principal autenticado."
+    },
+    {
+      "title": "PortSwigger — Access control vulnerabilities",
+      "url": "https://portswigger.net/web-security/access-control",
+      "source_type": "official",
+      "description": "Movimentação horizontal e vertical por trust boundaries."
+    },
+    {
+      "title": "CWE-639 — Authorization Bypass Through User-Controlled Key",
+      "url": "https://cwe.mitre.org/data/definitions/639.html",
+      "source_type": "standard",
+      "description": "Classe de fraqueza para identificadores de objeto e tenant escolhidos pelo chamador."
+    }
+  ]
+}

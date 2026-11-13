@@ -1,0 +1,79 @@
+{
+  "slug": "client-clickjacking-frame",
+  "title": "Transferência enquadrada",
+  "codename": "WIREBOX",
+  "summary": "Uma página de confirmação de transferência bancária é entregue sem X-Frame-Options nem CSP frame-ancestors. Uma página do atacante a enquadra em um iframe e sobrepõe um botão-isca, fazendo a vítima confirmar uma transferência que nunca escolheu.",
+  "category": "client",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "client-clickjacking-frame",
+  "estimated_minutes": 12,
+  "xp": 80,
+  "tech": [
+    "Flask",
+    "HTTP headers",
+    "HTML frames",
+    "CSS"
+  ],
+  "tags": [
+    "clickjacking",
+    "ui-redress",
+    "security-headers",
+    "browser"
+  ],
+  "story": "A Wirebox Payments renderiza uma confirmação de transferência com um clique, sem nenhuma proteção contra framing. Uma página de marketing em um domínio parecido embute a tela de confirmação dentro de um widget promocional e pinta o próprio botão por cima do botão real. A vítima acredita estar resgatando armazenamento gratuito; o clique confirma uma transferência para uma conta desconhecida e o comprovante do pagamento contém a flag.",
+  "objective": "Demonstre que a página de transferência pode ser enquadrada em iframe, construa uma sobreposição-isca que a enquadre e confirme a transferência enquadrada para receber a flag.",
+  "rules": "Fique na origem loopback atribuída. Apenas as páginas do próprio lab estão no escopo. Não escaneie outras portas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do comprovante de transferência",
+      "flag_type": "user",
+      "points": 80,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Olhe os headers da response",
+      "body": "Faça um request para `/transfer` e inspecione os headers, ou chame `/headers`, que retorna os headers que a página de transferência realmente envia. Uma página que pode ser enquadrada não precisa de `X-Frame-Options: DENY/SAMEORIGIN` nem de uma diretiva CSP `frame-ancestors`."
+    },
+    {
+      "level": 2,
+      "title": "A página de ataque já existe",
+      "body": "Abra `/attack`: ela embute `/transfer` em um iframe e cobre o botão real “Confirm and send” com uma barra-isca laranja (`pointer-events: none` na sobreposição). Isso é uma prova funcional de UI-redress assim que você confirma que a página pode ser enquadrada."
+    },
+    {
+      "level": 3,
+      "title": "Consuma o clique",
+      "body": "A página enquadrada é a sessão autenticada da vítima. Quando o clique cai no botão real, a transferência é confirmada. `/auto-confirm` simula a vítima confirmando pela sobreposição e retorna o comprovante com a flag."
+    }
+  ],
+  "solution": {
+    "walkthrough": "**1. Verifique as proteções de framing.**\n\n```\ncurl -si http://127.0.0.1:<port>/transfer | tr -d '\\r' | grep -iE 'x-frame|content-security'\n# (nenhuma saída: nenhum dos headers está presente)\ncurl -s http://127.0.0.1:<port>/headers\n# {\"Content-Type\": \"text/html; charset=utf-8\", \"X-Content-Type-Options\": \"nosniff\"}\n```\n\n**2. Inspecione a página armada.** GET `/attack` retorna uma página com:\n\n```html\n<iframe src=\"/transfer\" sandbox=\"allow-scripts allow-forms allow-same-origin\"></iframe>\n<div class=\"cover\"><div class=\"hot\">Click here to claim</div></div>\n```\n\nA sobreposição fica acima do frame com `pointer-events: none`, então o botão real recebe o clique.\n\n**3. Confirme a transferência.** Abra `/attack` em um navegador autenticado na Wirebox, clique na barra-isca e a página enquadrada navega para `/transfer/confirm`, que imprime a flag.\n\n**4. Verificação no lado do servidor.** Para validação em HTTP simples, use a rota de simulação:\n\n```\ncurl -s http://127.0.0.1:<port>/auto-confirm | grep -o 'RV{[^}]*}'\n# RV{...}\n```\n\nEste é o mesmo clique que a sobreposição consome; ele registra o objetivo e retorna o comprovante de transferência com a flag.",
+    "root_cause": "A confirmação da transferência é um GET/POST que altera estado e é acessível de qualquer origem. Sem `X-Frame-Options` e sem uma diretiva CSP `frame-ancestors`, os navegadores renderizam a página sem problemas dentro de um iframe de terceiros. Como a vítima já está autenticada, o atacante só precisa posicionar um elemento transparente ou estilizado sobre o botão de confirmação: o clique é atribuído à vítima, não à página do atacante.",
+    "mitigation": "Envie `Content-Security-Policy: frame-ancestors 'none'` (ou `'self'`) e `X-Frame-Options: DENY` em toda página autenticada. Melhor ainda, cubra todas as defesas: exija um token CSRF para a confirmação, exija confirmação explícita digitada ou reautenticação para transferências, nunca aceite mudanças de estado via GET e use cookies `SameSite=Lax`. JavaScript de frame-busting não é substituto porque scripts podem ser desabilitados; frame-ancestors é o controle de fato."
+  },
+  "references": [
+    {
+      "title": "OWASP — Clickjacking Defence Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "frame-ancestors, X-Frame-Options e os limites dos scripts de frame-busting."
+    },
+    {
+      "title": "MDN — CSP frame-ancestors",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors",
+      "source_type": "official",
+      "description": "Sintaxe da diretiva e quais origens podem embutir a página."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Clickjacking",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/09-Testing_for_Clickjacking",
+      "source_type": "standard",
+      "description": "Metodologia prática para detectar proteções de framing ausentes."
+    }
+  ]
+}

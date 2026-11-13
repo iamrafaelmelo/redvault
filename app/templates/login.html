@@ -1,0 +1,32 @@
+{% extends "auth_base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Entrar{% endblock %}
+{% block form %}
+<div class="auth-form-head">
+  <span class="auth-kicker">AUTENTICAÇÃO DO OPERADOR</span>
+  <h2>Entrar no vault</h2>
+  <p>Apenas credenciais locais. Toda ação aqui é atividade de treinamento autorizada em alvos isolados.</p>
+</div>
+
+{% if error %}<div class="form-error">{{ m.icon("alert", 16) }} {{ error }}</div>{% endif %}
+
+<form method="post" action="/login" class="form-stack">
+  <input type="hidden" name="next" value="{{ next or '/' }}">
+  <label class="field">
+    <span>NOME DO OPERADOR</span>
+    <input name="username" value="{{ username or '' }}" autocomplete="username" required autofocus placeholder="operator">
+  </label>
+  <label class="field">
+    <span>SENHA MESTRA</span>
+    <input type="password" name="password" autocomplete="current-password" required placeholder="••••••••••">
+  </label>
+  <button class="btn btn-primary btn-block btn-lg" type="submit">
+    AUTENTICAR {{ m.icon("arrow-right", 16) }}
+  </button>
+</form>
+
+<div class="auth-note">
+  {{ m.icon("lock", 16) }}
+  <span>Sem registro público. Sem telemetria. A plataforma roda inteiramente nesta máquina.</span>
+</div>
+{% endblock %}

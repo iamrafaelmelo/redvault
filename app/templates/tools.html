@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Biblioteca de ferramentas{% endblock %}
+{% block crumb %}INTELIGÊNCIA / BIBLIOTECA DE FERRAMENTAS{% endblock %}
+{% block page_title %}Biblioteca de ferramentas{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">FERRAMENTAS OFENSIVAS / REFERÊNCIA OPERACIONAL</span>
+    <h2>Conheça a ferramenta. Conheça o protocolo.</h2>
+    <p>Cartões de referência para as ferramentas usadas no ambiente: propósito, instalação, opções de alto sinal e uma invocação prática. São notas de campo, não marketing de fornecedor.</p>
+  </div>
+  <div class="page-actions"><a class="btn" href="/academy/quick-reference">{{ m.icon("bolt", 13) }} REFERÊNCIA RÁPIDA</a></div>
+</div>
+
+{% for category, items in grouped.items() %}
+<div class="tool-cat-title"><span>{{ category|upper }}</span><span>{{ items|length }} FERRAMENTAS</span></div>
+<div class="tool-grid">
+  {% for tool in items %}
+  <article class="tool-card">
+    <div>
+      <h3>{{ tool.name }}</h3>
+      <div class="purpose">{{ tool.description }}</div>
+    </div>
+    <div class="meta-row">
+      <span class="tag">{{ tool.purpose }}</span>
+      <span class="source-badge source-official">DOCS OFICIAIS</span>
+    </div>
+    {% if tool.install %}
+    <div>
+      <div class="mono-label" style="margin-bottom:5px">INSTALAR</div>
+      <pre>{{ tool.install }}</pre>
+    </div>
+    {% endif %}
+    {% if tool.example %}
+    <div>
+      <div class="mono-label" style="margin-bottom:5px">EXEMPLO</div>
+      <pre>{{ tool.example }}</pre>
+    </div>
+    {% endif %}
+    {% if tool.notes %}
+    <div class="muted" style="font-size:10px;line-height:1.55">{{ tool.notes }}</div>
+    {% endif %}
+    <div class="tool-foot">
+      <span class="mono-label">{{ tool.category }}</span>
+      <a href="{{ tool.url }}" target="_blank" rel="noopener noreferrer">DOCUMENTATION {{ m.icon("external", 10) }}</a>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endblock %}

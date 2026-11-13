@@ -1,0 +1,79 @@
+{
+  "slug": "api-excessive-data",
+  "title": "O objeto inteiro",
+  "codename": "TEAMSPACE API",
+  "summary": "A UI do diretório público da Teamspace mostra apenas nomes e bios, mas `/api/v1/team` serializa o modelo interno de time inteiro. Encontre o campo que a página nunca deveria expor.",
+  "category": "api",
+  "difficulty": "beginner",
+  "kind": "challenge",
+  "lab_dir": "api-excessive-data",
+  "estimated_minutes": 12,
+  "xp": 80,
+  "tech": [
+    "Flask",
+    "JSON",
+    "API design"
+  ],
+  "tags": [
+    "api",
+    "excessive-data-exposure",
+    "information-disclosure"
+  ],
+  "story": "O diretório da Teamspace é público por design. O front-end consome uma projeção reduzida, então o time de produto presumiu que a API também fizesse isso. O serializer retorna o objeto completo e o cliente ignora o que não exibe.",
+  "objective": "Inspecione a API pública de team e extraia o `vault_flag` escondido em um campo interno do objeto.",
+  "rules": "Somente a origem teamspace atribuída está no escopo.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do vault de Operations",
+      "flag_type": "api",
+      "points": 80,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "A página não é a API",
+      "body": "Abra `/api/v1/team`. Compare o JSON retornado com os cards visíveis do diretório. Campos internos podem estar presentes, mas não renderizados.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Olhe dentro de private",
+      "body": "Cada objeto de time tem um objeto `private`. Um membro (Operations) tem campos internos sensíveis.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Extraia o valor",
+      "body": "Encontre o membro com `role=Operations` e leia `private.vault_flag`. Envie-o.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Execute GET em `/api/v1/team`.\n2. Inspecione o JSON. O terceiro membro tem um objeto `private` contendo `vault_flag`.\n3. Envie esse valor `RV{...}`.",
+    "root_cause": "Excessive data exposure. A API serializa o objeto de domínio inteiro em vez de um modelo de response específico. Autorização e visibilidade na UI não reduzem os dados enviados na rede.",
+    "mitigation": "Defina schemas de response/DTOs com campos explicitamente permitidos (allowlist), aplique autorização em nível de campo, revise serializers em busca de atributos sensíveis e teste responses de API como um chamador sem privilégios. Nunca confie que os clientes ignorarão campos."
+  },
+  "references": [
+    {
+      "title": "OWASP API Security Top 10 2023 — A3: Broken Object Property Level Authorization",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/",
+      "source_type": "standard",
+      "description": "Excessive data exposure e mass assignment."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Excessive Data Exposure",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/12-API_Testing/03-Testing_for_Excessive_Data_Exposure",
+      "source_type": "standard",
+      "description": "Metodologia de revisão de responses de API."
+    },
+    {
+      "title": "CWE-213 — Exposure of Sensitive Information Due to Incompatible Policies",
+      "url": "https://cwe.mitre.org/data/definitions/213.html",
+      "source_type": "standard",
+      "description": "Classe relacionada de exposição de informação."
+    }
+  ]
+}

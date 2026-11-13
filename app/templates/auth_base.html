@@ -1,0 +1,52 @@
+{% import "macros.html" as m %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>{% block title %}Acesso{% endblock %} · REDVAULT</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+</head>
+<body class="auth-page">
+  <div class="auth-grid"></div>
+  <div class="auth-shell">
+    <section class="auth-brief">
+      <a href="/" class="brand auth-brand">
+        <span class="brand-mark">
+          <svg viewBox="0 0 40 40" width="38" height="38" fill="none">
+            <path d="M20 2 35 10.5v19L20 38 5 29.5v-19L20 2Z" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="20" cy="20" r="7.5" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="20" cy="20" r="2.2" fill="currentColor"/>
+            <path d="M20 12.5V6M20 34v-5M27.5 20H34M6 20h6.5M25.3 14.7l4.6-4.6M10.1 29.9l4.6-4.6M25.3 25.3l4.6 4.6M10.1 10.1l4.6 4.6" stroke="currentColor" stroke-width="1.2" opacity=".55"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <strong>RED<span>VAULT</span></strong>
+          <small>LABORATÓRIO OFFENSIVE PRIVADO</small>
+        </span>
+      </a>
+      <div class="auth-brief-body">
+        <span class="auth-kicker">LOCAL · ISOLADO · SEM TELEMETRIA</span>
+        <h1>Uma faixa privada para <em>exploração web</em>.</h1>
+        <p>Serviços vulneráveis reais, isolamento por sandbox e zero exposição pública. Tudo o que você fizer aqui é treinamento autorizado em alvos locais.</p>
+        <ul class="auth-points">
+          <li>{{ m.icon("check", 15) }} 89 desafios reais e 8 máquinas multi-stage</li>
+          <li>{{ m.icon("check", 15) }} Cada lab em processo próprio, só em loopback</li>
+          <li>{{ m.icon("check", 15) }} Hints progressivos, flags validadas no servidor</li>
+        </ul>
+      </div>
+      <div class="auth-foot">{% block auth_foot %}{% endblock %}</div>
+    </section>
+
+    <section class="auth-panel">
+      {% block form %}{% endblock %}
+      <div class="auth-legal">
+        <span>AUTORIZADO APENAS PARA USO LOCAL</span>
+        <span>REDVAULT v0.9</span>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

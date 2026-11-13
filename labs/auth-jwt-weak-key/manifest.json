@@ -1,0 +1,35 @@
+{
+  "slug": "auth-jwt-weak-key",
+  "title": "Assinado com luz do sol",
+  "codename": "HELIOS GATEWAY",
+  "summary": "A Helios emite tokens HS256 com uma chave de assinatura fraca e adivinhável. Recupere a chave, forje um token de administrador e chegue ao console restrito.",
+  "category": "auth",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "auth-jwt-weak-key",
+  "estimated_minutes": 22,
+  "xp": 120,
+  "tech": ["Flask", "JWT", "HMAC-SHA256"],
+  "tags": ["jwt", "weak-secret", "token-forgery"],
+  "story": "A Helios trata a assinatura do JWT como prova de identidade. O ticket de rotação da chave continua aberto. O token de guest é pequeno o suficiente para copiar à mão.",
+  "objective": "Recupere o segredo de assinatura HS256, forje um token com o papel `admin` e envie a flag de `/admin`.",
+  "rules": "Apenas a origem da Helios está no escopo. A quebra offline do token é esperada.",
+  "flags": [
+    {"key": "flag", "label": "Flag de admin da Helios", "flag_type": "user", "points": 120, "required": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Leia o token", "body": "Faça login como `guest` e encontre o cookie `helios_token`. Decodifique header e payload com base64url; o algoritmo é HS256.", "cost": 10},
+    {"level": 2, "title": "Adivinhe a chave", "body": "O alvo expõe `/wordlist.txt`. Teste segredos candidatos recalculando o HMAC da string `header.payload`.", "cost": 20},
+    {"level": 3, "title": "Forje o papel", "body": "A chave é `sunshine`. Mude o payload para `{\"sub\":\"admin\",\"role\":\"admin\",...}` e reassine com HMAC-SHA256. Envie o token forjado como `helios_token`.", "cost": 25}
+  ],
+  "solution": {
+    "walkthrough": "1. Faça POST em `/login` com `username=guest`; capture o cookie `helios_token`.\n2. Decodifique o payload do JWT em base64url. Ele contém `sub` e `role=user`.\n3. Tente segredos de `/wordlist.txt`. `sunshine` reproduz a assinatura original.\n4. Monte um payload com `role=admin`, codifique em base64url e calcule `HMAC_SHA256(\"sunshine\", header.payload)`.\n5. Envie o novo token como cookie `helios_token` e faça GET em `/admin`. Envie a flag.",
+    "root_cause": "O JWT é assinado com um segredo compartilhado de baixa entropia que aparece em uma wordlist exposta. O servidor confia na claim de papel dentro de um token que qualquer um reassina quando conhece a chave.",
+    "mitigation": "Use uma chave de assinatura de alta entropia, guardada com segurança; rotacione-a; valide issuer e audience; evite tratar claims controladas pelo cliente como autorização única. Para sistemas locais, considere assinatura assimétrica e key IDs com allowlist estrita de algoritmos."
+  },
+  "references": [
+    {"title": "PortSwigger — JWT attacks", "url": "https://portswigger.net/web-security/jwt", "source_type": "official", "description": "Chaves fracas, confusão de algoritmo e manipulação de claims."},
+    {"title": "OWASP JWT Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html", "source_type": "standard", "description": "Validação, allowlist de algoritmo e gestão de chaves."},
+    {"title": "RFC 7519 — JSON Web Token", "url": "https://www.rfc-editor.org/rfc/rfc7519", "source_type": "standard", "description": "As claims e o modelo de assinatura do JWT."}
+  ]
+}

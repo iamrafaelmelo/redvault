@@ -1,0 +1,35 @@
+{
+  "slug": "recon-source-map",
+  "title": "O mapa deixado para trás",
+  "codename": "NORTHWIND RELEASE",
+  "summary": "Um bundle de produção sai junto com o source map. Recupere um token interno de release do TypeScript original e use-o para chamar um endpoint privilegiado de deployment.",
+  "category": "recon",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "recon-source-map",
+  "estimated_minutes": 14,
+  "xp": 100,
+  "tech": ["Flask", "JavaScript", "Source Maps"],
+  "tags": ["source-map", "information-disclosure", "api-key", "client-side-recon"],
+  "story": "O console de releases da Northwind é um build estático minúsculo. A equipe de engenharia diz que a lógica interessante fica no servidor, mas o bundle de produção ainda carrega um artefato de debug do último rollout. Uma nota de migração avisa que o gatilho interno de release deve continuar online.",
+  "objective": "Busque o bundle JavaScript, siga o seu sourceMappingURL, extraia o token interno de release do source map e chame `/api/internal/release` com o header `X-Internal-Token`. Envie a flag retornada.",
+  "rules": "Fique na origem loopback atribuída. Source maps e endpoints internos estão intencionalmente expostos para este exercício.",
+  "flags": [
+    {"key": "flag", "label": "Flag do release interno", "flag_type": "api", "points": 100, "required": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Leia o fim do bundle", "body": "Busque `/static/app.js` e inspecione a última linha. Um comentário sourceMappingURL aponta para um artefato de debug que não deveria estar em produção.", "cost": 10},
+    {"level": 2, "title": "Recupere o código original", "body": "Requisite `/static/app.js.map` e interprete o JSON. O array `sourcesContent` reconstrói `app.ts`, incluindo um token interno e o path do endpoint de release.", "cost": 15},
+    {"level": 3, "title": "Reenvie a chamada interna", "body": "Envie `X-Internal-Token: rv-map-7d41c9` para `/api/internal/release`. O token é exposto pelo map; o endpoint ainda o trata como credencial privilegiada.", "cost": 20}
+  ],
+  "solution": {
+    "walkthrough": "1. Requisite `/static/app.js` e observe o `//# sourceMappingURL=app.js.map` no final.\n2. Busque `/static/app.js.map` e leia `sourcesContent[0]`.\n3. Extraia `INTERNAL_TOKEN` (`rv-map-7d41c9`) e `RELEASE_ENDPOINT` (`/api/internal/release`).\n4. Chame o endpoint com o token:\n```bash\ncurl -H 'X-Internal-Token: rv-map-7d41c9' http://127.0.0.1:PORT/api/internal/release\n```\n5. Envie o valor `flag` da resposta JSON.",
+    "root_cause": "O build de produção publica um source map que reconstrói o TypeScript original. Esse código contém um token interno privilegiado, então o artefato entregue ao navegador expõe uma credencial que o servidor ainda aceita. Enviar um artefato de debug transformou código client-side em vazamento de autenticação.",
+    "mitigation": "Exclua source maps dos artefatos de produção ou envie-os a um serviço privado de error tracking. Nunca incorpore tokens privilegiados em código de navegador; mantenha endpoints internos atrás de um backend-for-frontend com credenciais de vida curta e escopo por usuário. Adicione secret scanning e revisão de artefatos ao pipeline de release."
+  },
+  "references": [
+    {"title": "OWASP WSTG — Review Web Page Content for Information Leakage", "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/05-Review_Web_Page_Content_for_Information_Leakage", "source_type": "standard", "description": "Metodologia para encontrar segredos vazados e artefatos de debug em conteúdo visível ao cliente."},
+    {"title": "PortSwigger — Information disclosure", "url": "https://portswigger.net/web-security/information-disclosure", "source_type": "official", "description": "Como código-fonte, comentários e artefatos de build expõem detalhes internos de implementação."},
+    {"title": "MDN — Content Security Policy", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP", "source_type": "standard", "description": "Orientação de defesa em profundidade para assets entregues ao navegador; CSP não torna segredos embutidos seguros."}
+  ]
+}

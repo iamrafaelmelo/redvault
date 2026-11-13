@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Trilhas de aprendizado{% endblock %}
+{% block crumb %}PROGRESSÃO / TRILHAS DE APRENDIZADO{% endblock %}
+{% block page_title %}Trilhas de aprendizado{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">PROGRESSÃO CURADA</span>
+    <h2>Siga um método, não um menu.</h2>
+    <p>Cada trilha é uma sequência deliberada de alvos que constrói uma capacidade. Os pré-requisitos são consultivos — você pode pular para onde quiser, mas a ordem foi desenhada para que o próximo desafio faça sentido.</p>
+  </div>
+</div>
+
+<div class="path-grid">
+  {% for card in cards %}
+  {% set path = card.path %}
+  {% set progress = card.progress %}
+  <article class="path-card {% if progress.completed > 0 and progress.completed < progress.total %}current{% endif %}">
+    <div class="path-top">
+      <div class="path-icon">{{ m.icon(path.icon, 20) }}</div>
+      <div class="path-info">
+        <h3><a href="/paths/{{ path.slug }}">{{ path.title }}</a></h3>
+        <p>{{ path.description[:160] }}{% if path.description|length > 160 %}…{% endif %}</p>
+      </div>
+      <span class="tag">{{ path.estimated_hours }}H</span>
+    </div>
+    {% if path.prerequisites %}
+    <div class="meta-row">
+      {% for prereq in path.prerequisites %}
+      <span class="tag">REQUER {{ prereq|upper|replace("-", " ") }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div>
+      <div class="path-progress-top"><span>{{ progress.completed }}/{{ progress.total }} ALVOS CONCLUÍDOS</span><span>{{ progress.percent }}%</span></div>
+      <div class="bar {% if progress.percent == 100 %}bar-green{% endif %}"><span style="width: {{ progress.percent }}%"></span></div>
+    </div>
+    <div class="path-foot">
+      <div class="meta">
+        {{ m.difficulty_badge(path.difficulty, difficulty_labels[path.difficulty]) }}
+        <span>{{ m.icon("layers", 10) }} {{ progress.total }} MÓDULOS</span>
+      </div>
+      {% if progress.percent == 100 %}
+      <span class="tag" style="color:var(--green);border-color:var(--green-dim)">CONCLUÍDA</span>
+      {% elif progress.completed > 0 %}
+      <a class="link-arrow" href="/paths/{{ path.slug }}">CONTINUAR {{ m.icon("arrow-right", 12) }}</a>
+      {% else %}
+      <a class="link-arrow" href="/paths/{{ path.slug }}">INICIAR {{ m.icon("arrow-right", 12) }}</a>
+      {% endif %}
+    </div>
+  </article>
+  {% else %}
+  {{ m.empty_state("route", "Nenhuma trilha cadastrada", "Adicione content/paths.json com sequências curadas de desafios.", "", "") }}
+  {% endfor %}
+</div>
+
+<section class="section">
+  <div class="section-head">
+    <div><span class="eyebrow">COMO USAR AS TRILHAS</span><h3>Recomendado, não obrigatório</h3></div>
+  </div>
+  <div class="grid-3">
+    <div class="card card-pad">
+      <div class="mono-label">01 / SEQUÊNCIA</div>
+      <h3 style="font-size:14px;margin:7px 0 5px">Siga a cadeia de dependência</h3>
+      <p class="muted" style="font-size:11px;margin:0">As trilhas vão dos fundamentos à exploração encadeada. Labs posteriores assumem o vocabulário e os hábitos construídos antes.</p>
+    </div>
+    <div class="card card-pad">
+      <div class="mono-label">02 / ESTUDO LIVRE</div>
+      <h3 style="font-size:14px;margin:7px 0 5px">Quebre a ordem quando for útil</h3>
+      <p class="muted" style="font-size:11px;margin:0">Nada é travado à força. Se um alvo combina com sua pergunta atual, abra. A trilha lembra o seu progresso.</p>
+    </div>
+    <div class="card card-pad">
+      <div class="mono-label">03 / EVIDÊNCIA</div>
+      <h3 style="font-size:14px;margin:7px 0 5px">Explore primeiro, explique depois</h3>
+      <p class="muted" style="font-size:11px;margin:0">Antes de enviar a flag, registre a trust boundary, a request que a cruzou e a correção que você implementaria.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

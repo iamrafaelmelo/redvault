@@ -1,0 +1,35 @@
+{
+  "slug": "recon-js-bundle",
+  "title": "Segredos no bundle",
+  "codename": "ORBITAL UI",
+  "summary": "Um bundle JavaScript de produção carrega uma chave de serviço interna. Recupere-a, chame o endpoint interno e prove que a fronteira do front-end não é uma fronteira de segurança.",
+  "category": "recon",
+  "difficulty": "beginner",
+  "kind": "challenge",
+  "lab_dir": "recon-js-bundle",
+  "estimated_minutes": 14,
+  "xp": 70,
+  "tech": ["Flask", "JavaScript", "HTTP"],
+  "tags": ["javascript-analysis", "api-key", "information-disclosure"],
+  "story": "O console de clientes da Orbital é um build estático minúsculo. A equipe afirma que a lógica interessante fica no servidor. Você percebe que o navegador ainda precisa se autenticar de alguma forma.",
+  "objective": "Extraia a API key de serviço do bundle do front-end e chame `/api/internal/config` com o header correto. Envie a flag retornada.",
+  "rules": "Fique na origem loopback atribuída. O endpoint está intencionalmente exposto para este exercício.",
+  "flags": [
+    {"key": "flag", "label": "Flag do serviço interno", "flag_type": "api", "points": 70, "required": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Siga o script", "body": "Abra o painel Sources do DevTools ou busque `/static/app.js` diretamente. Procure no arquivo por `key`, `token` ou `internal`.", "cost": 10},
+    {"level": 2, "title": "Reenvie a request", "body": "O bundle contém `apiKey` e `internalEndpoint`. Use `curl` com o header `X-API-Key: <valor>` contra o path interno.", "cost": 15},
+    {"level": 3, "title": "Autentique como o front-end", "body": "`curl -H 'X-API-Key: rv_live_7f3a91c2' http://127.0.0.1:<porta>/api/internal/config` retorna a flag. A chave é pública no bundle, então o valor não é um segredo.", "cost": 20}
+  ],
+  "solution": {
+    "walkthrough": "1. Busque `/static/app.js`.\n2. Leia `CONFIG.apiKey` (`rv_live_7f3a91c2`) e `CONFIG.internalEndpoint`.\n3. Requisite `/api/internal/config` com o header `X-API-Key: rv_live_7f3a91c2`.\n4. Envie o valor `flag` da resposta JSON.\n\nExemplo:\n```bash\ncurl -H 'X-API-Key: rv_live_7f3a91c2' http://127.0.0.1:PORT/api/internal/config\n```",
+    "root_cause": "Uma credencial de serviço interno foi compilada em um bundle entregue ao navegador. Qualquer um que consiga carregar a página consegue ler a chave. Autenticação por header adiciona cerimônia, mas nenhum sigilo, quando o valor está no cliente.",
+    "mitigation": "Nunca entregue credenciais privilegiadas ao navegador. Use um backend-for-frontend com tokens de vida curta e escopo por usuário; rotacione chaves expostas; adicione secret scanning ao pipeline de build e bloqueie endpoints internos na borda."
+  },
+  "references": [
+    {"title": "OWASP WSTG — Review Webpage Content for Information Leakage", "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/05-Review_Web_Page_Content_for_Information_Leakage", "source_type": "standard", "description": "Metodologia para revisar assets client-side em busca de dados vazados."},
+    {"title": "PortSwigger — Information disclosure", "url": "https://portswigger.net/web-security/information-disclosure", "source_type": "official", "description": "Fontes comuns de dados sensíveis em conteúdo visível ao cliente."},
+    {"title": "MDN — Content Security Policy", "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP", "source_type": "standard", "description": "Defesa em profundidade contra scripts injetados; não substitui gestão de segredos."}
+  ]
+}

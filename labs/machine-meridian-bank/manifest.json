@@ -1,0 +1,97 @@
+{
+  "slug": "machine-meridian-bank",
+  "title": "Meridian Bank",
+  "codename": "MERIDIAN",
+  "summary": "Um alvo de private banking em múltiplos estágios: use o acesso de cliente, encontre uma falha de autorização em nível de objeto que vaza o segredo de rotação do JWT, forje um token de administrador e então explore o diagnóstico de tesouraria para root.",
+  "category": "auth",
+  "difficulty": "hard",
+  "kind": "machine",
+  "lab_dir": "machine-meridian-bank",
+  "estimated_minutes": 50,
+  "xp": 400,
+  "tech": [
+    "Flask",
+    "JWT",
+    "SQL-free API",
+    "Shell"
+  ],
+  "tags": [
+    "machine",
+    "idor",
+    "jwt",
+    "command-injection",
+    "chaining"
+  ],
+  "story": "O app mobile da Meridian autentica com tokens assinados. A API de conta do cliente verifica cuidadosamente que o usuário está logado, mas não qual conta ele solicita. Um registro de tesouraria contém uma nota de rotação de chave atrasada. O painel de admin tem um worker de diagnóstico legado.",
+  "objective": "Capture a flag de usuário, vaze o segredo do JWT via BOLA para obter a flag de API, forje um token de admin e use o diagnóstico para enviar a flag de root.",
+  "rules": "Apenas o alvo loopback atribuído. Use a conta de cliente pré-preenchida no login. A flag de root é condicionada por estado e exige execução real de comando.",
+  "flags": [
+    {
+      "key": "user",
+      "label": "Flag da conta do cliente",
+      "flag_type": "user",
+      "points": 80,
+      "required": true
+    },
+    {
+      "key": "api",
+      "label": "Flag da API de tesouraria",
+      "flag_type": "api",
+      "points": 120,
+      "required": true
+    },
+    {
+      "key": "root",
+      "label": "Flag root de tesouraria",
+      "flag_type": "root",
+      "points": 200,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Autentique-se e depois olhe os objetos",
+      "body": "Entre como `jordan` / `jordan123` para obter a flag de usuário. Depois solicite `/api/accounts/1`; o endpoint aceita qualquer ID numérico de conta.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Vazamento de tesouraria",
+      "body": "GET `/api/accounts/2` retorna a conta de admin, a flag de API e uma nota interna contendo o segredo de assinatura do JWT `meridian-dev`.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Forje e execute",
+      "body": "Decodifique o JWT `meridian_token`, mude `role` para `admin`, reassine com HMAC-SHA256 usando `meridian-dev` e defina-o como cookie. Abra `/admin` e então envie `127.0.0.1; cat /tmp/meridian-root.txt` no diagnóstico.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — cliente.** Entre como `jordan` / `jordan123`, abra `/account` e envie a flag de usuário.\n\n**Etapa 2 — BOLA.** Solicite `/api/accounts/2` com a sessão de cliente. A response expõe `api_flag` e `internal_note` com o segredo do JWT `meridian-dev`. Envie a flag de API.\n\n**Etapa 3 — forja.** Copie o cookie `meridian_token`. Decodifique seu header e payload, defina `role` como `admin` (mantenha um `exp` futuro) e assine `header.payload` com `HMAC-SHA256(\"meridian-dev\")`. Defina o resultado como `meridian_token`.\n\n**Etapa 4 — root.** Abra `/admin`; o token forjado é aceito. Envie o host de diagnóstico `127.0.0.1; cat /tmp/meridian-root.txt`. A saída contém a flag de root e registra o objetivo.",
+    "root_cause": "A cadeia é BOLA mais gestão fraca de chaves JWT mais command injection. A API de cliente vaza um segredo de assinatura, as claims do token são confiadas uma vez assinadas, e a sessão de admin recuperada chega a um comando de diagnóstico inseguro.",
+    "mitigation": "Autorize todo objeto de conta; nunca revele materiais de assinatura em objetos de API; use chaves aleatórias fortes com rotação e key IDs; valide issuer/audience e role no servidor; evite interpolação de shell; aplique o menor privilégio ao diagnóstico; registre e alerte sobre execução privilegiada."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — JWT attacks",
+      "url": "https://portswigger.net/web-security/jwt",
+      "source_type": "official",
+      "description": "Chaves fracas, forja de claims e defesas de JWT."
+    },
+    {
+      "title": "OWASP API Security Top 10 2023 — A1: BOLA",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/",
+      "source_type": "standard",
+      "description": "A falha de autorização do objeto de conta."
+    },
+    {
+      "title": "OWASP Command Injection Defenses",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Como evitar o estágio final de execução como root."
+    }
+  ]
+}

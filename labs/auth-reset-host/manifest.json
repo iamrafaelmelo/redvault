@@ -1,0 +1,35 @@
+{
+  "slug": "auth-reset-host",
+  "title": "O host confiável",
+  "codename": "MERIDIAN ID",
+  "summary": "A recuperação de senha da Meridian monta a URL de reset a partir de um header de forwarding não confiável. Envenene o link de reset, recupere o token do coletor de e-mail e assuma a conta do administrador.",
+  "category": "auth",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "auth-reset-host",
+  "estimated_minutes": 25,
+  "xp": 130,
+  "tech": ["Flask", "Password reset", "Proxy headers"],
+  "tags": ["host-header-injection", "password-reset", "account-takeover"],
+  "story": "O fluxo de recuperação foi migrado para trás de um reverse proxy no último trimestre. A equipe da aplicação ainda acredita que `X-Forwarded-Host` é confiável. O administrador não tem senha definida, então a recuperação é a única entrada.",
+  "objective": "Dispare um reset de senha para `admin@meridian.local`, observe como um header de forwarding forjado altera a URL gerada, resete a conta do administrador e capture a flag.",
+  "rules": "Use apenas o coletor de e-mail local e o alvo loopback atribuído. Não ataque nenhum host fora da porta do lab.",
+  "flags": [
+    {"key": "flag", "label": "Flag do control plane da Meridian", "flag_type": "user", "points": 130, "required": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Inicie a recuperação", "body": "Faça POST em `/forgot` com `email=admin@meridian.local` e inspecione `/outbox`. A URL de recuperação é montada a partir dos headers da request.", "cost": 10},
+    {"level": 2, "title": "Forje o header de proxy", "body": "Envie `X-Forwarded-Host: 127.0.0.1:<porta atribuída>` na request de recuperação. Compare o link gerado com o normal. Você também pode apontar para um host marcador arbitrário para provar que a trust boundary está quebrada.", "cost": 20},
+    {"level": 3, "title": "Resete e entre", "body": "Use o token de reset de `/outbox`, defina uma nova senha de admin em `/reset/<token>`, faça login como `admin` e leia `/account`. O link enviado por e-mail basta para obter o token porque o coletor de e-mail faz parte deste alvo de treinamento.", "cost": 25}
+  ],
+  "solution": {
+    "walkthrough": "1. Requisite `/forgot` com o e-mail do admin.\n2. Observe o link de reset em `/outbox`. Ele usa `X-Forwarded-Host` sem validação.\n3. Repita com um header forjado para mostrar que o host do link segue a entrada do atacante:\n```bash\ncurl -s -X POST -d 'email=admin@meridian.local' \\\n  -H 'X-Forwarded-Host: attacker.invalid' http://127.0.0.1:PORT/forgot\n```\n4. Abra `/outbox`, copie o path/token de reset e defina uma nova senha de admin.\n5. Faça login como `admin` e faça GET em `/account`; envie a flag.",
+    "root_cause": "A aplicação confia em `X-Forwarded-Host` ao construir uma URL de reset sensível para segurança. Qualquer cliente que alcance o app consegue definir o header; em um deployment real isso vaza tokens de reset para uma origem controlada pelo atacante. O coletor de e-mail do treinamento torna a mensagem resultante observável.",
+    "mitigation": "Monte URLs absolutas a partir de uma allowlist estrita, server-side, de hosts canônicos. Nunca confie em `Host` ou headers de forwarding sem validação de proxy. Vincule tokens de reset à conta e a um TTL curto, invalide após o uso e notifique os usuários sobre resets. Adicione rate limits à recuperação."
+  },
+  "references": [
+    {"title": "PortSwigger — Host header attacks", "url": "https://portswigger.net/web-security/host-header", "source_type": "official", "description": "Injeção de host header e envenenamento de reset de senha."},
+    {"title": "OWASP WSTG — Testing for Host Header Injection", "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/17-Testing_for_Host_Header_Injection", "source_type": "standard", "description": "Casos de teste para headers de host e forwarding não confiáveis."},
+    {"title": "OWASP Forgot Password Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html", "source_type": "standard", "description": "Geração, entrega e invalidação segura de tokens de reset."}
+  ]
+}

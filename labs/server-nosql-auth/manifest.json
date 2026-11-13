@@ -1,0 +1,79 @@
+{
+  "slug": "server-nosql-auth",
+  "title": "O operador na query",
+  "codename": "SENTRY DOCS",
+  "summary": "O Sentry Docs autentica operadores comparando credenciais JSON contra um document store. O matcher suporta operadores de query, incluindo os que permitem que um valor enviado descreva uma condição em vez de um segredo.",
+  "category": "server",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "server-nosql-auth",
+  "estimated_minutes": 20,
+  "xp": 200,
+  "tech": [
+    "Flask",
+    "JSON",
+    "Document matching"
+  ],
+  "tags": [
+    "nosql-injection",
+    "authentication-bypass",
+    "query-operators"
+  ],
+  "story": "O Sentry Docs migrou seu diretório de operadores de SQL para um document store. O endpoint de login ainda aceita um documento JSON, e a migração manteve o matcher flexível para que clientes pudessem consultar por faixa e padrão. O registro de admin foi semeado com uma senha longa e aleatória, então adivinhar não é o caminho pretendido.",
+  "objective": "Explore o matcher de documentos em `/api/login` para se autenticar como `admin` sem saber a senha. Envie a flag retornada pelo login de admin bem-sucedido.",
+  "rules": "Use apenas o processo do Sentry Docs na porta de loopback atribuída. A senha do administrador não está presente na UI nem em nenhum arquivo exposto.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do documento de administrador",
+      "flag_type": "user",
+      "points": 200,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "A senha é um documento",
+      "body": "Faça POST de um objeto JSON em `/api/login` com `username` e `password`. O campo de senha não precisa ser uma string; o servidor o repassa para o mesmo matcher usado nas consultas de documentos.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Descreva, não adivinhe",
+      "body": "O matcher suporta `$ne`, `$gt`, `$in`, `$regex` e operadores semelhantes. Uma condição como `{\"$ne\": \"\"}` é verdadeira para qualquer senha não vazia, incluindo a senha aleatória do admin.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Envie o operador",
+      "body": "Faça POST de `{\"username\":\"admin\",\"password\":{\"$ne\":\"\"}}` em `/api/login`. O documento de admin casa, a sessão é estabelecida e a resposta JSON contém a flag.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Abra `/` e observe que o formulário envia JSON para `/api/login`.\n2. Faça login como `analyst` / `analyst123` para confirmar o formato da resposta.\n3. Substitua a string da senha por um operador de query: `{\"username\":\"admin\",\"password\":{\"$ne\":\"\"}}`.\n4. O matcher compara a senha não vazia do documento de admin com a condição e autentica a request. A resposta contém a flag.\n\n```bash\ncurl -s http://127.0.0.1:PORT/api/login -H 'Content-Type: application/json' \\\n  -d '{\"username\":\"admin\",\"password\":{\"$ne\":\"\"}}'\n```",
+    "root_cause": "NoSQL injection através de um matcher que entende operadores. O JSON controlado pelo usuário é avaliado como expressão de query, então um atacante pode enviar um predicado em vez de uma credencial literal. A senha aleatória do admin é irrelevante porque o predicado não testa seu valor, apenas que ele não é vazio.",
+    "mitigation": "Nunca repasse objetos de request não confiáveis diretamente para um matcher de query. Exija strings escalares para credenciais, rejeite objetos e chaves que comecem com `$` e autentique com uma função dedicada de verificação de senha usando um hash moderno. Adicione rate limit e alerte sobre entradas com formato de operador."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — NoSQL injection",
+      "url": "https://portswigger.net/web-security/nosql-injection",
+      "source_type": "official",
+      "description": "Injeção de operadores e bypass de autenticação em document stores."
+    },
+    {
+      "title": "OWASP NoSQL Security Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/NoSQL_Security_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Construção de queries e tratamento de entrada para backends NoSQL."
+    },
+    {
+      "title": "CWE-943 — Improper Neutralization of Special Elements in Data Query Logic",
+      "url": "https://cwe.mitre.org/data/definitions/943.html",
+      "source_type": "standard",
+      "description": "Classe de fraqueza que cobre injeção de operadores de query."
+    }
+  ]
+}

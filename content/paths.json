@@ -1,0 +1,249 @@
+[
+  {
+    "slug": "web-pentest-fundamentals",
+    "title": "Fundamentos de Pentest Web",
+    "description": "Construa o loop básico: mapeie a superfície, teste autenticação e acesso a objetos, confirme classes de injeção e documente as evidências. Esta trilha não pressupõe experiência prévia em labs.",
+    "difficulty": "beginner",
+    "estimated_hours": 8,
+    "icon": "radar",
+    "prerequisites": [],
+    "challenges": [
+      "recon-backup-vault",
+      "recon-js-bundle",
+      "auth-username-enum",
+      "access-idor-invoices",
+      "sqli-login-bypass",
+      "xss-reflected-search",
+      "ssrf-image-fetcher",
+      "lfi-document-reader",
+      "recon-source-map",
+      "recon-api-docs",
+      "recon-cloud-listing"
+    ]
+  },
+  {
+    "slug": "auth-and-access",
+    "title": "Autenticação e Autorização",
+    "description": "Identidade e fronteiras de objetos são onde vivem a maioria dos vazamentos reais. Pratique enumeração de usuários, forjamento de JWT, envenenamento de reset, IDOR, BOLA e mass assignment em aplicações separadas.",
+    "difficulty": "medium",
+    "estimated_hours": 12,
+    "icon": "key",
+    "prerequisites": [
+      "web-pentest-fundamentals"
+    ],
+    "challenges": [
+      "auth-username-enum",
+      "auth-reset-host",
+      "auth-jwt-weak-key",
+      "access-idor-invoices",
+      "access-bola-accounts",
+      "access-mass-assignment",
+      "access-bfla-admin",
+      "auth-jwt-alg-confusion",
+      "auth-jwt-kid-traversal",
+      "access-tenant-header",
+      "auth-session-fixation",
+      "auth-otp-bruteforce",
+      "auth-password-reset-poison",
+      "access-http-parameter-pollution",
+      "access-trust-proxy-header",
+      "auth-mfa-bypass-response",
+      "auth-sso-assertion-replay",
+      "auth-jwt-jku-injection"
+    ]
+  },
+  {
+    "slug": "server-side-attacks",
+    "title": "Ataques Server-Side",
+    "description": "Faça o servidor alcançar, ler ou executar algo que não deveria. SSRF, path traversal, command injection e template injection ganham cada um sua aplicação isolada e seu objetivo.",
+    "difficulty": "medium",
+    "estimated_hours": 13,
+    "icon": "server",
+    "prerequisites": [
+      "web-pentest-fundamentals"
+    ],
+    "challenges": [
+      "ssrf-image-fetcher",
+      "lfi-document-reader",
+      "command-ping",
+      "ssti-card",
+      "upload-svg-avatar",
+      "server-nosql-auth",
+      "server-xxe-reader",
+      "server-ssrf-webhook",
+      "server-blind-cmdi",
+      "upload-zip-slip",
+      "upload-filename-xss",
+      "sqli-union-catalog",
+      "sqli-stacked-update",
+      "sqli-order-by-case",
+      "upload-archive-traversal",
+      "upload-content-type-confusion",
+      "upload-polyglot-image",
+      "server-ssti-jinja-sandbox",
+      "server-deserialization-pickle"
+    ]
+  },
+  {
+    "slug": "api-security",
+    "title": "Segurança de API",
+    "description": "Ataque o contrato, não a página. Autorização em nível de objeto, quebra de autorização em nível de função, exposição excessiva de dados, versões legadas e assinatura fraca de JWT.",
+    "difficulty": "medium",
+    "estimated_hours": 10,
+    "icon": "api",
+    "prerequisites": [
+      "auth-and-access"
+    ],
+    "challenges": [
+      "access-bola-accounts",
+      "access-bfla-admin",
+      "api-excessive-data",
+      "api-version-downgrade",
+      "auth-jwt-weak-key",
+      "api-pagination-leak",
+      "access-method-override",
+      "api-graphql-field-auth",
+      "api-batch-endpoint-auth",
+      "chain-jwt-to-sqli"
+    ]
+  },
+  {
+    "slug": "client-side",
+    "title": "Ataques Client-Side",
+    "description": "Explore o contexto do navegador: XSS refletido, armazenado e DOM, depois uma falha de confiança em postMessage. Todos os exercícios usam uma vítima real em Chromium headless.",
+    "difficulty": "medium",
+    "estimated_hours": 10,
+    "icon": "browser",
+    "prerequisites": [
+      "web-pentest-fundamentals"
+    ],
+    "challenges": [
+      "xss-reflected-search",
+      "xss-stored-guestbook",
+      "xss-dom-hash",
+      "client-postmessage",
+      "client-cors-reflect",
+      "xss-attribute-injection",
+      "xss-blind-support",
+      "xss-csp-nonce-bypass",
+      "xss-dom-clobber",
+      "xss-csp-jsonp",
+      "client-prototype-pollution",
+      "client-clickjacking-frame",
+      "client-websocket-csrf"
+    ]
+  },
+  {
+    "slug": "business-logic",
+    "title": "Teste de Lógica de Negócio",
+    "description": "O parser está certo; as regras não. Abuse quantidades negativas, empilhe cupons incorretamente e corra contra uma checagem de saque sob concorrência real.",
+    "difficulty": "medium",
+    "estimated_hours": 8,
+    "icon": "flow",
+    "prerequisites": [
+      "web-pentest-fundamentals"
+    ],
+    "challenges": [
+      "logic-negative-cart",
+      "logic-coupon-stack",
+      "logic-race-withdraw",
+      "logic-refund-abuse",
+      "logic-workflow-skip",
+      "logic-coupon-race",
+      "logic-signup-bonus-loop",
+      "logic-approval-self",
+      "logic-cart-quantity-rounding",
+      "logic-invite-reuse"
+    ]
+  },
+  {
+    "slug": "advanced-web",
+    "title": "Exploração Web Avançada",
+    "description": "Comportamentos de nível de pesquisa: SQL injection de segunda ordem, cache deception, envenenamento de reset via host header e server-side template injection. Menos força bruta, mais construção de modelo.",
+    "difficulty": "hard",
+    "estimated_hours": 13,
+    "icon": "bolt",
+    "prerequisites": [
+      "server-side-attacks",
+      "auth-and-access"
+    ],
+    "challenges": [
+      "sqli-second-order",
+      "ssti-card",
+      "auth-reset-host",
+      "adv-cache-deception",
+      "adv-cache-poison-header",
+      "adv-http-host-header-reset",
+      "adv-csrf-token-reuse",
+      "adv-cache-key-normalization",
+      "sqli-blind-boolean",
+      "sqli-waf-bypass",
+      "server-ssti-jinja-sandbox",
+      "server-deserialization-pickle"
+    ]
+  },
+  {
+    "slug": "vulnerability-chaining",
+    "title": "Encadeamento de Vulnerabilidades",
+    "description": "Um único bug raramente é a história inteira. Comece por uma divulgação de informação ou uma referência de objeto e siga a trust boundary até chegar a impacto administrativo.",
+    "difficulty": "hard",
+    "estimated_hours": 10,
+    "icon": "chain",
+    "prerequisites": [
+      "api-security",
+      "auth-and-access"
+    ],
+    "challenges": [
+      "chain-idor-to-admin",
+      "machine-nexus-commerce",
+      "machine-meridian-bank",
+      "chain-ssrf-internal",
+      "chain-upload-to-rce",
+      "chain-sqli-to-admin",
+      "machine-fintech-support",
+      "machine-logistics-api",
+      "machine-insurance-claims",
+      "chain-open-redirect-to-token-theft",
+      "chain-xss-to-csrf-admin",
+      "chain-ssti-to-flask-config",
+      "chain-lfi-to-rce",
+      "machine-saas-admin-console",
+      "machine-hr-onboarding"
+    ]
+  },
+  {
+    "slug": "realistic-web-pentest",
+    "title": "Pentest Web Realista",
+    "description": "Um engajamento black-box: escopo, regras e um alvo. Nenhuma classe de vulnerabilidade indicada. Recon, hipótese, exploit, evidência e relatório. Feito para ser tentado depois das trilhas principais.",
+    "difficulty": "hard",
+    "estimated_hours": 12,
+    "icon": "crosshair",
+    "prerequisites": [
+      "web-pentest-fundamentals",
+      "auth-and-access",
+      "server-side-attacks"
+    ],
+    "challenges": [
+      "realistic-horizon-health"
+    ]
+  },
+  {
+    "slug": "advanced-operator",
+    "title": "Operador Avançado",
+    "description": "Uma sequência capstone para operadores que já dominam os fundamentos: máquinas completas, exploração encadeada, flags atreladas ao estado e disciplina de evidência.",
+    "difficulty": "insane",
+    "estimated_hours": 17,
+    "icon": "flame",
+    "prerequisites": [
+      "vulnerability-chaining",
+      "advanced-web"
+    ],
+    "challenges": [
+      "machine-nexus-commerce",
+      "machine-meridian-bank",
+      "realistic-horizon-health",
+      "machine-saas-admin-console",
+      "chain-lfi-to-rce"
+    ]
+  }
+]

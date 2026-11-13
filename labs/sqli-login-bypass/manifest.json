@@ -1,0 +1,79 @@
+{
+  "slug": "sqli-login-bypass",
+  "title": "A porta booleana",
+  "codename": "PARSEC LOGIN",
+  "summary": "A query de login da Parsec é montada com concatenação de strings. Saia da condição do username, torne a cláusula WHERE verdadeira e caia na sessão do administrador.",
+  "category": "sqli",
+  "difficulty": "beginner",
+  "kind": "challenge",
+  "lab_dir": "sqli-login-bypass",
+  "estimated_minutes": 14,
+  "xp": 75,
+  "tech": [
+    "Flask",
+    "SQLite",
+    "SQL"
+  ],
+  "tags": [
+    "sql-injection",
+    "authentication-bypass",
+    "login"
+  ],
+  "story": "O login legado da Parsec ainda executa SQL cru. A coluna de senha é aleatória para o admin, então adivinhar não ajuda. A query não é parametrizada.",
+  "objective": "Bypasse a query de login e alcance uma sessão administrativa. Submeta a flag exibida após o bypass.",
+  "rules": "Use apenas o alvo local. Explore a query, não o arquivo do banco (não há banco exposto).",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag da sessão de admin",
+      "flag_type": "user",
+      "points": 75,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Pense em predicados",
+      "body": "O SQL provavelmente é `WHERE username = '<input>' AND password = '<input>'`. Você controla os dois lados da condição.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Feche as aspas",
+      "body": "Um username `' OR 1=1 --` fecha a string, anexa um predicado verdadeiro e comenta o resto da query. Use um espaço após `--` para que o SQLite o trate como comentário.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Use a forma exata",
+      "body": "Defina o username como `' OR 1=1 -- ` e qualquer senha. A primeira linha da query é admin nesta seed; submeta a flag da página autenticada.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Envie um login normal e observe a falha genérica.\n2. Injete `' OR 1=1 -- ` em `username`, deixando `password` arbitrário.\n3. O SQL resultante fica:\n```sql\nSELECT id, username FROM users WHERE username = '' OR 1=1 -- ' AND password = ''\n```\n4. A query retorna a linha do admin, a aplicação estabelece uma sessão e `/` exibe a flag.",
+    "root_cause": "Entrada não confiável é concatenada diretamente numa query de autenticação. A verificação de senha é comentada, então uma tautologia autentica como o primeiro usuário correspondente. Hashing de senha não compensa a construção da query.",
+    "mitigation": "Use queries parametrizadas ou um ORM confiável para todo SQL. Mantenha a lógica de autenticação separada, compare hashes de senha com um KDF moderno e verificador de tempo constante, adicione rate limit e teste com uma query que nunca deveria satisfazer o predicado."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — SQL injection",
+      "url": "https://portswigger.net/web-security/sql-injection",
+      "source_type": "official",
+      "description": "Estrutura de query, bypasses e prevenção."
+    },
+    {
+      "title": "OWASP SQL Injection Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Parametrização e defesa em profundidade."
+    },
+    {
+      "title": "CWE-89 — SQL Injection",
+      "url": "https://cwe.mitre.org/data/definitions/89.html",
+      "source_type": "standard",
+      "description": "Definição da fraqueza e consequências."
+    }
+  ]
+}

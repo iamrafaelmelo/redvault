@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Configurações{% endblock %}
+{% block crumb %}OPERADOR / CONFIGURAÇÕES{% endblock %}
+{% block page_title %}Configurações{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">CONTA LOCAL / CONTROLE DE DADOS</span>
+    <h2>Configurações do operador</h2>
+    <p>Esta plataforma tem um único operador local e nenhum provedor de identidade externo. Tudo aqui altera o estado local imediatamente.</p>
+  </div>
+</div>
+
+<div class="settings-grid">
+  <nav class="settings-nav">
+    <a href="#identity">Identidade</a>
+    <a href="#session">Sessão</a>
+    <a href="#security">Postura de segurança</a>
+    <a href="#data">Dados e exportação</a>
+    <a href="#danger">Zona de perigo</a>
+  </nav>
+
+  <div class="settings-sections">
+    <section class="form-card" id="identity">
+      <h3>Identidade do operador</h3>
+      <p>O nome de exibição aparece no seu painel privado e nos relatórios.</p>
+      <form method="post" action="/settings/profile" class="form-stack">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label class="field"><span>NOME DE EXIBIÇÃO</span><input type="text" name="display_name" value="{{ user.display_name }}" maxlength="80" required></label>
+        <div class="settings-row"><div><strong>Usuário</strong><small>Identificador local imutável</small></div><code>{{ user.username }}</code></div>
+        <div class="settings-row"><div><strong>Cadastrado em</strong><small>Data de criação da conta</small></div><span class="mono" style="font-size:10px">{{ user.created_at.strftime("%d %b %Y · %H:%M") }}</span></div>
+        <button class="btn btn-primary" type="submit">SALVAR IDENTIDADE</button>
+      </form>
+    </section>
+
+    <section class="form-card" id="session">
+      <h3>Sessão do navegador</h3>
+      <p>Não há senha: esta instalação serve um único operador local. Rotacionar a sessão emite um novo token CSRF e desconecta qualquer outro navegador.</p>
+      <form method="post" action="/settings/session" class="form-stack">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button class="btn btn-primary" type="submit">{{ m.icon("lock", 12) }} ROTACIONAR SESSÃO</button>
+      </form>
+    </section>
+
+    <section class="form-card" id="security">
+      <h3>Postura de segurança</h3>
+      <p>Padrões de hardening desta instalação. Eles são aplicados pela plataforma e refletidos no gerenciador de ambientes.</p>
+      <div class="settings-row"><div><strong>Binding de rede</strong><small>A plataforma e os labs escutam apenas em loopback</small></div><span class="tag" style="color:var(--green);border-color:var(--green-dim)">127.0.0.1</span></div>
+      <div class="settings-row"><div><strong>Derivação de flags</strong><small>HMAC-SHA256 a partir de um segredo mestre local da máquina</small></div><span class="tag">SERVER-SIDE</span></div>
+      <div class="settings-row"><div><strong>Identidade do operador</strong><small>Um único operador local, sem tela de login</small></div><span class="tag">LOCAL</span></div>
+      <div class="settings-row"><div><strong>Proteção CSRF</strong><small>Todo formulário e request de API que altera estado exige o token da sessão</small></div><span class="tag" style="color:var(--green);border-color:var(--green-dim)">ATIVO</span></div>
+      <div class="settings-row"><div><strong>Isolamento dos labs</strong><small>bubblewrap, PID namespace privado, sistema somente leitura, limites de recursos</small></div><span class="tag">SANDBOX LOCAL</span></div>
+      <div class="settings-row"><div><strong>Exposição pública</strong><small>Sem túneis, sem sincronização em nuvem, sem telemetria</small></div><span class="tag" style="color:var(--green);border-color:var(--green-dim)">OFFLINE</span></div>
+    </section>
+
+    <section class="form-card" id="data">
+      <h3>Dados e exportação</h3>
+      <p>Seu progresso, envios, anotações e conquistas ficam em um banco SQLite local. Exporte um dossiê JSON portátil quando quiser.</p>
+      <div class="settings-row"><div><strong>Alvos concluídos</strong><small>{{ stats.completed_items }} de {{ stats.total_items }}</small></div><span class="tag">{{ stats.completion_rate }}%</span></div>
+      <div class="settings-row"><div><strong>XP total</strong><small>{{ stats.level_title }} · nível {{ stats.level }}</small></div><span class="tag red">{{ stats.xp }} XP</span></div>
+      <div class="settings-row"><div><strong>Banco de dados</strong><small>SQLite local com journal WAL</small></div><code>data/redvault.db</code></div>
+      <a class="btn" href="/profile/export">{{ m.icon("copy", 12) }} BAIXAR PROGRESSO EM JSON</a>
+    </section>
+
+    <section class="form-card danger-zone" id="danger">
+      <h3>Zona de perigo</h3>
+      <p><strong>Isto não pode ser desfeito.</strong> O reset apaga progresso, envios, hints desbloqueados, conquistas, anotações e sessões de lab ativas. O conteúdo dos desafios, walkthroughs e referências permanecem.</p>
+      <form method="post" action="/settings/reset" class="form-stack" data-confirm="Apagar permanentemente todo o progresso, envios e conquistas?">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label class="field">
+          <span>DIGITE “RESET MY LAB” PARA CONFIRMAR</span>
+          <input type="text" name="confirm" autocomplete="off" placeholder="RESET MY LAB" required>
+        </label>
+        <button class="btn btn-danger" type="submit">{{ m.icon("alert", 12) }} APAGAR TODO O PROGRESSO</button>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}

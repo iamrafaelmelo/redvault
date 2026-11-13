@@ -1,0 +1,102 @@
+[
+  {
+    "id": "CVE-2021-44228",
+    "name": "Log4Shell",
+    "product": "Apache Log4j 2",
+    "year": 2021,
+    "type": "JNDI injection / RCE",
+    "impact": "Uma string logada contendo ${jndi:...} pode disparar o carregamento remoto de classes. É o exemplo canônico de dado não confiável chegando a um interpretador.",
+    "url": "https://www.cve.org/CVERecord?id=CVE-2021-44228",
+    "advisory": "https://logging.apache.org/log4j/2.x/security.html"
+  },
+  {
+    "id": "CVE-2022-22965",
+    "name": "Spring4Shell",
+    "product": "Spring Framework",
+    "year": 2022,
+    "type": "Data binding / RCE",
+    "impact": "O tratamento indevido do acesso ao class-loader via data binding levou a execução remota de código em determinados deployments. Ilustra o risco no estilo mass assignment.",
+    "url": "https://www.cve.org/CVERecord?id=CVE-2022-22965",
+    "advisory": "https://spring.io/security/cve-2022-22965"
+  },
+  {
+    "id": "CVE-2021-41773",
+    "name": "Apache HTTP Server path traversal",
+    "product": "Apache HTTP Server 2.4.49",
+    "year": 2021,
+    "type": "Path traversal / RCE",
+    "impact": "Erros de normalização permitiram path traversal fora do document root; com mod_cgi habilitado, podia virar execução de código. Encoding e canonicalização de path continuam relevantes.",
+    "url": "https://www.cve.org/CVERecord?id=CVE-2021-41773",
+    "advisory": "https://httpd.apache.org/security/vulnerabilities_24.html"
+  },
+  {
+    "id": "CVE-2021-26855",
+    "name": "ProxyLogon",
+    "product": "Microsoft Exchange Server",
+    "year": 2021,
+    "type": "SSRF / authentication bypass",
+    "impact": "Um SSRF no Exchange permitiu bypass de autenticação e comprometimento encadeado de caixas de correio. Lembrete de que confiança interna não é autorização.",
+    "url": "https://www.cve.org/CVERecord?id=CVE-2021-26855",
+    "advisory": "https://msrc.microsoft.com/update-guide/vulnerability/CVE-2021-26855"
+  },
+  {
+    "id": "CVE-2023-34362",
+    "name": "MOVEit Transfer SQL injection",
+    "product": "Progress MOVEit Transfer",
+    "year": 2023,
+    "type": "SQL injection",
+    "impact": "Uma SQL injection levou a roubo de dados em larga escala de sistemas de transferência de arquivos. Foi amplamente explorada e é um estudo de caso sobre armazenamento exposto à internet.",
+    "url": "https://www.cve.org/CVERecord?id=CVE-2023-34362",
+    "advisory": "https://www.progress.com/security/moveit-transfer-and-moveit-cloud-vulnerability"
+  },
+  {
+    "id": "CVE-2019-19781",
+    "name": "Citrix ADC path traversal",
+    "product": "Citrix ADC / Gateway",
+    "year": 2019,
+    "type": "Path traversal / RCE",
+    "impact": "Uma falha de path traversal na interface de gestão permitiu acesso não autenticado a arquivos e, em algumas configurações, execução de comandos. Appliances de borda são alvos de alto valor.",
+    "url": "https://www.cve.org/CVERecord?id=CVE-2019-19781",
+    "advisory": "https://support.citrix.com/external/article?articleNumber=CTX267027"
+  },
+  {
+    "id": "CVE-2022-26134",
+    "name": "Confluence OGNL injection",
+    "product": "Atlassian Confluence Server / Data Center",
+    "year": 2022,
+    "type": "Injection / RCE",
+    "impact": "Uma OGNL injection não autenticada permitiu execução remota de código. Injeção em linguagem de expressão continua sendo uma primitiva server-side recorrente.",
+    "url": "https://www.cve.org/CVERecord?id=CVE-2022-26134",
+    "advisory": "https://confluence.atlassian.com/doc/confluence-security-advisory-2022-06-02-1130377146.html"
+  },
+  {
+    "id": "CVE-2023-44487",
+    "name": "HTTP/2 Rapid Reset",
+    "product": "HTTP/2 implementations",
+    "year": 2023,
+    "type": "Protocol abuse / DoS",
+    "impact": "A criação e o reset rápidos de streams permitiram aos clientes esgotar os recursos do servidor. Mostra que a semântica do protocolo, e não só a entrada da aplicação, define a superfície de ataque.",
+    "url": "https://www.cve.org/CVERecord?id=CVE-2023-44487",
+    "advisory": "https://www.cve.org/CVERecord?id=CVE-2023-44487"
+  },
+  {
+    "id": "CVE-2024-3400",
+    "name": "PAN-OS GlobalProtect command injection",
+    "product": "Palo Alto Networks PAN-OS",
+    "year": 2024,
+    "type": "OS command injection",
+    "impact": "Uma request forjada para a interface GlobalProtect podia executar comandos como root. É um lembrete recente de que appliances de perímetro carregam impacto direto no sistema operacional.",
+    "url": "https://www.cve.org/CVERecord?id=CVE-2024-3400",
+    "advisory": "https://security.paloaltonetworks.com/CVE-2024-3400"
+  },
+  {
+    "id": "CVE-2014-0160",
+    "name": "Heartbleed",
+    "product": "OpenSSL",
+    "year": 2014,
+    "type": "Out-of-bounds read",
+    "impact": "Uma checagem de limite ausente na extensão TLS heartbeat vazou memória, incluindo chaves e credenciais. Evidência clássica de por que memory safety importa na camada de protocolo.",
+    "url": "https://www.cve.org/CVERecord?id=CVE-2014-0160",
+    "advisory": "https://heartbleed.com/"
+  }
+]

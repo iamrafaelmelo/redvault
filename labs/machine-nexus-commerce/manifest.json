@@ -1,0 +1,97 @@
+{
+  "slug": "machine-nexus-commerce",
+  "title": "Nexus Commerce",
+  "codename": "NEXUS",
+  "summary": "Um alvo de comércio em múltiplos estágios: recupere um backup de migração do suporte, abuse de exportações exclusivos do suporte, obtenha um ops token e explore o console de diagnóstico para ler a flag de root.",
+  "category": "chain",
+  "difficulty": "hard",
+  "kind": "machine",
+  "lab_dir": "machine-nexus-commerce",
+  "estimated_minutes": 55,
+  "xp": 420,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "Shell",
+    "Recon"
+  ],
+  "tags": [
+    "machine",
+    "recon",
+    "bfla",
+    "command-injection",
+    "chaining"
+  ],
+  "story": "A Nexus roda loja, suporte e operações em uma única aplicação. O workspace de migração está documentado como temporário. A equipe de suporte consegue exportar pedidos; a exportação contém um ops token. O diagnóstico roda com a service account. Cada estágio confia no anterior um pouco demais.",
+  "objective": "Encadeie recon, autenticação de suporte, broken function authorization e command injection para capturar as flags user, API e root.",
+  "rules": "A origem loopback atribuída é todo o escopo do engajamento. Não escaneie outras portas nem saia do processo do lab. Esta é uma máquina simulada; as flags são verificadas por estado quando necessário.",
+  "flags": [
+    {
+      "key": "user",
+      "label": "Flag da sessão de suporte",
+      "flag_type": "user",
+      "points": 80,
+      "required": true
+    },
+    {
+      "key": "api",
+      "label": "Flag da exportação de admin",
+      "flag_type": "api",
+      "points": 120,
+      "required": true
+    },
+    {
+      "key": "root",
+      "label": "Flag do diagnóstico de root",
+      "flag_type": "root",
+      "points": 220,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Mapeie o workspace",
+      "body": "Leia `/robots.txt`. Ele desautoriza `/workspace/`. O workspace contém um backup de migração com credenciais de suporte.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Suporte já é suficiente",
+      "body": "Entre como o usuário de suporte. O console expõe `/api/v1/admin/export`. Ele verifica a autenticação, mas não o role de admin, retornando a flag de API e um ops token.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Diagnostique o shell",
+      "body": "Abra `/diagnostics?token=<ops_token>` e envie um host. O host é interpolado em um comando de shell. Injete `; cat /tmp/nexus-root.txt` para ler a flag de root e registrar o objetivo.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — recon.** GET `/robots.txt`; ele aponta para `/workspace/`. Busque `/workspace/backup.json` para `mira` / `FieldSupport!`.\n\n**Etapa 2 — foothold de suporte.** Entre em `/support`, capture a flag de usuário e anote o endpoint de exportação.\n\n**Etapa 3 — exportação BFLA.** Com a sessão de suporte, GET `/api/v1/admin/export`. O JSON contém a flag de API e um `ops_token` de uso único.\n\n**Etapa 4 — root.** Abra `/diagnostics?token=<ops_token>` e envie `127.0.0.1; cat /tmp/nexus-root.txt`. A saída contém a flag de root e o objetivo é registrado.",
+    "root_cause": "A máquina combina múltiplas falhas de confiança: um backup de migração em um workspace servido pela web; uma exportação de admin sem aplicação de role; e interpolação de shell em uma ferramenta de diagnóstico. A credencial de suporte não é a causa raiz da cadeia — as fronteiras ausentes de autorização e de segurança de comandos são.",
+    "mitigation": "Remova backups da raiz de documentos; imponha permissões de role em toda rota de admin; use argumentos fixos e `shell=False` para diagnóstico; limite privilégios de serviço; rotacione credenciais após migrações; monitore ações de alto impacto e valide a autorização de ponta a ponta."
+  },
+  "references": [
+    {
+      "title": "OWASP WSTG — Information Gathering",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/",
+      "source_type": "standard",
+      "description": "Metodologia de recon usada para o vazamento do workspace."
+    },
+    {
+      "title": "OWASP API Security Top 10 2023 — A5: BFLA",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/",
+      "source_type": "standard",
+      "description": "Verificações de role ausentes em funções administrativas."
+    },
+    {
+      "title": "OWASP Command Injection Defenses",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Comandos fixos e execução segura com argumentos."
+    }
+  ]
+}

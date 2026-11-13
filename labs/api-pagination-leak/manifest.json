@@ -1,0 +1,80 @@
+{
+  "slug": "api-pagination-leak",
+  "title": "A página de reconciliação",
+  "codename": "LEDGERLINE",
+  "summary": "Uma API de pedidos aplica um filtro de propriedade em páginas normais, mas um ramo de reconciliação em lote usado por valores altos de `limit` pagina a tabela inteira de pedidos. Um pedido de admin carrega a flag.",
+  "category": "api",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "api-pagination-leak",
+  "estimated_minutes": 12,
+  "xp": 100,
+  "tech": [
+    "Flask",
+    "JSON API",
+    "Pagination"
+  ],
+  "tags": [
+    "api",
+    "excessive-data-exposure",
+    "pagination",
+    "bola"
+  ],
+  "story": "O console de analyst da Ledgerline mostra dois pedidos por página. O time financeiro pediu um modo de reconciliação em lote acionado por um page size grande. O filtro de autorização vive no ramo normal, não no ramo de lote.",
+  "objective": "Autentique-se como o analyst, requisite uma página com `limit=1000` e encontre o pedido de admin que contém a flag.",
+  "rules": "Permaneça na origem loopback atribuída. A API faz parte do lab.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Referência interna do pedido",
+      "flag_type": "api",
+      "points": 100,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia o contrato da API",
+      "body": "Autentique-se com `analyst` / `analyst123`. O console chama `/api/orders?limit=2&offset=0`. A response inclui um campo `owner_filter` que descreve qual ramo respondeu.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "O page size muda o caminho",
+      "body": "O servidor trata `limit >= 500` como o caminho de reconciliação em lote. Requeira `limit=1000&offset=0` e inspecione todos os pedidos, não apenas os seus.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "O pedido interno",
+      "body": "A response em lote inclui `ORD-9001`, de propriedade de `admin`, com um campo `internal_ref`. Essa referência é a flag.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "```bash\ncurl -c jar -X POST http://127.0.0.1:PORT/login -d 'username=analyst&password=analyst123'\ncurl -b jar 'http://127.0.0.1:PORT/api/orders?limit=1000&offset=0'\n```\n\n`owner_filter` passa a ser `skipped`, e o último pedido expõe `internal_ref`. Envie-o como a flag.",
+    "root_cause": "A autorização é aplicada em um caminho de código e esquecida em um ramo de performance selecionado por um parâmetro controlado pelo usuário. O modelo de dados e o formato da response são idênticos, então o vazamento parece um recurso de paginação em vez de uma decisão de autorização.",
+    "mitigation": "Centralize a autorização na camada de acesso a dados para que todo caminho a aplique, ignore ou limite page sizes enviados pelo cliente no servidor e adicione testes que comparem responses filtradas e em lote para o mesmo principal. Nunca deixe um parâmetro de request selecionar uma query menos segura."
+  },
+  "references": [
+    {
+      "title": "OWASP API Security 2023 — A1: Broken Object Level Authorization",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/",
+      "source_type": "standard",
+      "description": "Falhas de autorização em nível de objeto entre endpoints de API."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Excessive Data Exposure",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/12-API_Testing/03-Testing_for_Excessive_Data_Exposure",
+      "source_type": "standard",
+      "description": "Responses que revelam mais do que o chamador precisa."
+    },
+    {
+      "title": "PortSwigger — API testing",
+      "url": "https://portswigger.net/web-security/api-testing",
+      "source_type": "official",
+      "description": "Enumeração sistemática de API e testes de parâmetros."
+    }
+  ]
+}

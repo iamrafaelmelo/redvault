@@ -1,0 +1,79 @@
+{
+  "slug": "api-version-downgrade",
+  "title": "A porta obsoleta",
+  "codename": "LEGACY LEDGER",
+  "summary": "O Legacy Ledger ainda serve um endpoint de contas v1 sem autenticação. A API v2 atual mascara dados e exige auth, mas o handler antigo aceita um parâmetro `user` arbitrário e serializa o modelo legado.",
+  "category": "api",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "api-version-downgrade",
+  "estimated_minutes": 18,
+  "xp": 110,
+  "tech": [
+    "Flask",
+    "HTTP Basic",
+    "API versioning"
+  ],
+  "tags": [
+    "api",
+    "version-downgrade",
+    "deprecated-endpoint"
+  ],
+  "story": "O time mobile migrou para v2. O handler v1 antigo permaneceu online para alguns dispositivos. Ele nunca recebeu o trabalho de autorização e de mascaramento de campos. A documentação aponta para as duas versões, e a antiga confia no parâmetro `user`.",
+  "objective": "Use a API v1 obsoleta para requisitar a conta `admin` e extrair o `vault_flag` exposto.",
+  "rules": "Somente o alvo atribuído está no escopo. Use a conta demo documentada para v2, se necessário.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do ledger legado",
+      "flag_type": "api",
+      "points": 110,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Compare as versões",
+      "body": "Leia a página de documentação. A v2 exige Basic auth e mascara o e-mail. A v1 aceita `?user=` e não tem autenticação.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Requisite outra conta",
+      "body": "Chame `/api/v1/accounts?user=admin` sem credenciais. O handler antigo monta um registro legado completo.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Pegue o campo do vault",
+      "body": "A response de admin contém `vault_flag`. Envie esse valor. A response v2 para o mesmo usuário nunca o incluiria.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Abra `/` e compare o comportamento documentado de v1/v2.\n2. Execute GET em `/api/v1/accounts?user=admin` sem header Authorization.\n3. Leia `account.vault_flag` na response.\n4. Envie-o.",
+    "root_cause": "Uma versão de API obsoleta permanece exposta com autenticação mais fraca e excesso de dados. O versionamento de API não aposenta a superfície de ataque antiga automaticamente; o handler antigo ainda alcança o modelo de dados legado completo.",
+    "mitigation": "Aposente versões antigas no gateway, aplique uma única camada de autorização para todas as versões e nunca confie que os clientes escolherão o contrato mais novo. Adicione contract tests para campos sensíveis e monitore o tráfego para endpoints obsoletos."
+  },
+  "references": [
+    {
+      "title": "OWASP API Security Top 10 2023 — A9: Improper Inventory Management",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/",
+      "source_type": "standard",
+      "description": "Versões de API obsoletas e shadow."
+    },
+    {
+      "title": "OWASP API Security Top 10 2023 — A1: BOLA",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/",
+      "source_type": "standard",
+      "description": "Acesso a objetos em APIs legadas e atuais."
+    },
+    {
+      "title": "PortSwigger — API testing",
+      "url": "https://portswigger.net/web-security/api-testing",
+      "source_type": "official",
+      "description": "Descoberta de versões e endpoints ocultos."
+    }
+  ]
+}

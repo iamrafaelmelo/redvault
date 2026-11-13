@@ -1,0 +1,35 @@
+{
+  "slug": "auth-username-enum",
+  "title": "A mesa de identidade",
+  "codename": "NORTHSTAR SSO",
+  "summary": "O formulário de login da Northstar se comporta diferente para contas existentes e inexistentes. Enumere o administrador, recupere a credencial fraca e chegue ao console privilegiado.",
+  "category": "auth",
+  "difficulty": "beginner",
+  "kind": "challenge",
+  "lab_dir": "auth-username-enum",
+  "estimated_minutes": 18,
+  "xp": 90,
+  "tech": ["Flask", "Sessions", "HTML forms"],
+  "tags": ["username-enumeration", "credential-attack", "authentication"],
+  "story": "A mesa de identidade é a única porta de entrada na Northstar. O suporte diz que o formulário de login foi endurecido. Você percebe que as duas mensagens de falha não têm exatamente o mesmo tamanho — nem a mesma frase.",
+  "objective": "Identifique um nome de usuário administrativo válido, autentique com a wordlist vazada e recupere a flag do dashboard de admin.",
+  "rules": "Use apenas a aplicação na porta loopback atribuída. Nenhuma fonte externa de credenciais faz parte deste exercício.",
+  "flags": [
+    {"key": "flag", "label": "Flag do console de admin", "flag_type": "user", "points": 90, "required": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Compare as falhas", "body": "Envie um nome de usuário que não pode existir, depois um nome de admin comum como `admin`. Leia o texto exato do erro, não só o status code.", "cost": 10},
+    {"level": 2, "title": "Use a wordlist fornecida", "body": "`/wordlist.txt` faz parte do footprint do alvo. Tente cada senha apenas contra a conta confirmada.", "cost": 15},
+    {"level": 3, "title": "A credencial final", "body": "A conta `admin` existe. A senha é `Nebula-2024!`. Faça login e abra `/dashboard` para ler a flag.", "cost": 25}
+  ],
+  "solution": {
+    "walkthrough": "1. Faça POST em `/login` com `username=nobody` e observe a resposta: \"No account exists for that username.\"\n2. Faça POST com `username=admin` e senha errada: a resposta muda para \"Password incorrect for this account.\" Isso confirma a conta.\n3. Busque `/wordlist.txt` e tente as senhas candidatas contra `admin`; `Nebula-2024!` funciona.\n4. Com o cookie de sessão, faça GET em `/dashboard`; o console de admin exibe a flag.",
+    "root_cause": "A aplicação retorna mensagens distintas para usuários desconhecidos e senhas erradas. Isso transforma cada tentativa de login em um oráculo confiável de existência de conta. A conta de admin também usa uma senha presente em uma wordlist exposta.",
+    "mitigation": "Retorne uma única falha genérica de autenticação, adicione rate limiting e alertas, use senhas fortes e únicas ou autenticação passwordless/multi-fator, e evite expor listas internas de credenciais. Resistência à enumeração não substitui credenciais fortes."
+  },
+  "references": [
+    {"title": "OWASP WSTG — Testing for Account Enumeration", "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/03-Identity_Management_Testing/04-Testing_for_Account_Enumeration_and_Guessable_User_Account", "source_type": "standard", "description": "Enumeração por diferenças de resposta, tempo e fluxos de recuperação."},
+    {"title": "OWASP Authentication Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html", "source_type": "standard", "description": "Erros genéricos, rate limiting e tratamento seguro de credenciais."},
+    {"title": "PortSwigger — Authentication vulnerabilities", "url": "https://portswigger.net/web-security/authentication", "source_type": "official", "description": "Classes de ataque de autenticação e defesas práticas."}
+  ]
+}

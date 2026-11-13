@@ -1,0 +1,79 @@
+{
+  "slug": "access-mass-assignment",
+  "title": "Campos não listados",
+  "codename": "CIVIC REGISTRY",
+  "summary": "O endpoint de perfil da Civic vincula parâmetros da request a um objeto interno de usuário. O campo de papel (role) está oculto na UI, mas não protegido pelo handler. Promova-se e abra o console do registro.",
+  "category": "access",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "access-mass-assignment",
+  "estimated_minutes": 18,
+  "xp": 105,
+  "tech": [
+    "Flask",
+    "Forms",
+    "Mass assignment"
+  ],
+  "tags": [
+    "mass-assignment",
+    "privilege-escalation",
+    "authorization"
+  ],
+  "story": "O editor de perfil da Civic deveria permitir que a equipe alterasse um nome de exibição. A rotina de atualização foi reutilizada de uma ferramenta interna antiga que aceitava um registro de usuário inteiro. O form mostra apenas dois campos.",
+  "objective": "Faça login como `alice`, modifique sua request de perfil para definir `role=admin` e então leia o painel de administração do registro.",
+  "rules": "Use as credenciais preenchidas do lab. Apenas o alvo loopback designado está no escopo.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de admin do registro",
+      "flag_type": "user",
+      "points": 105,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia o form, depois ignore-o",
+      "body": "O form HTML envia `display` e `department`. Use o DevTools ou `curl` para inspecionar o POST. Um modelo no servidor costuma ter mais campos do que o form renderizado.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Adivinhe a propriedade privilegiada",
+      "body": "Tente adicionar `role=admin` à atualização de perfil. Não altere o método nem a URL da request.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Promova-se e colete",
+      "body": "Faça POST em `/profile` com `display`, `department` e `role=admin` enquanto autenticado. Recarregue `/profile`; o painel de admin aparece com a flag.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Faça login como `alice` / `alice123`.\n2. Envie o form de perfil uma vez e intercepte a request.\n3. Adicione `role=admin` ao body do form e reenvie:\n```bash\ncurl -b cookie.txt -X POST -d 'display=Alice&department=Research&role=admin' \\\n  http://127.0.0.1:PORT/profile\n```\n4. Recarregue `/profile`. A aplicação confia no papel armazenado e mostra a flag de admin.",
+    "root_cause": "O handler de atualização faz mass assignment: ele vincula propriedades arbitrárias da request a um objeto interno, incluindo um papel privilegiado. Ocultar o campo na UI não é um controle de autorização.",
+    "mitigation": "Use DTOs/allowlists explícitos para campos graváveis, rejeite propriedades desconhecidas e nunca vincule papéis, propriedade, saldos ou permissões a partir de entrada do usuário. Aplique autorização no servidor para ações privilegiadas e revalide mudanças de papel por meio de um fluxo administrativo."
+  },
+  "references": [
+    {
+      "title": "OWASP Mass Assignment Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Allowlist de propriedades graváveis e detecção de binders vulneráveis."
+    },
+    {
+      "title": "PortSwigger — Mass assignment vulnerabilities",
+      "url": "https://portswigger.net/web-security/api-testing",
+      "source_type": "official",
+      "description": "Contexto de teste de API para propriedades ocultas e privilegiadas."
+    },
+    {
+      "title": "OWASP API Security Top 10 2023 — A3: BOPLA",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa3-broken-object-property-level-authorization/",
+      "source_type": "standard",
+      "description": "Falhas de autorização no nível de propriedade."
+    }
+  ]
+}

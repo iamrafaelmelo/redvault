@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Glossário{% endblock %}
+{% block crumb %}INTELIGÊNCIA / GLOSSÁRIO{% endblock %}
+{% block page_title %}Glossário{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">VOCABULÁRIO COMPARTILHADO / {{ terms|length }} TERMOS</span>
+    <h2>Precisão vale mais que jargão.</h2>
+    <p>Definições curtas para os conceitos usados nos labs e artigos. Use estes termos nos relatórios para que os achados não sejam ambíguos: objeto, ator, trust boundary, sink, source, impacto.</p>
+  </div>
+  <div class="page-actions"><a class="btn" href="/academy">{{ m.icon("book", 13) }} ACADEMIA</a></div>
+</div>
+
+{% for letter, items in grouped|dictsort %}
+<div class="glossary-letter">{{ letter }}</div>
+<div class="glossary-grid">
+  {% for term in items %}
+  <div class="glossary-term">
+    <h3>{{ term.term }}</h3>
+    <p>{{ term.definition }}</p>
+    {% if term.see %}<div class="mono-label" style="margin-top:7px">VEJA: {{ term.see }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endblock %}

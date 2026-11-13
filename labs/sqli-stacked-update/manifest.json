@@ -1,0 +1,81 @@
+{
+  "slug": "sqli-stacked-update",
+  "title": "Busca de suporte empilhada da Nimbus",
+  "codename": "HELPDESK NIMBUS",
+  "summary": "Um help desk monta um script SQLite por concatenação de strings e o executa com executescript. Um UPDATE stacked promove uma conta de cliente a administrador.",
+  "category": "sqli",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "sqli-stacked-update",
+  "estimated_minutes": 20,
+  "xp": 130,
+  "tech": [
+    "Flask",
+    "SQLite",
+    "Python",
+    "executescript"
+  ],
+  "tags": [
+    "sqli",
+    "stacked-queries",
+    "privilege-escalation",
+    "sqlite"
+  ],
+  "story": "A Nimbus roda um pequeno help desk em que os atendentes digitam o username de um cliente numa caixa de busca. A busca é montada como um script SQLite e executada inteira, então ponto e vírgula não é apenas dado. Toda conta de cliente já tem um API token, e a lista que concede acesso de administrador está a uma instrução emendada de distância.",
+  "objective": "Use a instrução stacked na busca de suporte para promover uma conta de cliente ao papel de admin e depois leia a flag da plataforma na lista de administradores.",
+  "rules": "Fique na origem loopback atribuída. Use apenas as contas e endpoints servidos por este lab. As flags são dinâmicas e podem ser verificadas por estado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag da lista de administradores",
+      "flag_type": "user",
+      "points": 130,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "É um script, não uma query",
+      "body": "A busca não executa uma única instrução parametrizada. Veja como o username é juntado ao texto antes de chegar ao SQLite. Um `';` costuma encerrar uma instrução e iniciar outra.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Instruções que alteram dados",
+      "body": "`SELECT` não é a única instrução que o SQLite aceita. `UPDATE users SET role='admin' WHERE username='<sua conta>'` alcança o mesmo banco que a busca lê. Todo cliente semeado tem um `api_token`; a página de administradores o aceita como `?token=` em `/admin`.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Emende o payload",
+      "body": "Envie `x'; UPDATE users SET role='admin' WHERE username='alice'; --` como `username` e abra `/admin?token=tok_alice_55bd`. A busca pode reportar que não houve correspondência; o efeito está no banco, não na response.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "**1. Confirme a injeção.** `GET /lookup?username=alice` retorna a linha de alice (`alice@customer.test`, papel `customer`). Um `'` literal produz um erro do sqlite3 ecoado de volta, confirmando que a string é concatenada.\n\n**2. Empilhe um UPDATE.** Envie:\n\n```\nGET /lookup?username=x%27%3B%20UPDATE%20users%20SET%20role%3D%27admin%27%20WHERE%20username%3D%27alice%27%3B%20--\n```\n\nDecodificado, o username é `x'; UPDATE users SET role='admin' WHERE username='alice'; --`. A aplicação monta o script `SELECT ... WHERE username = 'x'; UPDATE users SET role='admin' WHERE username='alice'; --'` e `conn.executescript()` executa as duas instruções. A própria busca relê a primeira instrução, então a página pode dizer \"No customer matched\" — isso é esperado.\n\n**3. Use o token promovido.** Todo usuário semeado tem um API token. Faça `GET /admin?token=tok_alice_55bd`; a lista agora mostra `alice` com papel `admin` e retorna a flag no painel de exportação privilegiado. O lab chama `lab.objective_async(\"flag\", ...)` quando a página de admin renderiza a flag.\n\nSaída verificada: HTTP 200 em `/admin` com a flag `RV{...}` dentro da exportação da lista.",
+    "root_cause": "A busca concatena o parâmetro `username` não confiável numa string SQL e a entrega a `Connection.executescript`, que explicitamente permite múltiplas instruções separadas por `;`. Instruções stacked transformam uma busca somente leitura em DML arbitrário: o atacante promoveu a própria linha para `admin`, um papel de conta confiado pelo endpoint da lista.",
+    "mitigation": "Faça binding de parâmetros: `conn.execute(\"SELECT id, username, email, role FROM users WHERE username = ?\", (username,))`. Nunca use `executescript` com entrada interpolada — reserve-o para scripts de migração estáticos. Dê aos clientes tokens distintos dos de funcionários e imponha autorização no servidor (papel a partir de um lookup confiável), para que virar uma coluna de papel sozinho não conceda leituras sensíveis."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — SQL injection",
+      "url": "https://portswigger.net/web-security/sql-injection",
+      "source_type": "official",
+      "description": "Padrões centrais de SQL injection, incluindo stacked queries."
+    },
+    {
+      "title": "OWASP — SQL Injection Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Queries parametrizadas e como evitar concatenação."
+    },
+    {
+      "title": "Python docs — sqlite3.Cursor.executescript",
+      "url": "https://docs.python.org/3/library/sqlite3.html#sqlite3.Cursor.executescript",
+      "source_type": "official",
+      "description": "Documenta que executescript faz um COMMIT implícito e aceita múltiplas instruções."
+    }
+  ]
+}

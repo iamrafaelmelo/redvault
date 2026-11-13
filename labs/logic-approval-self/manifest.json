@@ -1,0 +1,81 @@
+{
+  "slug": "logic-approval-self",
+  "title": "Assine o próprio cheque",
+  "codename": "LEDGER LANE PA",
+  "summary": "O setor de reembolsos da Ledger Lane verifica se um aprovador possui o papel de aprovador, mas nunca se o aprovador é diferente do solicitante. O tesoureiro pode registrar uma despesa alta e aprová-la sozinho, liberando o voucher de pagamento que carrega a flag.",
+  "category": "logic",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "logic-approval-self",
+  "estimated_minutes": 20,
+  "xp": 150,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "Workflow"
+  ],
+  "tags": [
+    "business-logic",
+    "segregation-of-duties",
+    "workflow",
+    "approval-bypass"
+  ],
+  "story": "O setor de pagamentos da Ledger Lane mantém deliberadamente duas responsabilidades separadas: os solicitantes registram reembolsos, os aprovadores os liberam, e pagamentos altos devem ser assinados por um segundo funcionário. O endpoint de aprovação verifica o papel, mas não a relação entre aprovador e solicitante. Um tesoureiro que acumula as duas funções pode criar um reembolso de quatro dígitos para si mesmo, clicar em Aprovar na própria linha e ver o token de liberação de pagamento alto impresso no voucher.",
+  "objective": "Faça login como o tesoureiro, registre um reembolso de pelo menos 400 créditos, aprove a própria solicitação e leia o token de liberação de pagamento alto.",
+  "rules": "Use apenas a origem loopback atribuída e as contas pré-carregadas exibidas na página de login. Não faça varredura em outras portas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do voucher de pagamento",
+      "flag_type": "root",
+      "points": 150,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Dois chapéus, uma pessoa",
+      "body": "A conta pré-carregada `opfern` acumula as funções de solicitante e de aprovador. O dashboard chega a avisar que a política exige um segundo funcionário para as próprias solicitações. Encontresonde o código deveria aplicar essa regra.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Leia a regra de aprovação",
+      "body": "`POST /requests/<id>/approve` verifica `role != approver` e o estado da solicitação, depois a marca como aprovada. Ele nunca compara o usuário da sessão com o `requester` da solicitação.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Registre, depois carimbe",
+      "body": "Faça login, `POST /requests` com `amount=420`, depois `POST /requests/1/approve` com a mesma sessão. Pagamentos de 400 créditos ou mais incluem o token de liberação.",
+      "cost": 30
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Faça login.** A página inicial lista o tesoureiro pré-carregado `opfern` / `Op!Desk2026`.\n```bash\nBASE=http://127.0.0.1:PORT\ncurl -s -c jar -b jar -X POST -d 'username=opfern&password=Op!Desk2026' \"$BASE/login\"\n```\n\n**Registre um reembolso alto.**\n```bash\ncurl -s -c jar -b jar -X POST -d 'title=Client dinner&amount=420' \"$BASE/requests\"\n```\nA fila agora contém a solicitação `#1` com status `PENDING`, solicitante `opfern`.\n\n**Aprove você mesmo.** O endpoint exige apenas o papel de aprovador:\n```bash\ncurl -s -c jar -b jar -X POST \"$BASE/requests/1/approve\"\n```\nResponse:\n```html\n<div class=\"flash ok\">Request #1 approved...</div>\n<h3>Large payout release token</h3>\n<pre>RV{...}</pre>\n```\nComo `amount >= 400`, o voucher inclui o token de liberação e o lab chama `lab.objective_async(\"flag\", ...)` registrando que `opfern` aprovou o próprio reembolso.",
+    "root_cause": "Falta uma verificação de segregação de funções. O endpoint de aprovação é restrito por papel, mas não aplica o invariante de negócio 'o aprovador não pode ser o solicitante', então um usuário que acumula as duas funções consegue concluir todo o fluxo de pagamento sozinho. É uma falha de autorização contextual que uma verificação simples de papel não detecta.",
+    "mitigation": "Aplique o invariante junto da operação: rejeite aprovações em que `request.requester == session.user`, exija um segundo aprovador distinto para pagamentos acima de um limite (dual control), registre ambas as identidades de forma imutável em uma trilha de auditoria e adicione testes de regressão para 'um usuário não pode aprovar a própria solicitação'."
+  },
+  "references": [
+    {
+      "title": "OWASP — Business Logic Security Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Autorização contextual: 'a manager can approve expense reports, but not their own'."
+    },
+    {
+      "title": "OWASP — Access Control Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Access_Control_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Orientação sobre controle de acesso deny-by-default e aplicação de regras de negócio."
+    },
+    {
+      "title": "PortSwigger — Business logic vulnerabilities: domain-specific flaws",
+      "url": "https://portswigger.net/web-security/logic-flaws/examples",
+      "source_type": "official",
+      "description": "Falhas de workflow em que transições de estado pulam a segregação de funções pretendida."
+    }
+  ]
+}

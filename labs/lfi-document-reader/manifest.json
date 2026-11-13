@@ -1,0 +1,80 @@
+{
+  "slug": "lfi-document-reader",
+  "title": "Fora do document root",
+  "codename": "DOCVAULT",
+  "summary": "O Docvault concatena um nome de arquivo fornecido pelo usuário ao seu diretório de documentos e lê o resultado. Saia do diretório, alcance o estado privado do serviço e capture o arquivo que deveria ter permanecido interno.",
+  "category": "server",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "lfi-document-reader",
+  "estimated_minutes": 18,
+  "xp": 115,
+  "tech": [
+    "Flask",
+    "Filesystem",
+    "Path traversal"
+  ],
+  "tags": [
+    "lfi",
+    "path-traversal",
+    "file-read"
+  ],
+  "story": "O leitor do Docvault é pequeno o bastante para ser auditado de uma sentada: pega um nome de arquivo, concatena ao diretório de documentos e lê. O runbook de operações admite que a conta de serviço enxerga um mount de estado privado. Também diz que os clientes jamais deveriam alcançá-lo.",
+  "objective": "Explore path traversal no leitor de documentos para ler o arquivo de estado privado e enviar a flag.",
+  "rules": "O alvo é o processo local do lab. Não modifique arquivos; leia apenas o que a rota vulnerável consegue alcançar.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do estado privado",
+      "flag_type": "user",
+      "points": 115,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia o runbook",
+      "body": "Abra `runbook.txt`. Ele menciona `/state` como o mount de estado privado e observa que os clientes nunca deveriam atravessar para fora de docs.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Atravesse",
+      "body": "O leitor fica em `/read?file=...`. A partir do diretório de docs, tente `../../state/flag.txt` ou o caminho absoluto `/state/flag.txt`.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "A leitura exata",
+      "body": "Faça um request para `/read?file=/state/flag.txt` (a concatenação de caminho do leitor permite um caminho absoluto). A flag aparece no painel de documento e o objetivo é registrado.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Abra `/read?file=welcome.txt` e confirme que o leitor retorna o conteúdo do arquivo.\n2. Leia `runbook.txt`; ele identifica `/state` como o mount de estado do serviço.\n3. Faça um request para `/read?file=/state/flag.txt` (como alternativa, `../../state/flag.txt`).\n4. O conteúdo inclui a flag. Envie-a; o lab registra o objetivo.",
+    "root_cause": "Path traversal / local file inclusion. O input do usuário é concatenado a uma base do sistema de arquivos sem canonicalização nem confinamento. `os.path.join` também respeita caminhos absolutos, ignorando completamente o diretório pretendido.",
+    "mitigation": "Use um ID de documento opaco mapeado para um caminho no lado do servidor, ou resolva e verifique se o caminho canônico permanece abaixo do document root. Rejeite caminhos absolutos, segmentos `..` e symlinks. Rode o serviço com privilégios mínimos de sistema de arquivos e mantenha segredos fora da árvore legível por ele."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Path traversal",
+      "url": "https://portswigger.net/web-security/file-path-traversal",
+      "source_type": "official",
+      "description": "Mecânica de traversal, filtros e prevenção."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Path Traversal",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/01-Testing_Directory_Traversal_File_Include",
+      "source_type": "standard",
+      "description": "Casos práticos de teste de traversal."
+    },
+    {
+      "title": "CWE-22 — Path Traversal",
+      "url": "https://cwe.mitre.org/data/definitions/22.html",
+      "source_type": "standard",
+      "description": "Fraqueza canônica de path traversal."
+    }
+  ]
+}

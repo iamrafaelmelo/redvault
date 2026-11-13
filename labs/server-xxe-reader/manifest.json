@@ -1,0 +1,79 @@
+{
+  "slug": "server-xxe-reader",
+  "title": "A entidade no pedido",
+  "codename": "ORDERVAULT",
+  "summary": "A entrada de fornecedores do Ordervault faz parsing de XML com carregamento de DTD e resolução de entidades habilitados. Uma entidade externa declarada pode puxar um arquivo local para o documento parseado e devolvê-lo na resposta.",
+  "category": "server",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "server-xxe-reader",
+  "estimated_minutes": 20,
+  "xp": 220,
+  "tech": [
+    "Flask",
+    "lxml",
+    "XML"
+  ],
+  "tags": [
+    "xxe",
+    "xml-entities",
+    "file-read"
+  ],
+  "story": "O Ordervault ainda aceita o antigo formato XML de fornecedores. O importador habilita o processamento de DTD porque templates downstream usam entidades para termos de entrega compartilhados. A flag de liquidação fica em um arquivo temporário que o processo do parser consegue ler.",
+  "objective": "Envie um documento XML com uma entidade externa que leia `/tmp/redvault-xxe-flag.txt`. O valor resolvido aparece na resposta do pedido parseado; envie-o.",
+  "rules": "Atinja apenas o importador do Ordervault. O fetch de rede externa está desabilitado; o recurso alcançável pretendido é o arquivo de flag local.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de expansão de entidade XML",
+      "flag_type": "user",
+      "points": 220,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "O parser aceita um DTD",
+      "body": "O importador define `load_dtd=True` e `resolve_entities=True`. Um subconjunto DTD interno pode declarar uma entidade que aponta para um arquivo local.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Declare a entidade",
+      "body": "Use `<!DOCTYPE order [<!ENTITY xxe SYSTEM \"file:///tmp/redvault-xxe-flag.txt\">]>` e referencie `&xxe;` dentro de um elemento como `<note>`.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Envie o documento",
+      "body": "Faça POST do XML `<order><note>&xxe;</note></order>` com o DOCTYPE acima. O painel de pedido parseado na resposta contém o conteúdo do arquivo, incluindo a flag.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Abra `/import` e faça parsing de um pedido normal para ver o formato da resposta.\n2. Adicione um subconjunto DTD interno declarando uma entidade externa para `file:///tmp/redvault-xxe-flag.txt`.\n3. Referencie a entidade dentro de um elemento e envie o documento.\n4. O importador resolve a entidade durante o parsing e serializa o texto expandido na resposta. Envie a flag.\n\n```xml\n<!DOCTYPE order [<!ENTITY xxe SYSTEM \"file:///tmp/redvault-xxe-flag.txt\">]>\n<order><note>&xxe;</note></order>\n```",
+    "root_cause": "Processamento de XML External Entity (XXE). O parser está configurado para carregar DTDs e resolver entidades, então um documento pode definir uma entidade SYSTEM que lê qualquer arquivo acessível pela service account. Serializar a árvore parseada retorna o conteúdo expandido para o solicitante.",
+    "mitigation": "Desabilite DTDs e a resolução de entidades externas (`resolve_entities=False`, `load_dtd=False`, `no_network=True`), ou use um perfil de parser endurecido que rejeite declarações DOCTYPE. Valide contra um schema estrito, rode o parser com privilégios mínimos de filesystem e mantenha segredos fora de sua árvore de leitura."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — XML external entity (XXE) injection",
+      "url": "https://portswigger.net/web-security/xxe",
+      "source_type": "official",
+      "description": "Declarações de entidade, divulgação de arquivos e XXE cego."
+    },
+    {
+      "title": "OWASP XXE Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Endurecimento do parser e configuração segura."
+    },
+    {
+      "title": "CWE-611 — Improper Restriction of XML External Entity Reference",
+      "url": "https://cwe.mitre.org/data/definitions/611.html",
+      "source_type": "standard",
+      "description": "Definição da fraqueza e consequências."
+    }
+  ]
+}

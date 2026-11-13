@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Não encontrado{% endblock %}
+{% block crumb %}SISTEMA / 404{% endblock %}
+{% block page_title %}Não encontrado{% endblock %}
+{% block content %}
+<div class="error-page">
+  <div>
+    <div class="error-code">404</div>
+    <h2>Esta rota não faz parte da superfície de ataque.</h2>
+    <p>O alvo, artigo ou registro solicitado não existe neste vault. Verifique o caminho, volte ao catálogo ou busque na academia.</p>
+    <div class="btn-row" style="justify-content:center">
+      <a class="btn btn-primary" href="/">{{ m.icon("dashboard", 13) }} PAINEL</a>
+      <a class="btn" href="/challenges">{{ m.icon("target", 13) }} DESAFIOS</a>
+      <a class="btn" href="/academy">{{ m.icon("book", 13) }} ACADEMIA</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

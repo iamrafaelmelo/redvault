@@ -1,0 +1,164 @@
+{% import "macros.html" as m %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
+  <title>{% block title %}REDVAULT{% endblock %} · REDVAULT</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
+  {% block head %}{% endblock %}
+</head>
+<body data-page="{{ active }}" {% block body_attrs %}{% endblock %}>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+      <a href="/" class="brand">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" width="34" height="34" fill="none">
+            <path d="M20 2 35 10.5v19L20 38 5 29.5v-19L20 2Z" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="20" cy="20" r="7.5" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="20" cy="20" r="2.2" fill="currentColor"/>
+            <path d="M20 12.5V6M20 34v-5M27.5 20H34M6 20h6.5M25.3 14.7l4.6-4.6M10.1 29.9l4.6-4.6M25.3 25.3l4.6 4.6M10.1 10.1l4.6 4.6" stroke="currentColor" stroke-width="1.2" opacity=".55"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <strong>RED<span>VAULT</span></strong>
+          <small>LABORATÓRIO OFFENSIVE PRIVADO</small>
+        </span>
+      </a>
+
+      <nav class="nav">
+        <div class="nav-label">OPERAÇÕES</div>
+        <a class="nav-item {% if active == 'dashboard' %}active{% endif %}" href="/">
+          {{ m.icon("dashboard", 17) }}<span>Painel</span>
+        </a>
+        <a class="nav-item {% if active == 'challenges' %}active{% endif %}" href="/challenges">
+          {{ m.icon("target", 17) }}<span>Desafios</span>
+        </a>
+        <a class="nav-item {% if active == 'machines' %}active{% endif %}" href="/machines">
+          {{ m.icon("skull", 17) }}<span>Máquinas</span>
+        </a>
+
+        <div class="nav-label">PROGRESSÃO</div>
+        <a class="nav-item {% if active == 'paths' %}active{% endif %}" href="/paths">
+          {{ m.icon("route", 17) }}<span>Trilhas de aprendizado</span>
+        </a>
+        <a class="nav-item {% if active == 'environments' %}active{% endif %}" href="/environments">
+          {{ m.icon("server", 17) }}<span>Ambientes</span>
+          {% if active_lab_count %}<span class="nav-badge live">{{ active_lab_count }}</span>{% endif %}
+        </a>
+
+        <div class="nav-label">INTELIGÊNCIA</div>
+        <a class="nav-item {% if active == 'academy' and not request.url.path.startswith('/academy/tools') %}active{% endif %}" href="/academy">
+          {{ m.icon("book", 17) }}<span>Academia</span>
+        </a>
+        <a class="nav-item {% if request.url.path.startswith('/academy/tools') %}active{% endif %}" href="/academy/tools">
+          {{ m.icon("terminal", 17) }}<span>Biblioteca de ferramentas</span>
+        </a>
+
+        <div class="nav-label">OPERADOR</div>
+        <a class="nav-item {% if active == 'profile' %}active{% endif %}" href="/profile">
+          {{ m.icon("user", 17) }}<span>Perfil</span>
+        </a>
+        <a class="nav-item {% if active == 'settings' %}active{% endif %}" href="/settings">
+          {{ m.icon("settings", 17) }}<span>Configurações</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="level-card">
+          <div class="level-top">
+            <span class="eyebrow">CREDENCIAL</span>
+            <span class="level-number">NÍVEL {{ sidebar.level }}</span>
+          </div>
+          <div class="level-name">{{ sidebar.title }}</div>
+          <div class="bar bar-thin"><span style="width: {{ sidebar.percent }}%"></span></div>
+          <div class="level-meta"><span>{{ sidebar.xp }} XP</span><span>{{ sidebar.percent }}%</span></div>
+        </div>
+        <div class="sidebar-mark">
+          <span class="status-dot"></span> OPERAÇÕES LOCAIS · ISOLADAS
+        </div>
+      </div>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <button class="icon-btn menu-btn" id="menu-toggle" aria-label="Alternar navegação">{{ m.icon("menu", 20) }}</button>
+        <div class="topbar-title">
+          <span class="crumb">{% block crumb %}OPERAÇÕES{% endblock %}</span>
+          <h1>{% block page_title %}Painel{% endblock %}</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="search-trigger" id="search-trigger" type="button" aria-label="Buscar">
+            {{ m.icon("search", 16) }}
+            <span>Buscar no vault…</span>
+            <kbd>Ctrl K</kbd>
+          </button>
+          <a class="lab-pill {% if active_lab_count %}is-live{% endif %}" href="/environments" title="Ambientes de lab ativos">
+            <span class="status-dot"></span>
+            <span>{{ active_lab_count }} LAB{% if active_lab_count != 1 %}S{% endif %}</span>
+          </a>
+          {% if user %}
+          <div class="user-menu">
+            <button class="user-button" id="user-button" aria-haspopup="true" aria-expanded="false">
+              <span class="avatar">{{ user.display_name[:1]|upper }}</span>
+              <span class="user-copy">
+                <strong>{{ user.display_name }}</strong>
+                <small>@{{ user.username }}</small>
+              </span>
+              {{ m.icon("chevron", 14, "rot90") }}
+            </button>
+            <div class="user-dropdown" id="user-dropdown">
+              <a href="/profile">{{ m.icon("user", 15) }} Perfil</a>
+              <a href="/settings">{{ m.icon("settings", 15) }} Configurações</a>
+              <a href="/profile/export">{{ m.icon("copy", 15) }} Exportar progresso</a>
+              <div class="dropdown-rule"></div>
+              <span class="dropdown-note">{{ m.icon("lock", 13) }} Operador local · sem login</span>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </header>
+
+      <main class="content">
+        {% if flashes %}
+        <div class="flash-stack">
+          {% for flash in flashes %}
+          <div class="flash flash-{{ flash.kind }}">
+            {{ m.icon("check" if flash.kind == "ok" else "alert", 16) }}
+            <span>{{ flash.message }}</span>
+            <button class="flash-close" aria-label="Fechar">{{ m.icon("x", 14) }}</button>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="footer">
+        <span>REDVAULT // TREINAMENTO OFFENSIVE LOCAL-FIRST</span>
+        <span>USO AUTORIZADO APENAS · <a href="/academy/methodology">MANUAL DE CAMPO</a></span>
+      </footer>
+    </div>
+  </div>
+
+  <div class="palette-backdrop" id="palette-backdrop" hidden>
+    <div class="palette" role="dialog" aria-modal="true" aria-label="Busca">
+      <div class="palette-input">
+        {{ m.icon("search", 18) }}
+        <input type="text" id="palette-input" placeholder="Buscar desafios, máquinas e conteúdo da academia…" autocomplete="off">
+        <kbd>ESC</kbd>
+      </div>
+      <div class="palette-results" id="palette-results">
+        <div class="palette-hint">Digite ao menos 2 caracteres. Os resultados ficam locais.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toast-stack" aria-live="polite"></div>
+  <script src="/static/js/app.js" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

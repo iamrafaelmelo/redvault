@@ -1,0 +1,80 @@
+{
+  "slug": "client-cors-reflect",
+  "title": "Qualquer origem serve",
+  "codename": "SIGNAL DESK",
+  "summary": "A API de conta reflete qualquer `Origin` em `Access-Control-Allow-Origin` e, ao mesmo tempo, permite credenciais. Um dashboard hostil de parceiro consegue ler o JSON autenticado, incluindo a flag.",
+  "category": "client",
+  "difficulty": "medium",
+  "lab_dir": "client-cors-reflect",
+  "estimated_minutes": 15,
+  "xp": 200,
+  "tech": [
+    "Flask",
+    "HTTP",
+    "CORS",
+    "Cookies"
+  ],
+  "tags": [
+    "cors",
+    "misconfiguration",
+    "cross-origin",
+    "credentialed-request"
+  ],
+  "story": "O Signal Desk compartilha seu widget de conta com dashboards de parceiros. A API foi configurada para funcionar com qualquer origem de parceiro, e alguém adicionou `Access-Control-Allow-Credentials` para que os cookies fossem incluídos. O cookie de sessão não é `SameSite`, então um fetch cross-site é enviado.",
+  "objective": "Autentique-se como `alice`, envie um request com credenciais para `/api/me` com uma `Origin` controlada pelo atacante e leia a flag no corpo do JSON.",
+  "rules": "Fique na origem loopback atribuída. O lab simula a origem do atacante por meio de headers do request.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Credencial de liberação da conta",
+      "flag_type": "api",
+      "points": 200,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia os headers",
+      "body": "Autentique-se em `/login` e faça um request para `/api/me` com `Origin: https://evil.example`. Inspecione `Access-Control-Allow-Origin` e `Access-Control-Allow-Credentials`.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Por que isso importa",
+      "body": "Um navegador permite que scripts em `https://evil.example` leiam esta response apenas se o allow-origin corresponder ao chamador e as credenciais estiverem permitidas. Aqui as duas condições são verdadeiras.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Extraia os dados",
+      "body": "Com o cookie de sessão presente, `fetch('http://127.0.0.1:PORT/api/me', {credentials:'include'})` a partir da página do atacante retorna um JSON contendo `flag`. Neste lab, reproduza o request com curl e leia o corpo.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "```bash\ncurl -c jar -X POST http://127.0.0.1:PORT/login -d 'username=alice&password=alice123'\ncurl -b jar -H 'Origin: https://evil.example' http://127.0.0.1:PORT/api/me\n```\n\nA response inclui `Access-Control-Allow-Origin: https://evil.example` e `Access-Control-Allow-Credentials: true`, além do JSON da conta com a flag. Um atacante real executaria o mesmo fetch a partir de uma página em evil.example enquanto o navegador da vítima mantém o cookie de sessão.",
+    "root_cause": "O CORS é configurado ecoando qualquer `Origin` que chegue em vez de validá-la contra uma allow-list, e as credenciais são habilitadas ao mesmo tempo. Isso efetivamente desativa a same-origin policy para a API.",
+    "mitigation": "Use uma allow-list estrita de origens confiáveis e nunca reflita valores arbitrários quando credenciais são permitidas. Prefira cookies `SameSite=Lax` ou `Strict`, evite origens wildcard com credenciais e sirva responses de API sensíveis apenas para a mesma origem ou para parceiros explicitamente autorizados."
+  },
+  "references": [
+    {
+      "title": "MDN — Cross-Origin Resource Sharing (CORS)",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS",
+      "source_type": "official",
+      "description": "Como os headers CORS e os modos de credencial interagem."
+    },
+    {
+      "title": "OWASP — Cross-Origin Resource Sharing (CORS) Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross-Origin_Resource_Sharing_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Orientações para configuração segura de CORS."
+    },
+    {
+      "title": "PortSwigger — CORS vulnerabilities",
+      "url": "https://portswigger.net/web-security/cors",
+      "source_type": "official",
+      "description": "Misconfigurations de CORS comuns e sua exploração."
+    }
+  ]
+}

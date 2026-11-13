@@ -1,0 +1,98 @@
+{
+  "slug": "machine-insurance-claims",
+  "title": "Harbor Claims",
+  "codename": "HARBOR",
+  "summary": "Um portal de seguros costeiro publica material de integração de migração, aceita um role privilegiado de um formulário de perfil e renderiza a correspondência dos ajustadores como template do lado do servidor. Vá de segurado a ajustador e daí para execução como serviço.",
+  "category": "chain",
+  "difficulty": "hard",
+  "kind": "machine",
+  "lab_dir": "machine-insurance-claims",
+  "estimated_minutes": 45,
+  "xp": 410,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "Jinja2",
+    "SSTI",
+    "Mass Assignment"
+  ],
+  "tags": [
+    "machine",
+    "recon",
+    "mass-assignment",
+    "ssti",
+    "chaining"
+  ],
+  "story": "A Harbor migrou a entrada de sinistros para um único portal. Os segurados gerenciam seus próprios sinistros, os ajustadores renderizam correspondência a partir de notas internas, e o arquivo de integração da migração ainda está publicado sob o diretório estático. O handler de atualização de perfil repassa todos os campos que conhece.",
+  "objective": "Recupere as credenciais do cliente, abuse do mass assignment de perfil para se tornar ajustador e então explore a renderização de templates do mesa de relatórios para ler a flag de root.",
+  "rules": "A origem loopback atribuída é todo o escopo do engajamento. Não escaneie outras portas. As flags são dinâmicas e a flag de root é verificada por estado.",
+  "flags": [
+    {
+      "key": "user",
+      "label": "Flag do segurado",
+      "flag_type": "user",
+      "points": 80,
+      "required": true
+    },
+    {
+      "key": "api",
+      "label": "Flag do console do ajustador",
+      "flag_type": "api",
+      "points": 120,
+      "required": true
+    },
+    {
+      "key": "root",
+      "label": "Flag root do mesa de relatórios",
+      "flag_type": "root",
+      "points": 210,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Sobras da migração",
+      "body": "Busque `/static/onboarding.txt`. Ele contém as credenciais de demonstração do segurado `customer` / `claim2026`. Entre e leia a flag de usuário em `/portal`.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "O perfil aceita mais que um nome",
+      "body": "Envie POST para `/profile` com `role=adjuster`. O handler copia o role enviado diretamente para a sessão. Reabra `/portal` ou visite `/adjuster` para ler a flag de API.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Correspondência é código",
+      "body": "Em `/adjuster`, envie uma nota contendo uma expressão Jinja como `{{ cycler.__init__.__globals__.os.popen('cat /tmp/insurance-root.txt').read() }}`. O mesa de relatórios compila a nota como template e o objetivo registra a leitura.",
+      "cost": 45
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — integração publicado.** GET `/static/onboarding.txt` para `customer` / `claim2026`, depois POST em `/login` e leia a policyholder flag em `/portal`.\n\n**Etapa 2 — mass assignment.** Autenticado, envie POST para `/profile` com `role=adjuster`. A aplicação grava o role na sessão sem verificação de autorização. GET `/adjuster` para a flag de API.\n\n**Etapa 3 — SSTI.** Envie POST para `/adjuster/report` com `note={{ cycler.__init__.__globals__.os.popen('cat /tmp/insurance-root.txt').read() }}`. A response renderizada contém a flag de root e o objetivo é registrado.",
+    "root_cause": "A cadeia combina um vazamento de informação em material de migração publicado, um handler de perfil que faz bind de um campo privilegiado a partir da entrada do usuário e um renderizador de correspondência que compila texto não confiável como template Jinja. Nenhum dos recursos isolados é exótico; a falha é confiar na entrada do usuário em cada limite.",
+    "mitigation": "Remova credenciais de integração dos assets públicos; use uma allow-list explícita para campos de perfil e nunca derive autorização de dados da request; renderize texto do usuário como dado com autoescaping, nunca como template; mantenha ambientes Jinja em sandbox e service accounts sem capacidade de ler arquivos de segredos."
+  },
+  "references": [
+    {
+      "title": "OWASP — Mass Assignment Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Mass_Assignment_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Bind de campos privilegiados a partir de dados da request controlados pelo usuário."
+    },
+    {
+      "title": "PortSwigger — Server-side template injection",
+      "url": "https://portswigger.net/web-security/server-side-template-injection",
+      "source_type": "official",
+      "description": "Mecânica e impacto da template injection."
+    },
+    {
+      "title": "CWE-1336 — Improper Neutralization of Special Elements Used in a Template Engine",
+      "url": "https://cwe.mitre.org/data/definitions/1336.html",
+      "source_type": "standard",
+      "description": "Causa raiz da server-side template injection."
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "slug": "logic-cart-quantity-rounding",
+  "title": "Arredondado a nada",
+  "codename": "CARTPOINT",
+  "summary": "A Cartpoint recalcula o preço por atacado a partir de uma quantidade fornecida pelo usuário usando floats, trunca o total a pagar para créditos inteiros e só verifica se o resultado não ultrapassa a carteira. Uma quantidade fracionária arredonda uma linha para baixo até uma fração de crédito, e uma quantidade negativa gera um crédito de margem, produzindo um total a pagar que você consegue realmente pagar.",
+  "category": "logic",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "logic-cart-quantity-rounding",
+  "estimated_minutes": 20,
+  "xp": 160,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "Floats",
+    "E-commerce"
+  ],
+  "tags": [
+    "business-logic",
+    "negative-quantity",
+    "rounding",
+    "e-commerce"
+  ],
+  "story": "A vitrine da Cartpoint permite que clientes comprem por atacado e recalcula o preço no checkout. A fórmula de margem financeira multiplica o preço unitário pela quantidade enviada e depois trunca o total a pagar para créditos inteiros, para que a fatura não mostre centavos. Quantidades só são rejeitadas quando são iguais a zero. Ninguém validou que o resultado é um valor positivo e razoável, e ninguém recalculou a quantidade em relação ao estoque.",
+  "objective": "Monte um carrinho cujo total a pagar seja zero ou menor que a carteira, finalize a compra do archive access pass e leia a flag.",
+  "rules": "Use apenas a origem loopback atribuída. Não faça varredura em outras portas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do archive access pass",
+      "flag_type": "root",
+      "points": 160,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "O que é validado?",
+      "body": "Adicione um produto e inspecione o carrinho. `qty` é convertido com `float()` e apenas `qty == 0` é rejeitado. O total a pagar é `math.trunc()` de um subtotal float, e o checkout só falha quando o total a pagar é maior que a carteira de 500 créditos.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Quebre a aritmética",
+      "body": "Uma quantidade negativa é cobrada como um crédito de margem `bulk_unit` (1000 créditos por unidade). Uma quantidade fracionária minúscula do refil Ink de 0.125 crédito arredonda uma linha positiva para baixo até 0.00. Tente `qty=-4` na standing desk junto ao pass, ou `qty=0.004` no ink.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Pague nada",
+      "body": "Carrinho: `flag-pass` qty 1 mais `desk` qty -4 dá um total a pagar de 0. `POST /checkout` aceita e libera o archive access pass.",
+      "cost": 30
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Entenda a matemática.** Em `quote()` cada linha positiva é `price * qty`; uma quantidade negativa retorna `bulk_unit * qty` (um crédito de margem de 1000 créditos por unidade). `payable_of()` retorna `math.trunc(raw)` e o checkout só rejeita `payable > 500`.\n\n**Monte um carrinho grátis.**\n```bash\nBASE=http://127.0.0.1:PORT\ncurl -s -c jar -b jar -X POST -d 'sku=flag-pass&qty=1' \"$BASE/cart/add\"\ncurl -s -c jar -b jar -X POST -d 'sku=desk&qty=-4' \"$BASE/cart/add\"\ncurl -s -c jar -b jar \"$BASE/cart\"\n# Archive access pass × 1 = 4000.00\n# Standing desk × -4 (bulk margin adjustment) = -4000.00\n# Subtotal: 0.0000 credits\n# Payable after finance rounding: 0 credits\n```\nUma variante por arredondamento também funciona: `sku=flag-pass&qty=0.1` (400 créditos) ou `sku=ink&qty=0.004` junto com um pass completo (4000 créditos a pagar).\n\n**Finalize a compra.**\n```bash\ncurl -s -c jar -b jar -X POST \"$BASE/checkout\"\n```\nA resposta confirma `Payment of 0 credits accepted`, renderiza o archive access pass com a flag e chama `lab.objective_async(\"flag\", ...)`.",
+    "root_cause": "As entradas são validadas quanto ao formato, mas não quanto ao significado de negócio: a quantidade pode ser qualquer float exceto exatamente zero, e quantidades negativas não só são aceitas como são convertidas em crédito. O dinheiro é tratado com floats binários e o total a pagar é truncado para créditos inteiros, então valores fracionários e erros de sinal desaparecem. O checkout compara apenas o total truncado com a carteira, então um valor zero ou negativo é um pagamento válido.",
+    "mitigation": "Represente dinheiro com inteiros em unidades menores (ou `decimal.Decimal`) e nunca trunque totais sem uma política. Valide a quantidade como inteiro em `1..stock`, rejeite quantidades negativas ou fracionárias, recalcule preço e estoque no servidor a partir do catálogo, rejeite totais a pagar `<= 0` e autorize o débito da carteira de forma atômica junto com o pedido."
+  },
+  "references": [
+    {
+      "title": "OWASP — Business Logic Security Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Quantidades negativas no carrinho, derivação de preço no servidor e validação de faixa."
+    },
+    {
+      "title": "PortSwigger — Business logic vulnerabilities: failing to handle unconventional input",
+      "url": "https://portswigger.net/web-security/logic-flaws/examples/lab-logic-flaws-inconsistent-handling-of-exceptional-input",
+      "source_type": "official",
+      "description": "Lab e explicação sobre valores numéricos inesperados que passam pela validação."
+    },
+    {
+      "title": "CWE-682 — Incorrect Calculation",
+      "url": "https://cwe.mitre.org/data/definitions/682.html",
+      "source_type": "standard",
+      "description": "Classe de fraqueza de cálculo incorreto que abrange erros de truncamento e de tratamento de sinal."
+    }
+  ]
+}

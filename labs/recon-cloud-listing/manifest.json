@@ -1,0 +1,34 @@
+{
+  "slug": "recon-cloud-listing",
+  "title": "O bucket que continuou público",
+  "codename": "VAULTLINE STORAGE",
+  "summary": "Um navegador de object storage expõe a listagem de um bucket público. Percorra os prefixos, abra um backup retido de environment de produção e recupere a flag de release deixada dentro.",
+  "category": "recon",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "recon-cloud-listing",
+  "estimated_minutes": 12,
+  "xp": 100,
+  "tech": ["Flask", "HTTP", "Object Storage"],
+  "tags": ["cloud-storage", "bucket-listing", "information-disclosure", "secrets"],
+  "story": "A equipe de pesquisa da Vaultline deixou o console de armazenamento aberto durante uma auditoria. As ACLs do bucket foram relaxadas para a migração, e uma cópia de restauração do environment de produção nunca foi arquivada. O nó de armazenamento ainda lista tudo o que consegue ler.",
+  "objective": "Navegue por `/storage/`, siga o prefixo `backups/`, abra `prod.env` e envie a flag deixada no arquivo de environment retido.",
+  "rules": "Fique na origem loopback atribuída. A listagem pública e o objeto de backup estão intencionalmente expostos para este exercício.",
+  "flags": [
+    {"key": "flag", "label": "Flag do environment retido", "flag_type": "hidden", "points": 100, "required": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Abra o navegador de objetos", "body": "A página inicial leva a `/storage/`. Consoles de object storage costumam expor uma listagem por prefixo em vez de um índice único e achatado.", "cost": 10},
+    {"level": 2, "title": "Siga o prefixo de backup", "body": "Requisite `/storage/backups/`. A listagem nomeia um objeto retido: `prod.env`. Listagens em estilo de diretório tornam a próxima request óbvia.", "cost": 15},
+    {"level": 3, "title": "Leia o objeto", "body": "Busque `/storage/backups/prod.env`. O backup de environment contém uma linha `RELEASE_FLAG`. O nó de armazenamento o entrega como texto puro.", "cost": 20}
+  ],
+  "solution": {
+    "walkthrough": "1. Faça GET em `/` e siga o link do navegador de objetos para `/storage/`.\n2. O índice lista o prefixo `backups/`. Faça GET em `/storage/backups/`.\n3. O prefixo lista `prod.env`. Faça GET em `/storage/backups/prod.env`.\n4. Leia a linha `RELEASE_FLAG=` e envie o valor dela.\n\nExemplo:\n```bash\ncurl http://127.0.0.1:PORT/storage/backups/prod.env\n```",
+    "root_cause": "O bucket de backups permite listagem pública e leitura pública de objetos. Um arquivo de environment de produção com uma flag de release real ficou retido nesse bucket após a migração, então a descoberta exigiu apenas percorrer a listagem exposta. Permissões de object storage, não obscuridade, são a fronteira de segurança.",
+    "mitigation": "Bloqueie listagem pública de buckets e ACLs de leitura pública. Guarde segredos em um serviço gerenciado de segredos, nunca em backups de environment. Aplique políticas de bucket com menor privilégio, habilite access logging e faça lifecycle-delete de exportações de migração que contenham credenciais. Rotacione qualquer segredo que tenha sido exposto."
+  },
+  "references": [
+    {"title": "OWASP WSTG — Review Webserver Metafiles for Information Leakage", "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/03-Review_Webserver_Metafiles_for_Information_Leakage", "source_type": "standard", "description": "Como descobrir índices e metadados expostos que revelam paths escondidos."},
+    {"title": "PortSwigger — Information disclosure", "url": "https://portswigger.net/web-security/information-disclosure", "source_type": "official", "description": "Como arquivos expostos e artefatos de backup vazam dados operacionais sensíveis."}
+  ]
+}

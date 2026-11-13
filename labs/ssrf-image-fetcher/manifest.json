@@ -1,0 +1,80 @@
+{
+  "slug": "ssrf-image-fetcher",
+  "title": "O proxy de preview",
+  "codename": "IMAGEFETCH",
+  "summary": "O Imagefetch busca imagens remotas server-side. A blocklist só rejeita o hostname literal `localhost`. Alcançe a rota interna de metadados a partir da própria posição de rede do serviço.",
+  "category": "server",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "ssrf-image-fetcher",
+  "estimated_minutes": 20,
+  "xp": 125,
+  "tech": [
+    "Flask",
+    "urllib",
+    "SSRF"
+  ],
+  "tags": [
+    "ssrf",
+    "blocklist-bypass",
+    "internal-service"
+  ],
+  "story": "O Imagefetch foi construído para economizar banda: o servidor baixa a imagem, reduz e envia o preview. O listener interno de metadados confia no tráfego de loopback. O filtro bloqueia um hostname, não uma realidade de rede.",
+  "objective": "Use o fetcher de preview para requisitar o endpoint interno de flag na própria porta de loopback do lab. Envie a flag retornada.",
+  "rules": "O alvo é o listener de loopback do próprio lab. Não escaneie outras portas nem hosts externos.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de metadados internos",
+      "flag_type": "api",
+      "points": 125,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Entenda o filtro",
+      "body": "O formulário rejeita URLs cujo hostname contém `localhost`. Tente o literal IPv4 de loopback `127.0.0.1`.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Encontre a rota interna",
+      "body": "O lab anuncia `/internal/flag` como endpoint de health/metadados. Ele exige que a request se origine do loopback, o que o fetcher server-side satisfaz.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Busque a verdade",
+      "body": "Envie `http://127.0.0.1:<lab-port>/internal/flag`. A resposta é renderizada no painel de resposta remota e o objetivo é registrado.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Anote a porta do listener do lab mostrada abaixo do formulário.\n2. Tente `http://localhost:<port>/internal/flag`; a blocklist fraca rejeita.\n3. Envie `http://127.0.0.1:<port>/internal/flag`.\n4. O servidor busca seu próprio endpoint de metadados restrito ao loopback e renderiza o JSON contendo a flag. Envie-a.",
+    "root_cause": "Server-Side Request Forgery com uma blocklist de hostname. A aplicação faz uma request a partir de uma posição de rede confiável e valida apenas uma string, não o destino resolvido nem o endereço final. O loopback IPv4 contorna a verificação de nome.",
+    "mitigation": "Use allowlist de destinos e esquemas exatos; resolva o DNS e rejeite endereços privados/link-local/loopback; fixe o IP resolvido e impeça redirects; segmente a rede do fetcher; exija autenticação em serviços internos de metadados; desabilite esquemas de URL desnecessários."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Server-side request forgery",
+      "url": "https://portswigger.net/web-security/ssrf",
+      "source_type": "official",
+      "description": "Classes de SSRF, bypasses de blocklist e defesas."
+    },
+    {
+      "title": "OWASP SSRF Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Allowlists, controles de rede e tratamento de redirects."
+    },
+    {
+      "title": "CWE-918 — Server-Side Request Forgery",
+      "url": "https://cwe.mitre.org/data/definitions/918.html",
+      "source_type": "standard",
+      "description": "Definição da fraqueza e impacto."
+    }
+  ]
+}

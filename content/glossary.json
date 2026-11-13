@@ -1,0 +1,110 @@
+[
+  {
+    "term": "Attack surface",
+    "definition": "A união de entradas, interfaces, identidades e caminhos de código que um atacante consegue alcançar. Mapeá-la é pré-requisito para um teste relevante."
+  },
+  {
+    "term": "Authentication",
+    "definition": "O processo de estabelecer uma reivindicação de identidade. Autenticação quebrada permite que um ator se passe por outra pessoa ou evite provar quem é."
+  },
+  {
+    "term": "Authorization",
+    "definition": "A decisão sobre o que um ator autenticado pode fazer com um recurso específico. Muitas vezes é aplicada separadamente para objetos (BOLA) e funções (BFLA)."
+  },
+  {
+    "term": "BOLA",
+    "definition": "Broken Object Level Authorization. Uma API aceita o identificador de um objeto mas falha em verificar se quem chama é dono ou pode acessar aquele objeto. Também chamado de IDOR em contextos de API."
+  },
+  {
+    "term": "BFLA",
+    "definition": "Broken Function Level Authorization. Um ator com menos privilégios consegue invocar uma função reservada a um nível superior porque o servidor só verifica autenticação, ou verifica o papel errado."
+  },
+  {
+    "term": "Blind XSS",
+    "definition": "Cross-site scripting cuja execução é observada depois, em outra interface de usuário ou administrativa, e que normalmente exfiltra dados por canais fora de banda."
+  },
+  {
+    "term": "CSRF",
+    "definition": "Cross-Site Request Forgery. O navegador da vítima é induzido a enviar uma request que altera estado com as credenciais dela. Defendido com anti-CSRF tokens, cookies SameSite e checagem de origin."
+  },
+  {
+    "term": "Cache deception",
+    "definition": "Um cache armazena uma resposta privada e autenticada sob uma URL que parece estática; um ator não autenticado a recupera depois. Abusa de normalização de path e regras de cache key."
+  },
+  {
+    "term": "Cache poisoning",
+    "definition": "Um atacante influencia uma resposta que um cache compartilhado armazena para outros usuários, normalmente por headers não incluídos na chave ou ambiguidade de request."
+  },
+  {
+    "term": "DOM XSS",
+    "definition": "Um sink client-side consome dados controlados pelo atacante de uma fonte como location.hash, postMessage ou storage, sem tratamento seguro, causando execução de script no contexto da página."
+  },
+  {
+    "term": "Desynchronization",
+    "definition": "Uma divergência entre dois parsers HTTP sobre os limites da mensagem, permitindo request smuggling, response queue poisoning ou captura de credenciais na request seguinte."
+  },
+  {
+    "term": "IDOR",
+    "definition": "Insecure Direct Object Reference. Um identificador fornecido pelo usuário dá acesso a um objeto sem checagem de propriedade ou autorização."
+  },
+  {
+    "term": "JWT",
+    "definition": "JSON Web Token, um contêiner de claims assinado (JWS) ou cifrado (JWE) conforme a RFC 7519. A segurança depende de verificação de assinatura, fixação de algoritmo e validação de claims."
+  },
+  {
+    "term": "LFI",
+    "definition": "Local File Inclusion. Uma primitiva server-side de include ou leitura aceita um path e pode ser forçada a ler arquivos fora do diretório pretendido."
+  },
+  {
+    "term": "Mass assignment",
+    "definition": "Um framework liga campos da request diretamente a um modelo, permitindo que um ator defina campos como role, verified ou owner que nunca deveriam ser entrada de usuário."
+  },
+  {
+    "term": "Object property",
+    "definition": "Um campo em um objeto de dados que tem significado para autorização, estado de negócio ou serialização. Testadores distinguem propriedades controladas pelo usuário das controladas pelo servidor."
+  },
+  {
+    "term": "Open redirect",
+    "definition": "Um endpoint redireciona para uma URL fornecida pelo usuário sem validação. Frequentemente encadeado com vazamento de token OAuth, bypass de filtro SSRF ou phishing."
+  },
+  {
+    "term": "Path traversal",
+    "definition": "Usar sequências ../ ou truques de encoding para escapar de um diretório base. Diferente de LFI quando o impacto é leitura de arquivo, e não inclusão de código/template."
+  },
+  {
+    "term": "Prototype pollution",
+    "definition": "A lógica de merge ou atribuição de objetos em JavaScript permite que chaves do atacante, como __proto__, modifiquem Object.prototype e influenciem caminhos de código posteriores."
+  },
+  {
+    "term": "Race condition",
+    "definition": "Comportamento relevante para segurança que depende da ordem ou do entrelaçamento de operações concorrentes, permitindo que checagem e ação discordem (TOCTOU)."
+  },
+  {
+    "term": "SSRF",
+    "definition": "Server-Side Request Forgery. O servidor é forçado a fazer uma request a um destino escolhido pelo atacante, muitas vezes alcançando serviços internos ou metadata de cloud."
+  },
+  {
+    "term": "SSTI",
+    "definition": "Server-Side Template Injection. A entrada do usuário é renderizada como sintaxe de template, permitindo que o atacante avalie expressões e potencialmente alcance o runtime subjacente."
+  },
+  {
+    "term": "Sink",
+    "definition": "Uma operação perigosa que consome dados, como innerHTML, eval, subprocess, render_template_string ou uma chamada de execução SQL."
+  },
+  {
+    "term": "Source",
+    "definition": "Um canal de entrada que fornece dados a um sink, como parâmetros de query, headers, arquivos, postMessage, storage ou um registro de banco."
+  },
+  {
+    "term": "Trust boundary",
+    "definition": "A linha onde dados ou autoridade passam entre componentes com privilégios diferentes. A maioria das vulnerabilidades é uma checagem ausente ou incorreta em uma trust boundary."
+  },
+  {
+    "term": "Unkeyed input",
+    "definition": "Dados da request que influenciam uma resposta em cache mas não fazem parte da cache key, viabilizando cache poisoning ou deception."
+  },
+  {
+    "term": "XXE",
+    "definition": "XML External Entity injection. Um parser XML resolve entidades externas controladas pelo atacante, viabilizando leitura de arquivo, SSRF ou negação de serviço."
+  }
+]

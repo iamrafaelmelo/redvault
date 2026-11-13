@@ -1,0 +1,79 @@
+{
+  "slug": "adv-cache-deception",
+  "title": "O cache do privado",
+  "codename": "CACHELINE",
+  "summary": "A borda da Cacheline trata paths de conta com `.css` como cacheáveis, mas a aplicação trata esses mesmos paths como páginas privadas. Envenene a cache com um request autenticado e depois recupere a página personalizada sem credenciais.",
+  "category": "advanced",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "adv-cache-deception",
+  "estimated_minutes": 30,
+  "xp": 240,
+  "tech": [
+    "Flask",
+    "HTTP caching",
+    "Sessions"
+  ],
+  "tags": [
+    "cache-deception",
+    "web-cache",
+    "information-disclosure"
+  ],
+  "story": "O time de edge configurou uma regra para assets estáticos: paths terminados em `.css` são cacheáveis. O time de aplicação adicionou uma rota catch-all `/account/<path>` para download de extratos. Os dois times estão confiantes de que sua própria regra está correta. O browser vê apenas uma response.",
+  "objective": "Popule a cache compartilhada com a página de conta autenticada da Alice sob um path `.css`, depois busque esse path sem sessão e envie a flag.",
+  "rules": "Use a conta fornecida `alice` / `alice123`. Somente o alvo local está no escopo.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag da conta privada cacheada",
+      "flag_type": "user",
+      "points": 240,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Observe a lacuna no roteamento",
+      "body": "`/account` é privado. `/account/<anything>.css` é tratado pela mesma lógica de conta, mas a borda considera o path estático e cacheável. A aplicação não varia a cache por Cookie.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Popule a cache com um cookie",
+      "body": "Faça login como Alice e então requeira um path `.css`, como `/account/statement.css`. A response inclui a página privada e é armazenada na cache compartilhada. Verifique o header de response `X-Cache`.",
+      "cost": 25
+    },
+    {
+      "level": 3,
+      "title": "Busque sem sessão",
+      "body": "Abra uma janela anônima do browser ou use `curl` sem cookies para um GET em `/account/statement.css`. A página privada cacheada é retornada; leia a flag na página.",
+      "cost": 30
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Faça login como `alice` / `alice123`.\n2. Execute GET `/account/statement.css` com o cookie de sessão da Alice. Note `X-Cache: MISS` e que a página privada completa é armazenada.\n3. Remova o cookie (ou use curl sem cookie jar) e faça GET da mesma URL. A response é servida da cache compartilhada com `X-Cache: HIT`.\n4. Extraia a flag da página de conta cacheada.\n\n```bash\ncurl -c jar -d 'username=alice&password=alice123' http://127.0.0.1:PORT/login\ncurl -b jar http://127.0.0.1:PORT/account/statement.css\ncurl http://127.0.0.1:PORT/account/statement.css\n```",
+    "root_cause": "Web cache deception. A cache usa como chave apenas a URL/path e classifica incorretamente uma rota dinâmica sensível como asset estático. A aplicação retorna dados personalizados e não define `Cache-Control: private, no-store`; também não inclui cookies na cache key.",
+    "mitigation": "Tome decisões de cache em uma única camada com metadados explícitos de rota; marque responses autenticadas com `Cache-Control: private, no-store` e `Vary: Cookie`; negue extensões estáticas em prefixes dinâmicos sensíveis; normalize paths de forma consistente; teste responses cacheadas com e sem credenciais."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Web cache deception",
+      "url": "https://portswigger.net/web-security/web-cache-deception",
+      "source_type": "official",
+      "description": "Classes de cache deception, path confusion e exploração."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Web Cache Poisoning",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/18-Testing_for_Web_Cache_Poisoning",
+      "source_type": "standard",
+      "description": "Revisão de cache key e testes de poisoning."
+    },
+    {
+      "title": "RFC 9111 — HTTP Caching",
+      "url": "https://www.rfc-editor.org/rfc/rfc9111",
+      "source_type": "standard",
+      "description": "Cacheabilidade, responses privadas e semântica de frescor."
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+DOCVAULT OPERATIONS MANUAL
+
+1. Documents are served by the local reader.
+2. The service account can read its private state directory.
+3. Do not expose the private state directory through the reader.
+
+-- operations

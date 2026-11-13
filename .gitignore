@@ -1,0 +1,33 @@
+# --- Segredos e dados locais (NUNCA versionar) --------------------------
+data/
+!.gitkeep
+
+# --- Python --------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+env/
+
+# --- Testes e ferramentas ------------------------------------------------
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Editores / sistema --------------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# --- Logs / temporários --------------------------------------------------
+*.log
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
+/tmp/

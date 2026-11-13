@@ -1,0 +1,80 @@
+{
+  "slug": "server-ssrf-webhook",
+  "title": "O loopback do webhook",
+  "codename": "HOOKLINE",
+  "summary": "O preview de webhook bloqueia as strings literais `localhost` e `127.0.0.1` e depois anexa uma identidade de proxy interna em cada fetch. Uma notação alternativa de loopback entra direto no endpoint interno.",
+  "category": "server",
+  "difficulty": "medium",
+  "lab_dir": "server-ssrf-webhook",
+  "estimated_minutes": 15,
+  "xp": 200,
+  "tech": [
+    "Flask",
+    "SSRF",
+    "HTTP",
+    "urllib"
+  ],
+  "tags": [
+    "ssrf",
+    "loopback-bypass",
+    "deny-list",
+    "internal-service"
+  ],
+  "story": "O Hookline renderiza payloads de webhook para equipes parceiras. O fetcher do preview adiciona `X-Webhook-Proxy` para que serviços internos identifiquem a integração. Uma deny-list rejeita `localhost` e `127.0.0.1` por substring, o que não é como endereços funcionam.",
+  "objective": "Use uma notação alternativa de loopback para alcançar `/internal/flag` através do fetcher do preview e, em seguida, envie a flag retornada.",
+  "rules": "Fique na origem de loopback atribuída. O endpoint interno só é alcançável com a identidade de proxy.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do webhook interno",
+      "flag_type": "api",
+      "points": 200,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Como o bloqueio está escrito?",
+      "body": "O preview rejeita URLs que contenham `localhost` ou `127.0.0.1` como substrings. Ele não resolve o host nem inspeciona o endereço final. Acesse `/internal/flag` diretamente primeiro para confirmar que retorna 403.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Mesmo loopback, outra grafia",
+      "body": "`127.1` e a forma decimal `2130706433` resolvem ambos para `127.0.0.1`. Nenhum deles contém a substring bloqueada.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Busque através do proxy",
+      "body": "Envie `http://127.1:PORT/internal/flag` como URL do webhook. O preview adiciona o header `X-Webhook-Proxy` e retorna a flag em JSON.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "```bash\ncurl http://127.0.0.1:PORT/internal/flag            # 403\ncurl -X POST http://127.0.0.1:PORT/ -d 'url=http://127.1:PORT/internal/flag'\n```\n\nA segunda request é buscada server-side com o header interno, e o corpo da resposta contém a flag.",
+    "root_cause": "As defesas contra SSRF são implementadas como correspondência de string na URL fornecida pelo usuário. Um atacante pode usar representações de endereço equivalentes, e o fetcher anexa um header de identidade privilegiada que serviços internos aceitam como prova de origem de rede.",
+    "mitigation": "Resolva o hostname e valide cada IP resultante contra uma deny-list cobrindo faixas loopback, link-local, privadas e de metadados antes de conectar. Fixe o endereço resolvido para a request, desabilite redirects para endereços internos e nunca anexe credenciais internas a fetches controlados pelo usuário."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Server-side request forgery",
+      "url": "https://portswigger.net/web-security/ssrf",
+      "source_type": "official",
+      "description": "Bypasses de filtros SSRF ingênuos e impacto."
+    },
+    {
+      "title": "OWASP — Server Side Request Forgery Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Orientações de validação de endereço e allow-list."
+    },
+    {
+      "title": "CWE-918 — Server-Side Request Forgery",
+      "url": "https://cwe.mitre.org/data/definitions/918.html",
+      "source_type": "standard",
+      "description": "Causa raiz e classificação de SSRF."
+    }
+  ]
+}

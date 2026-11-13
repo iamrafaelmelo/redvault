@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Máquinas{% endblock %}
+{% block crumb %}OPERAÇÕES / MÁQUINAS{% endblock %}
+{% block page_title %}Máquinas{% endblock %}
+
+{% block content %}
+<section class="machine-hero">
+  <div>
+    <span class="eyebrow">ALVOS COMPLETOS / EXPLORAÇÃO ENCADEADA</span>
+    <h2>MÁQUINAS COMPLETAS</h2>
+    <p>Aplicações completas com múltiplas trust boundaries. O reconhecimento importa. Cada máquina carrega várias flags, estado próprio e um reset que restaura as condições iniciais. Sem lista de vulnerabilidades. Sem mão na mão.</p>
+  </div>
+  <div class="machine-hero-stats">
+    <div class="machine-hero-stat"><strong>{{ machines|length }}</strong><span>MÁQUINAS</span></div>
+    <div class="machine-hero-stat"><strong>{{ machines|selectattr("kind","equalto","realistic")|list|length }}</strong><span>REALISTAS</span></div>
+    <div class="machine-hero-stat"><strong>{{ machines|selectattr("kind","equalto","machine")|list|length }}</strong><span>DEDICADAS</span></div>
+  </div>
+</section>
+
+{% if machines %}
+<div class="machine-grid">
+  {% for machine in machines %}
+  {% set p = progress_map.get(machine.id) %}
+  {% set completed = p and p.status == "completed" %}
+  {% set required = machine.flags|selectattr("required")|list %}
+  {% set found = solved.get(machine.id, []) %}
+  <a class="machine-card {{ machine.difficulty }}" href="/machines/{{ machine.slug }}">
+    <div class="machine-stripe"></div>
+    <div class="machine-card-body">
+      <div class="machine-glyph">{{ m.icon("skull" if machine.kind == "machine" else "crosshair", 25) }}</div>
+      <div class="machine-main">
+        <h3>{{ machine.title }}</h3>
+        <div class="codename">{{ machine.codename or "ALVO DO AMBIENTE PRIVADO" }}</div>
+        <p>{{ machine.summary }}</p>
+        <div class="meta-row">
+          {{ m.difficulty_badge(machine.difficulty, difficulty_labels[machine.difficulty]) }}
+          <span class="tag">{{ machine.xp }} XP</span>
+          {% if machine.kind == "realistic" %}<span class="tag red">REALISTA</span>{% endif %}
+          <a class="card-open" href="/lab/{{ machine.slug }}" title="Abrir a página dedicada desta máquina">{{ m.icon("external", 11) }} ABRIR</a>
+        </div>
+        <div class="machine-obj" style="margin-top:11px">
+          {% for flag in required %}
+          <span class="obj-pip {% if flag.key in found %}done{% endif %}" title="{{ flag.label }}"></span>
+          {% endfor %}
+          <span class="mono" style="font-size:8px;color:var(--dim);margin-left:3px">{{ found|select("in", required|map(attribute="key")|list)|list|length }}/{{ required|length }} FLAGS</span>
+        </div>
+      </div>
+    </div>
+    <div class="machine-card-foot">
+      <div class="machine-stats">
+        <span>{{ m.icon("clock", 10) }} {{ machine.estimated_minutes }}m</span>
+        <span>{{ m.icon("layers", 10) }} {{ machine.tech[:2]|join(" · ") }}</span>
+      </div>
+      {% if completed %}
+      <span class="progress-label">ROOT OBTIDO</span>
+      {% elif p and p.status == "in_progress" %}
+      <span class="progress-label" style="color:var(--amber)">EM ATAQUE</span>
+      {% else %}
+      <span class="link-arrow">BRIEFING {{ m.icon("arrow-right", 12) }}</span>
+      {% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+{{ m.empty_state("skull", "Nenhuma máquina provisionada", "Os manifests são descobertos em labs/*/manifest.json. Adicione um alvo multi-serviço e reinicie a plataforma.", "", "") }}
+{% endif %}
+
+<section class="section">
+  <div class="env-note">
+    {{ m.icon("shield", 16) }}
+    <span><strong>Regras de engajamento:</strong> as máquinas rodam apenas em loopback, dentro de um sandbox restrito, com dados sintéticos e sem alvos de rede externos. Use o controle de reset quando o estado ficar sujo entre tentativas. Toda flag é validada server-side.</span>
+  </div>
+</section>
+{% endblock %}

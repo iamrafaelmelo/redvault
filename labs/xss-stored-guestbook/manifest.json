@@ -1,0 +1,80 @@
+{
+  "slug": "xss-stored-guestbook",
+  "title": "O livro de visitas se lembra",
+  "codename": "FIELDBOOK",
+  "summary": "O Fieldbook armazena entradas de livro de visitas e as renderiza como HTML. Persista um payload, dispare o bot editor e capture seu cookie privilegiado na visita de revisão.",
+  "category": "xss",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "xss-stored-guestbook",
+  "estimated_minutes": 22,
+  "xp": 130,
+  "tech": [
+    "Flask",
+    "HTML",
+    "Selenium bot"
+  ],
+  "tags": [
+    "xss",
+    "stored",
+    "cookie-exfiltration"
+  ],
+  "story": "O livro de visitas do Fieldbook é pequeno e confiável. As entradas são armazenadas literalmente e mostradas a todos os editores. O bot editor visita com um cookie de sessão legível. A persistência muda o ataque: você só precisa que o bot revise a página uma vez.",
+  "objective": "Armazene um payload XSS no livro de visitas, dispare o bot editor e recupere seu cookie por `/collect`. Envie o valor da flag.",
+  "rules": "O bot só visita a origem deste lab. O collector é intencionalmente de mesma origem.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Cookie do bot editor",
+      "flag_type": "user",
+      "points": 130,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Armazene e observe",
+      "body": "Publique uma entrada benigna e inspecione o código da página. A entrada é inserida em um painel como HTML, não como texto codificado.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "A persistência vence",
+      "body": "Armazene `<script>fetch('/collect?c='+encodeURIComponent(document.cookie))</script>` como entrada. A chamada executa sempre que o livro de visitas é renderizado por um navegador.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Dispare a revisão",
+      "body": "Abra `/report` e envie o bot editor. Leia `/captured`; o valor do cookie `editor_session` é a flag. O objetivo é registrado por `/collect`.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Publique `<script>fetch('/collect?c='+encodeURIComponent(document.cookie))</script>`.\n2. Dispare o bot editor em `/report`.\n3. Quando o bot carrega `/`, o script armazenado executa e envia seu cookie para `/collect`.\n4. Abra `/captured`, copie o valor do cookie `editor_session` e envie-o.",
+    "root_cause": "XSS armazenado. A aplicação persiste HTML/script arbitrário e depois o renderiza em um contexto de navegador privilegiado. O atacante não precisa que a vítima clique em uma query montada; o payload é servido a partir do próprio conteúdo armazenado da aplicação.",
+    "mitigation": "Faça escaping da saída no momento da renderização para o contexto HTML; sanitize rich text com uma allow-list se markup for necessário. Defina cookies HttpOnly, Secure e SameSite, implante CSP e mantenha sessões privilegiadas fora de páginas que renderizam conteúdo de usuários."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Stored XSS",
+      "url": "https://portswigger.net/web-security/cross-site-scripting/stored",
+      "source_type": "official",
+      "description": "Mecânica e impacto do XSS armazenado."
+    },
+    {
+      "title": "OWASP XSS Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Output encoding e tratamento seguro de HTML."
+    },
+    {
+      "title": "MDN — Set-Cookie",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie",
+      "source_type": "standard",
+      "description": "Controles de cookie HttpOnly e SameSite."
+    }
+  ]
+}

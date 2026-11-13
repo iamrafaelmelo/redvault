@@ -1,0 +1,79 @@
+{
+  "slug": "recon-backup-vault",
+  "title": "A exportação esquecida",
+  "codename": "PRISM ARCHIVE",
+  "summary": "Um arquivo público de pesquisa deixou uma exportação de manutenção descoberta. Siga a política de crawler e recupere o segredo que a exportação deveria esconder.",
+  "category": "recon",
+  "difficulty": "beginner",
+  "kind": "challenge",
+  "lab_dir": "recon-backup-vault",
+  "estimated_minutes": 12,
+  "xp": 60,
+  "tech": [
+    "Flask",
+    "HTTP",
+    "robots.txt"
+  ],
+  "tags": [
+    "information-disclosure",
+    "backup-file",
+    "recon"
+  ],
+  "story": "Você está avaliando o espelho público do PRISM ARCHIVE antes de uma migração. A equipe jura que o espelho é estático. A política de crawler é o único mapa que você recebeu.",
+  "objective": "Encontre a exportação de backup exposta e recupere o valor rotulado `VAULT_ACCESS`.",
+  "rules": "Apenas o alvo loopback atribuído está no escopo. Enumere paths que você consegue alcançar a partir da própria aplicação.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo de acesso do arquivo",
+      "flag_type": "user",
+      "points": 60,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia as placas",
+      "body": "Comece por `/robots.txt`. Ele diz aos crawlerssonde não ir — o que costuma ser uma lista de lugares interessantes.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Inspecione o diretório",
+      "body": "O path desautorizado `/backups/` é navegável. Uma das exportações é um template de environment, não um banco de dados.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Abra o template",
+      "body": "Requisite `/backups/ops.env`. A linha `VAULT_ACCESS` é preenchida quando o lab inicia. Envie esse valor exato.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Requisite `/robots.txt` e observe `Disallow: /backups/`.\n2. Navegue por `/backups/`; o índice expõe `ops.env` e `content.db.bak`.\n3. Busque `/backups/ops.env` e leia `VAULT_ACCESS=RV{...}`.\n4. Envie o valor no slot de flag do desafio.",
+    "root_cause": "Uma exportação de deployment foi copiada para um diretório servido pela web e o índice do diretório continuou habilitado. `robots.txt` não é mecanismo de controle de acesso; ele anuncia o path para qualquer um que o leia.",
+    "mitigation": "Remova backups dos document roots, desabilite listagens de diretório, guarde exportações em object storage privado, rotacione qualquer segredo que apareceu em uma exportação e trate `robots.txt` como documentação pública, não como fronteira de segurança."
+  },
+  "references": [
+    {
+      "title": "OWASP WSTG — Review Webserver Metafiles for Information Leakage",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/03-Review_Webserver_Metafiles_for_Information_Leakage",
+      "source_type": "standard",
+      "description": "Como testar robots.txt, sitemaps e outros metafiles em busca de divulgação de paths."
+    },
+    {
+      "title": "PortSwigger — Information disclosure",
+      "url": "https://portswigger.net/web-security/information-disclosure",
+      "source_type": "official",
+      "description": "Como backups expostos e artefatos verbosos viram achados reais."
+    },
+    {
+      "title": "RFC 9309 — Robots Exclusion Protocol",
+      "url": "https://www.rfc-editor.org/rfc/rfc9309",
+      "source_type": "standard",
+      "description": "O protocolo explicitamente não fornece controle de acesso."
+    }
+  ]
+}

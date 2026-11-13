@@ -1,0 +1,99 @@
+{
+  "slug": "machine-logistics-api",
+  "title": "Wayline Logistics",
+  "codename": "WAYLINE",
+  "summary": "Uma API de visibilidade de frete expõe sua documentação de integração, faz proxy de URLs de transportadoras do lado do servidor e armazena um token de despacho atrás de um endpoint interno. Vá de cliente a proxy interno e daí para o console de despacho.",
+  "category": "chain",
+  "difficulty": "hard",
+  "kind": "machine",
+  "lab_dir": "machine-logistics-api",
+  "estimated_minutes": 55,
+  "xp": 430,
+  "tech": [
+    "Flask",
+    "REST API",
+    "SSRF",
+    "Shell",
+    "Sessions"
+  ],
+  "tags": [
+    "machine",
+    "api",
+    "ssrf",
+    "internal-service",
+    "command-injection",
+    "chaining"
+  ],
+  "story": "A Wayline moveu as integrações de transportadoras para trás de um proxy de preview. Os clientes podem pedir ao serviço que busque uma URL de transportadora, e o proxy adiciona um header de identidade interno. O console de despacho confia em um token que só deveria existir dentro da rede do serviço. A service account consegue ler o arquivo de root do despacho.",
+  "objective": "Enumere a API documentada, use a sessão de cliente, transforme o preview de transportadora em SSRF contra o endpoint interno de despacho, recupere o token de despacho e explore o console para ler a flag de root.",
+  "rules": "A origem loopback atribuída é todo o escopo do engajamento. Não escaneie outras portas. As flags são dinâmicas e podem ser verificadas por estado.",
+  "flags": [
+    {
+      "key": "user",
+      "label": "Flag de visibilidade do cliente",
+      "flag_type": "user",
+      "points": 80,
+      "required": true
+    },
+    {
+      "key": "api",
+      "label": "Flag da transportadora interna",
+      "flag_type": "api",
+      "points": 130,
+      "required": true
+    },
+    {
+      "key": "root",
+      "label": "Flag do console de despacho",
+      "flag_type": "root",
+      "points": 220,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia o contrato de integração",
+      "body": "`/api/docs` documenta a credencial de cliente e um parâmetro de URL `carrier`. Entre e leia a visibility flag em `/portal`.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "O proxy está dentro da rede",
+      "body": "O proxy de preview busca URLs de transportadora arbitrárias e adiciona `X-Carrier-Proxy`. Aponte-o para `http://127.0.0.1:<port>/internal/carrier`. O endpoint interno retorna a flag de API e um token de despacho.",
+      "cost": 35
+    },
+    {
+      "level": 3,
+      "title": "O despacho recebe um host",
+      "body": "Abra `/dispatch/console?token=<dispatch_token>` e envie um host de transportadora. O host é interpolado em um comando de shell. Injete `; cat /tmp/logistics-root.txt` para ler a flag de root e registrar o objetivo.",
+      "cost": 45
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — documentação e foothold de cliente.** GET `/api/docs` para `customer` / `track2026`. Entre em `/login`; o portal retorna a flag de usuário.\n\n**Etapa 2 — SSRF para o despacho.** GET `/api/v1/track?carrier=http://127.0.0.1:<port>/internal/carrier`. O proxy de preview adiciona o header interno, e a response contém `api_flag` mais `dispatch_token`.\n\n**Etapa 3 — console de despacho.** Abra `/dispatch/console?token=<dispatch_token>` e envie `127.0.0.1; cat /tmp/logistics-root.txt`. A saída contém a flag de root e o objetivo é registrado.",
+    "root_cause": "O proxy de preview voltado ao cliente consegue alcançar serviços em loopback e anexa um header de identidade interno privilegiado. O endpoint interno de despacho confia nesse header como identidade de rede, e o console de despacho passa um host de transportadora para um comando de shell. Cada limite assume que o anterior é confiável.",
+    "mitigation": "Use uma allow-list explícita de hosts de transportadora, bloqueie faixas de loopback e privadas após a resolução de DNS e não anexe credenciais internas a fetches controlados pelo usuário. Autentique chamadas internas com identidade de serviço, não com um header estático. Execute diagnóstico com argumentos fixos e `shell=False`; limite a service account para longe dos segredos de despacho."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Server-side request forgery",
+      "url": "https://portswigger.net/web-security/ssrf",
+      "source_type": "official",
+      "description": "Padrões de SSRF, allow-lists e acesso a serviços internos."
+    },
+    {
+      "title": "OWASP — Server Side Request Forgery Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Defesas para fetches do lado do servidor controlados pelo usuário."
+    },
+    {
+      "title": "OWASP — OS Command Injection Defense Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Execução de comandos segura com argumentos."
+    }
+  ]
+}

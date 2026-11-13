@@ -1,0 +1,79 @@
+{
+  "slug": "sqli-second-order",
+  "title": "O relatório lembra",
+  "codename": "LEDGERLINE CRM",
+  "summary": "A Ledgerline parametriza corretamente a criação de contas, mas depois reutiliza o username armazenado numa query de relatório sem binding. Plante um payload no username e dispare uma query posterior.",
+  "category": "sqli",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "sqli-second-order",
+  "estimated_minutes": 28,
+  "xp": 180,
+  "tech": [
+    "Flask",
+    "SQLite",
+    "Second-order SQLi"
+  ],
+  "tags": [
+    "sql-injection",
+    "second-order",
+    "stored-data"
+  ],
+  "story": "Os engenheiros da Ledgerline corrigiram o endpoint de cadastro depois da última auditoria. O módulo de relatórios ainda confia no username que lê de volta do banco. A injeção acontece em dois atos, ao longo de dois requests.",
+  "objective": "Cadastre uma conta cujo username seja um payload de SQL injection e depois dispare o relatório de atividades para que o payload armazenado execute e revele o segredo do vault.",
+  "rules": "Somente o alvo atribuído está no escopo. Não ataque o host nem outros processos.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo do vault da Ledger",
+      "flag_type": "user",
+      "points": 180,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Por que dois requests?",
+      "body": "O cadastro é parametrizado. A vulnerabilidade aparece quando o username armazenado é depois concatenado numa query de relatório. O username é o ponto de injeção.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Molde o payload armazenado",
+      "body": "A query do relatório seleciona uma coluna (`message`). Armazene um username como `' UNION SELECT secret FROM vault -- ` para que a query posterior retorne a linha do vault.",
+      "cost": 25
+    },
+    {
+      "level": 3,
+      "title": "Dispare o relatório",
+      "body": "Cadastre-se com o username `' UNION SELECT secret FROM vault -- ` (espaço final após os traços), defina qualquer senha válida e abra `/reports`. A lista de atividades conterá a flag.",
+      "cost": 30
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Cadastre-se com o username `' UNION SELECT secret FROM vault -- ` e uma senha de pelo menos seis caracteres. O INSERT é seguro e armazena o texto literalmente.\n2. A aplicação redireciona para `/reports` e lê o username de volta do banco.\n3. A query de relatório insegura fica:\n```sql\nSELECT message FROM activity WHERE username = '' UNION SELECT secret FROM vault -- '\n```\n4. A lista de resultados exibe o segredo do vault. Submeta-o.",
+    "root_cause": "SQL injection de segunda ordem. A entrada é armazenada com segurança, mas depois concatenada numa outra instrução SQL. O caminho da fonte ao sink atravessa uma ida e volta ao banco, então a validação de entrada no primeiro endpoint não protege o segundo.",
+    "mitigation": "Parametrize toda instrução SQL, incluindo queries montadas a partir de valores previamente armazenados. Trate valores do banco como não confiáveis. Adicione helpers/ORM centralizados para queries, constraints de schema e testes de integração que reproduzam payloads armazenados por todos os caminhos de relatório."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Second-order SQL injection",
+      "url": "https://portswigger.net/web-security/sql-injection",
+      "source_type": "official",
+      "description": "Classes de SQL injection, incluindo fluxos de dados armazenados/de segunda ordem."
+    },
+    {
+      "title": "OWASP SQL Injection Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Queries parametrizadas em todo sink."
+    },
+    {
+      "title": "CWE-89 — SQL Injection",
+      "url": "https://cwe.mitre.org/data/definitions/89.html",
+      "source_type": "standard",
+      "description": "Taxonomia da fraqueza e mitigações."
+    }
+  ]
+}

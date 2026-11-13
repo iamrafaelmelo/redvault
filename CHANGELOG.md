@@ -1,0 +1,232 @@
+# Changelog
+
+All notable changes to REDVAULT are documented here. The project follows a pragmatic version sequence; it is pre-1.0 and the content catalog is incomplete.
+
+## [1.3.0] — 2026-11-13
+
+### Added
+
+- **Runaway-traffic detection.** Each lab reports its real request count to `/internal/lab-traffic`; the platform keeps the counters (so the lab cannot forge them) and classifies the load as `normal`, `warn` (≥300 req/s) or `abort` (≥1500 req/s over a 10 s window). Above the warn threshold the lab writes `[traffic] WARN/ABORT: N req/s` to its log and adds `X-Redvault-Traffic` to its responses; the first `abort` is recorded as a `lab_abuse` activity entry.
+- **Hard lifetime ceiling** (`REDVAULT_LAB_MAX_LIFETIME`, default 2 h) next to the idle timeout. A forgotten lab no longer stays exposed on a LAN-widened bind indefinitely.
+- `scripts/bruteforce_load.py` measures what a brute force actually costs: requests/second and Mbps, and how that relates to the LAN. Measured on the reference machine: ~440 req/s ≈ 23 Mbps against the OTP lab, with an 8-worker client; the real bottleneck is the lab's single-process Flask, not the network.
+- The lab panel now states both shutdown conditions ("X min sem tráfego ou Yh de vida").
+
+### Fixed
+
+- **Real traffic now counts as activity.** `touch()` was only called from the status endpoint, so a lab being attacked from another machine was reaped after 45 minutes of dashboard inactivity. `/internal/lab-traffic` touches it per report.
+- The first traffic reporter spawned one thread per request; under a brute force the Flask worker pool was saturated and most reports were lost (a 4,000-request run registered 1). Replaced by a counter plus a single background reporter.
+
+### Tests
+
+- New module `tests/test_traffic.py` (5 tests): baseline rates stay `normal`, the abort banner fires exactly once, the sliding window stays bounded, brute-force traffic keeps the lab from being reaped, and labs expose `X-Redvault-Traffic`. Suite: 127 tests, 6 modules, all green.
+
+## [1.2.0] — 2026-11-13
+
+### Added
+
+- **Opt-in LAN sharing for the lab range.** `REDVAULT_LAB_BIND` (default `127.0.0.1`) and `REDVAULT_LAB_PUBLIC_HOST` let a second computer on the same network open `http://<host-ip>:<lab-port>/` and attack the lab directly, without a VPN, while the dashboard stays on loopback. Lab cards advertise the LAN address, the room page shows a warning that the range accepts LAN clients, and the lab footer switches from `LOCAL ONLY` to `LAN SHARED`.
+- `lab_url()` centralises how a lab address is built; `LAB_BIND` is passed to every lab process and honoured by both lab runtimes (`labkit` and the `serve_lab` proxy).
+
+### Security notes
+
+- Default behaviour is unchanged: labs bind to loopback, and `tests/test_lan_mode.py` asserts that a loopback lab refuses LAN connections.
+- LAN mode is documented as a trusted-network-only option in `SECURITY.md`. The platform itself remains loopback-only and unauthenticated; widening `REDVAULT_HOST` is still not supported.
+
+### Tests
+
+- New module `tests/test_lan_mode.py`: starts a real lab with `REDVAULT_LAB_BIND=0.0.0.0`, reaches it through the host's non-loopback address, checks the LAN warning in the room page and asserts loopback labs stay unreachable on the LAN. Suite: 125 tests, 5 modules, all green.
+
+## [1.1.0] — 2026-11-12
+
+### Added
+
+- **Each target now has its own room page at `/lab/<slug>`.** Every challenge and machine opens full screen, the way a TryHackMe room or a HackTheBox machine page does, instead of living only inside the dashboard panel. The page carries the whole briefing — objective, rules, start/open the lab, flag submission, hints, walkthrough, notes and references — but with its own top bar (brand, target title, exits to the catalog and the dashboard) and no sidebar.
+- `app/templates/lab_base.html`: standalone layout for the room page. `challenge_detail.html` extends `lab_base.html` or `base.html` depending on the mode, so there is still a single source of truth for the content.
+- Entry points: an `ABRIR` button on every card in `/challenges` and `/machines`, plus a `PÁGINA DO DESAFIO` tag in the panel detail header. The room page does not link to itself.
+
+### Tests
+
+- `test_dedicated_lab_pages_are_full_screen` checks that `/lab/<slug>` renders `body.lab-mode` with the room top bar, no `<aside class="sidebar">`, the panel detail still offering `PÁGINA DO DESAFIO`, and an unknown slug returning 404. Suite: 122 tests, 4 modules, all green.
+
+## [1.0.0] — 2026-11-12
+
+### Changed
+
+- **Full pt-BR localisation.** The web interface, all 97 lab manifests (titles, summaries, briefings, objectives, rules, flag labels, hints, walkthroughs, root causes, mitigations and reference descriptions), the 17 academy articles, the glossary, learning paths, tool library, CVE index, achievements and every server-side message (API errors, flashes, activity log, flag validation) are now in Brazilian Portuguese. Security vocabulary stays in English (IDOR, BOLA, SSRF, SSTI, JWT, CSRF, SQL injection, payload, header, token, …); code, commands, payloads, URLs, identifiers and values the lab applications use literally are never translated.
+- `DIFFICULTY_LABELS`, `LEVELS`, `CATEGORY_META` and `SOURCE_TYPES` in `app/config.py` now carry pt-BR labels; difficulty badges, challenge types (`MÁQUINA`/`REALISTA`/`DESAFIO`), academy article levels, the environment ledger and the command palette all render those labels instead of raw keys.
+- `ACHIEVEMENTS` are seeded in pt-BR and existing rows are updated in place on startup.
+
+### Fixed
+
+- Difficulty badges and challenge kinds no longer leak raw English slugs (`HARD`, `MACHINE`) into the UI.
+- `macros.html` received the translated label explicitly, so the badge macro does not depend on undefined template globals.
+
+### Tests
+
+- Assertions updated to the pt-BR strings; `test_primary_ui_pages_render` now checks that difficulty, kind and the CVE index render translated text and never raw English keys. Suite: 118 tests, 4 modules, all green.
+
+## [0.9.0] — 2026-11-12
+
+### Changed
+
+- **The login screen is gone.** REDVAULT is a single-operator, loopback-only installation, so the password gate only got in the way. Every request is now served as the local operator, created automatically on first start (name configurable with `REDVAULT_OPERATOR`, default `operator`). `/login`, `/setup` and `/logout` redirect to the dashboard.
+- Browser sessions are no longer an authentication factor: the `rv_session` cookie only carries the CSRF token. `/settings/session` (formerly `/settings/password`) rotates that token and revokes the other sessions.
+- `bcrypt` removed from `requirements.txt`; the `users.password_hash` column is kept for schema compatibility and stays empty.
+
+### Security notes
+
+- CSRF protection is unchanged and still enforced on every mutating form and API call; a request without the token returns 403.
+- Because there is no authentication, `REDVAULT_HOST` must stay on loopback. Binding to a public interface would expose the operator dashboard and every intentionally vulnerable lab.
+
+### Fixed
+
+- **The operator dashboard showed challenges they never solved.** Platform tests imported the app before their own `REDVAULT_DATA` override could win, so a run against the real database wrote progress, submissions and achievements into `data/redvault.db` (5 items appeared completed on 2026-11-12). `tests/conftest.py` now refuses to start when `REDVAULT_DATA` points at the repository `data/` directory (or is unset), and standalone lab tests get a throwaway directory. The affected progress was cleared with the in-app reset (Settings → Danger zone), and the guard now blocks that class of test at startup.
+
+### Tests
+
+- `test_first_run_validation_and_setup` and `test_login_logout_and_csrf` replaced by `test_local_operator_has_no_login` and `test_csrf_still_required_for_mutating_requests`.
+- `test_login_throttling_blocks_after_repeated_failures` replaced by `test_no_login_route_and_single_operator`.
+- Suite unchanged in size: 118 tests, 4 modules, all green.
+
+## [0.8.0] — 2026-11-12
+
+### Added
+
+- **34 new challenge labs** and **2 new machines** (97 catalog items total, 89 challenges + 8 machines):
+  - XSS: `xss-csp-nonce-bypass`, `xss-dom-clobber`, `xss-csp-jsonp`.
+  - Client-side: `client-prototype-pollution`, `client-clickjacking-frame`, `client-websocket-csrf`.
+  - API: `api-graphql-field-auth`, `api-batch-endpoint-auth`.
+  - Upload: `upload-archive-traversal`, `upload-content-type-confusion`, `upload-polyglot-image`.
+  - Authentication: `auth-jwt-jku-injection`, `auth-password-reset-poison`, `auth-mfa-bypass-response`, `auth-sso-assertion-replay`.
+  - Access control: `access-http-parameter-pollution`, `access-trust-proxy-header`.
+  - SQL injection: `sqli-stacked-update`, `sqli-order-by-case`.
+  - Advanced: `adv-http-host-header-reset`, `adv-csrf-token-reuse`, `adv-cache-key-normalization`.
+  - Server-side: `server-ssti-jinja-sandbox` (customised Jinja sandbox escape), `server-deserialization-pickle` (signed-but-forgeable pickle session cookie).
+  - Business logic: `logic-coupon-race`, `logic-signup-bonus-loop`, `logic-approval-self`, `logic-cart-quantity-rounding`, `logic-invite-reuse`.
+  - Chains: `chain-open-redirect-to-token-theft`, `chain-lfi-to-rce` (Insane), `chain-xss-to-csrf-admin`, `chain-jwt-to-sqli`, `chain-ssti-to-flask-config`.
+  - Machines: `machine-saas-admin-console` (ORBIT) and `machine-hr-onboarding` (ATLAS HR), user/API/root flags with objective-gated root.
+- **34 new exploit tests** (`tests/test_labs_phase3.py`) and **10 new platform tests** (`tests/test_platform_phase3.py`): active-lab cap, login throttling, path/catalog integrity, category coverage, achievements, profile export, accessibility, mobile CSS, search escaping.
+- `run_tests.py`: runs every test module in its own interpreter.
+
+### Fixed
+
+- **Activity list leaked a `RV{` prefix:** masked submission values were rendered with the plaintext flag prefix. The list now shows only the masked value.
+- **Achievements not returned on completion:** `award_completion` evaluated achievements but the response re-evaluated them and dropped the newly awarded ones; the completion path now returns them, and `evaluate_achievements` flushes each award so later conditions see it.
+- **Notices in the pickle lab:** `server-deserialization-pickle` initially failed to surface the flag when a pickle gadget returned `bytes`. The notice renderer now coerces `bytes` and objects without `render()` safely, and the gadget used by the exploit test is builtins-only (`subprocess.check_output` / `eval`) so it does not depend on the lab's module name.
+- **Test isolation:** a single `pytest` run reused the first module's `REDVAULT_DATA`, silently testing platform modules against another database. `run_tests.py` (and the `README`) now run one module per process.
+- `labs/api-batch-endpoint-auth`: the singular `/api/admin/export` handler now accepts `POST` as well as `GET`.
+
+### Changed
+
+- Application version is now `0.8.0`.
+- Learning paths include every new lab and machine; all 95 catalog items are listed in at least one path.
+- Catalog status: **89 challenges + 8 machines**, 291 hints, 113 flags, 291 references (151 unique URLs), 57 objective-gated items, 4 Insane.
+
+### Known gaps
+
+- **Phase 3 missed its target:** 89 challenges (target 93) and 8 machines (target 9). Two planned machines (healthcare scheduling, e-commerce checkout) and 4 planned challenges were not built.
+- 61 challenges and 7 machines remain to reach the 150/15 target.
+- `bubblewrap` is a process sandbox, not a VM; labs retain host network egress.
+- No database migration framework, TLS, MFA or multi-user isolation.
+
+## [0.7.0] — 2026-11-12
+
+### Added
+
+- **27 new challenge labs** and **3 new machines** (61 catalog items total):
+  - Recon: `recon-source-map`, `recon-cloud-listing`, `recon-api-docs`.
+  - Authentication: `auth-session-fixation`, `auth-jwt-kid-traversal`, `auth-jwt-alg-confusion`, `auth-otp-bruteforce`.
+  - Access control: `access-tenant-header`, `access-method-override`.
+  - SQL injection: `sqli-blind-boolean`, `sqli-waf-bypass`.
+  - XSS: `xss-attribute-injection`, `xss-blind-support`.
+  - Server-side: `server-nosql-auth`, `server-blind-cmdi`, `server-xxe-reader`, `server-ssrf-webhook`.
+  - API: `api-pagination-leak`.
+  - Business logic: `logic-refund-abuse`, `logic-workflow-skip`.
+  - Client-side: `client-cors-reflect`.
+  - Upload: `upload-zip-slip`, `upload-filename-xss`.
+  - Advanced: `adv-cache-poison-header`.
+  - Insane chains: `chain-ssrf-internal`, `chain-upload-to-rce`, `chain-sqli-to-admin`.
+  - Machines: `machine-fintech-support`, `machine-logistics-api`, `machine-insurance-claims` (user/API/root flags each).
+- **27 new exploit tests**; the suite is now **61 lab tests + 13 platform tests = 74 tests**.
+- Learning paths now include the new labs and the three new machines.
+
+### Changed
+
+- Application version is now `0.7.0`.
+- `labs/_shared/serve_lab.py`: test/dev runner that imports a lab module and adds a header-preserving proxy, so filename-handling labs remain reproducible despite Werkzeug's multipart filename normalization.
+- Catalog status: **55 challenges + 6 machines**, 3 Insane, 183 hints, 73 flags, 183 references (87 unique).
+
+### Known gaps
+
+- 104 catalog items remain to reach the 150 challenges + 15 machines minimum (95 challenges, 9 machines).
+- `bubblewrap` is a process sandbox, not a VM; labs retain host network egress.
+- No database migration framework, TLS, MFA or multi-user isolation.
+
+## [0.6.0] — 2026-11-12
+
+### Added
+
+- **17 academy articles** in `content/academy/` covering methodology, recon, authentication, access control, SQL injection, XSS, SSRF, file inclusion, command injection, API security, JWT, business logic, client-side security, cache deception, file upload, chaining and a quick reference. Each article has YAML frontmatter, a table of contents, field notes and primary-source references.
+- **13 platform integration tests** in `tests/test_platform.py` using an isolated temporary `REDVAULT_DATA` directory:
+  - first-run validation and account creation
+  - login/logout, redirect sanitization and CSRF
+  - flag-value leakage checks across catalog and detail pages
+  - CSRF enforcement on lab mutation
+  - real lab start/status/reset/stop lifecycle
+  - hint progression, penalties and solution gating
+  - flag validation, completion, XP and duplicate handling
+  - objective-gated flags
+  - invalid internal callback tokens
+  - primary UI page rendering
+  - academy filters, articles and references
+  - private profile export
+  - confirmation-gated progress reset
+- **Required documentation:** `README.md`, `INSTALL.md`, `ARCHITECTURE.md`, `SECURITY.md`, `ROADMAP.md`, this changelog.
+- Explicit academy category filters for every implemented category, including `reference`.
+
+### Fixed
+
+- **Environments page crash:** `render()` received `active` both as the navigation key and as the active-lab list (`TypeError: render() got multiple values for argument 'active'`). The list is now passed as `active_labs` and the template uses that name.
+- **Reset counter:** `LabManager.reset()` started a new `LabSession` without carrying the previous reset count. The new session now increments and persists `reset_count`.
+- **Platform test isolation:** tests set `REDVAULT_DATA` before importing app modules so the real operator database, secret key and lab state are never touched.
+- **Mobile overflow:** the tool library and CVE index could force Chrome's mobile layout viewport wider than 390 px because of long `<pre>` commands and an unwrapped table. Tool cards now use `minmax(0, 1fr)` tracks with constrained code blocks, and the CVE table scrolls inside its own container. All primary pages now render at exactly 390 px with no page-level horizontal overflow.
+- **Stale version label:** the authentication footer still displayed `REDVAULT v0.5`; it now reads `v0.6`.
+
+### Changed
+
+- Application version is now `0.6.0`.
+- Documentation states the actual catalog: **28 challenge labs, 3 machines, 31 working items**, not the 150/15 target.
+- Test suite is now **44 tests** (31 lab exploit tests + 13 platform tests).
+
+### Known gaps
+
+- 122 challenge labs and 12 machines remain to reach the minimum target of 150 challenges and 15 machines.
+- No `insane` difficulty lab exists yet.
+- `bubblewrap` is a process sandbox, not a VM; labs retain host network egress.
+- No database migration framework, TLS, MFA or multi-user isolation.
+
+## [0.5.0] — baseline
+
+### Added
+
+- FastAPI + SQLite + Jinja2 + vanilla JS platform, loopback-only.
+- First-run setup, bcrypt authentication, hashed sessions, CSRF, login throttling, security headers and CSP.
+- Challenge and machine catalog, filters, search, detail pages, active lab controls and environments page.
+- Lab process manager with port allocation, readiness checks, reset/stop, idle reaper, `bubblewrap` and `prlimit`.
+- HMAC-derived per-lab flags, server-side validation and objective-gated callbacks.
+- Progressive hints with XP penalties, solution gating and unlock history.
+- XP, levels, achievements, notes, time tracking, activity feed and profile export.
+- Ten learning paths, tool library, glossary and real CVE index.
+- **31 real lab applications:** 28 challenges across all 12 categories and 3 machines with user/API/root flags.
+- Selenium/Chromium loopback-only victim bot for XSS and client-side labs.
+- 31 standalone exploit-level tests for every lab.
+
+### Fixed
+
+- `app/lab_manager.py` imported `sha256` from the wrong module.
+- `labs/_shared/labkit.py` used an invalid f-string for the lab name.
+- `bwrap` runtime now mounts shared code at `/shared` with `PYTHONPATH=/shared`.
+- Native (non-bwrap) labs receive the real `LAB_STATE_DIR` rather than `/state`.
+- `sqli-login-bypass` seed order now makes the tautology land on the administrator row.
+- `sqli-second-order` now creates the missing `activity` table.
+- `ssrf-image-fetcher` internal endpoint requires a proxy header, so direct loopback access returns 403; only the vulnerable fetcher adds it.

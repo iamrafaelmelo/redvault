@@ -1,0 +1,79 @@
+{
+  "slug": "logic-negative-cart",
+  "title": "Valor negativo",
+  "codename": "CARTWHEEL",
+  "summary": "A Cartwheel aceita quantidades com sinal e liquida o total resultante contra uma carteira. Abuse de uma quantidade negativa para gerar crédito na loja e então compre o Vault Access Pack.",
+  "category": "logic",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "logic-negative-cart",
+  "estimated_minutes": 18,
+  "xp": 110,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "E-commerce"
+  ],
+  "tags": [
+    "business-logic",
+    "negative-quantity",
+    "payment-bypass"
+  ],
+  "story": "A loja de campo da Cartwheel confia no campo de quantidade porque o front-end usa um input numérico HTML. O checkout multiplica o preço pela quantidade e ajusta a carteira. Ele nunca pergunta se uma quantidade pode ser negativa.",
+  "objective": "Explore o tratamento de quantidades com sinal no carrinho para pagar o Vault Access Pack de $500 e recuperar a flag.",
+  "rules": "Use apenas a loja local. Comece com a carteira demo de $100 e reinicie o lab se quiser um carrinho limpo.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de acesso ao vault",
+      "flag_type": "user",
+      "points": 110,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia a aritmética",
+      "body": "O total do carrinho é `price × quantity`. Uma quantidade negativa produz um subtotal negativo. A carteira é reduzida pelo total, então um total negativo se torna um crédito.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Gere crédito",
+      "body": "Adicione um item barato com quantidade `-4` ou menor. Faça o checkout e então verifique a carteira. Depois adicione o Vault Access Pack com quantidade `1` e liquide novamente.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Compre o pack",
+      "body": "Por exemplo: adicione Aero Kite com quantidade `-4` e faça o checkout. Sua carteira passa a $580. Adicione Vault Access Pack com quantidade `1` e faça o checkout para ver a flag.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Observe a carteira de $100 e o Vault Access Pack de $500.\n2. Adicione Aero Kite ($120) com quantidade `-4` e liquide. O total é `-$480`; a carteira passa a `$580`.\n3. Adicione Vault Access Pack com quantidade `1` e faça o checkout. O pedido contém uma linha de vault positiva válida e a flag é renderizada.\n4. Envie a flag.",
+    "root_cause": "Falta validação de regras de negócio. O servidor aceita uma quantidade negativa e usa o total resultante para creditar a carteira. Restrições de tipo de input no navegador não são validação no servidor.",
+    "mitigation": "Exija quantidades inteiras positivas, recalcule todos os preços no servidor a partir de dados confiáveis do catálogo, rejeite totais abaixo de zero e modele as compras como uma máquina de estados explícita com verificações de invariantes. Registre e alerte sobre variações anormais no carrinho."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Business logic vulnerabilities",
+      "url": "https://portswigger.net/web-security/logic-flaws",
+      "source_type": "official",
+      "description": "Abuso de regras e workflows da aplicação."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Business Logic",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/",
+      "source_type": "standard",
+      "description": "Categorias de teste de lógica de negócio."
+    },
+    {
+      "title": "CWE-840 — Business Logic Errors",
+      "url": "https://cwe.mitre.org/data/definitions/840.html",
+      "source_type": "standard",
+      "description": "Classe de fraqueza para falhas de regra e de workflow."
+    }
+  ]
+}

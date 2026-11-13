@@ -1,0 +1,35 @@
+{
+  "slug": "recon-api-docs",
+  "title": "Documentação para o que não está listado",
+  "codename": "SENTINEL API",
+  "summary": "O documento OpenAPI em produção inventaria um endpoint interno de resposta a incidentes e publica a sua debug key. Leia a referência gerada e reenvie a request documentada.",
+  "category": "recon",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "recon-api-docs",
+  "estimated_minutes": 13,
+  "xp": 110,
+  "tech": ["Flask", "OpenAPI", "HTTP"],
+  "tags": ["api-discovery", "openapi", "information-disclosure", "debug-endpoint"],
+  "story": "O portal de desenvolvedores da Sentinel anuncia uma pequena API pública de frota. A referência é gerada a partir do documento OpenAPI em produção, e a equipe de plantão manteve um endpoint exclusivo de incidentes na spec por conveniência. O header de debug é descrito como um valor operacional compartilhado.",
+  "objective": "Leia `/openapi.json` ou `/docs`, localize a operação escondida `GET /api/v1/admin/secret` e chame-a com o header `X-Debug-Key` documentado. Envie a flag retornada.",
+  "rules": "Fique na origem loopback atribuída. A referência de API e a debug key estão intencionalmente expostas para este exercício.",
+  "flags": [
+    {"key": "flag", "label": "Flag de resposta a incidentes", "flag_type": "api", "points": 110, "required": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Encontre a spec", "body": "Portais de API costumam publicar `/openapi.json` e uma página legível em `/docs`. Enumere os paths documentados em vez de adivinhar nomes de endpoint.", "cost": 10},
+    {"level": 2, "title": "Leia o security scheme", "body": "O documento OpenAPI define um security scheme apiKey chamado `DebugKey`. A descrição e o exemplo do parâmetro contêm o valor atual de `X-Debug-Key`.", "cost": 15},
+    {"level": 3, "title": "Reenvie a chamada documentada", "body": "Envie `X-Debug-Key: rv-debug-2026` para `/api/v1/admin/secret`. O endpoint está escondido da navegação mas totalmente documentado, e a chave é publicada na spec.", "cost": 20}
+  ],
+  "solution": {
+    "walkthrough": "1. Busque `/openapi.json` (ou abra `/docs`).\n2. Encontre o path `/api/v1/admin/secret` e seu requisito de segurança `DebugKey`.\n3. Leia o valor documentado `rv-debug-2026` para o header `X-Debug-Key`.\n4. Requisite o endpoint:\n```bash\ncurl -H 'X-Debug-Key: rv-debug-2026' http://127.0.0.1:PORT/api/v1/admin/secret\n```\n5. Envie o valor `flag` da resposta JSON.",
+    "root_cause": "O documento OpenAPI público inventaria um endpoint interno de admin e publica a debug key que o protege. A equipe tratou a documentação como auxílio de inventário, não como superfície de ataque, então esconder o link da navegação não protegeu nada. Uma chave compartilhada e documentada não é segredo e não impõe acesso privilegiado.",
+    "mitigation": "Mantenha operações internas fora de documentos OpenAPI públicos e gere specs separadas para consumidores internos. Exija autorização real por usuário em rotas de admin, nunca um valor de debug compartilhado e documentado. Rotacione credenciais de debug, restrinja-as por origem e ambiente e revise o inventário de API em busca de endpoints shadow."
+  },
+  "references": [
+    {"title": "OWASP API Security — API9:2023 Improper Inventory Management", "url": "https://owasp.org/API-Security/editions/2023/en/0xa9-improper-inventory-management/", "source_type": "standard", "description": "Riscos de superfícies de API não documentadas, depreciadas e internas."},
+    {"title": "PortSwigger — API testing", "url": "https://portswigger.net/web-security/api-testing", "source_type": "official", "description": "Como descobrir documentação de API e endpoints escondidos durante o reconhecimento."},
+    {"title": "OWASP WSTG — Information Gathering", "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/", "source_type": "standard", "description": "Metodologia estruturada para enumerar metadados expostos da aplicação."}
+  ]
+}

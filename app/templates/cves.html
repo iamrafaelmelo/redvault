@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Índice de CVE{% endblock %}
+{% block crumb %}INTELIGÊNCIA / ÍNDICE DE CVE{% endblock %}
+{% block page_title %}Índice de CVE{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">AVISOS REAIS / {{ cves|length }} REFERÊNCIAS</span>
+    <h2>Vulnerabilidades reais, lições reais.</h2>
+    <p>Um índice curado de vulnerabilidades documentadas publicamente que ilustram causas raiz recorrentes. Cada entrada remete ao registro do CVE Program e, quando disponível, ao aviso do fornecedor ou à pesquisa primária. Nenhum identificador inventado.</p>
+  </div>
+  <div class="page-actions"><a class="btn" href="https://www.cve.org/" target="_blank" rel="noopener noreferrer">{{ m.icon("external", 13) }} PROGRAMA CVE</a></div>
+</div>
+
+<div class="card">
+  <div class="table-scroll">
+  <table class="cve-table">
+    <thead>
+      <tr><th>ID</th><th>Vulnerabilidade</th><th>Classe</th><th>Por que importa</th><th>Fontes</th></tr>
+    </thead>
+    <tbody>
+      {% for cve in cves %}
+      <tr>
+        <td class="cve-id">{{ cve.id }}</td>
+        <td><strong>{{ cve.name }}</strong><div class="muted" style="font-size:9px;margin-top:3px">{{ cve.product }} · {{ cve.year }}</div></td>
+        <td>{{ cve.type }}</td>
+        <td>{{ cve.impact }}</td>
+        <td>
+          <a class="link-arrow" href="{{ cve.url }}" target="_blank" rel="noopener noreferrer">CVE {{ m.icon("external", 10) }}</a>
+          {% if cve.advisory %}<br><a class="link-arrow" href="{{ cve.advisory }}" target="_blank" rel="noopener noreferrer">ADVISORY {{ m.icon("external", 10) }}</a>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<div class="env-note" style="margin-top:18px">
+  {{ m.icon("alert", 16) }}
+  <span>CVEs históricas são referências educacionais, não sugestões de alvo. Não teste contra sistemas de terceiros. Use os labs isolados da plataforma para praticar.</span>
+</div>
+{% endblock %}

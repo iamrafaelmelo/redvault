@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}{{ path.title }}{% endblock %}
+{% block crumb %}PROGRESSÃO / {{ path.title|upper }}{% endblock %}
+{% block page_title %}{{ path.title }}{% endblock %}
+
+{% block content %}
+<a class="detail-back" href="/paths">{{ m.icon("arrow-right", 12, "rot180") }} TODAS AS TRILHAS</a>
+
+<div class="machine-hero">
+  <div class="path-detail-summary">
+    <div class="meta-row" style="margin-bottom:10px">
+      {{ m.difficulty_badge(path.difficulty, difficulty_labels[path.difficulty]) }}
+      <span class="tag">~{{ path.estimated_hours }}h estimadas</span>
+      <span class="tag">{{ progress.total }} alvos</span>
+    </div>
+    <span class="eyebrow">TRILHA DE APRENDIZADO / {{ path.slug|upper }}</span>
+    <h2>{{ path.title }}</h2>
+    <p>{{ path.description }}</p>
+    {% if prereq_paths %}
+    <div class="path-prereqs">
+      <span class="mono-label" style="margin-right:5px">PRÉ-REQUISITOS</span>
+      {% for prereq in prereq_paths %}
+      <a class="tag red" href="/paths/{{ prereq.slug }}">{{ prereq.title }} {{ m.icon("arrow-right", 10) }}</a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="machine-hero-stats">
+    <div class="machine-hero-stat"><strong>{{ progress.completed }}/{{ progress.total }}</strong><span>CONCLUÍDOS</span></div>
+    <div class="machine-hero-stat"><strong>{{ progress.percent }}%</strong><span>PROGRESSO</span></div>
+    <div class="machine-hero-stat"><strong>{{ progress.total - progress.completed }}</strong><span>RESTANTES</span></div>
+  </div>
+</div>
+
+<div style="margin-bottom:20px">
+  <div class="path-progress-top"><span>PROGRESSO DA TRILHA</span><span>{{ progress.percent }}%</span></div>
+  <div class="bar {% if progress.percent == 100 %}bar-green{% endif %}"><span style="width: {{ progress.percent }}%"></span></div>
+</div>
+
+<div class="path-route">
+  <div class="path-route-head">
+    <span class="mono-label">SEQUÊNCIA DE ALVOS</span>
+    <span class="mono-label">{{ progress.completed }}/{{ progress.total }} CONCLUÍDOS</span>
+  </div>
+  {% for row in items %}
+  {% set challenge = row.challenge %}
+  <div class="path-step {% if row.done %}done{% endif %}">
+    <span class="step-number">{% if row.done %}✓{% else %}{{ "%02d"|format(loop.index) }}{% endif %}</span>
+    <div class="step-main">
+      <strong><a href="/{% if challenge.kind == 'challenge' %}challenges{% else %}machines{% endif %}/{{ challenge.slug }}">{{ challenge.title }}</a></strong>
+      <small>{{ challenge.category.name }} · {{ difficulty_labels[challenge.difficulty] }} · {{ challenge.xp }} XP · {{ challenge.estimated_minutes }} min</small>
+    </div>
+    <div class="step-side">
+      <span class="step-status {% if row.done %}done{% elif row.progress and row.progress.status == 'in_progress' %}progress{% endif %}">
+        {% if row.done %}CONCLUÍDO{% elif row.progress and row.progress.status == 'in_progress' %}EM ANDAMENTO{% else %}PENDENTE{% endif %}
+      </span>
+      {{ m.icon("chevron", 14) }}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% if related %}
+<section class="section">
+  <div class="section-head"><div><span class="eyebrow">CONTINUE EXPLORANDO</span><h3>Trilhas relacionadas</h3></div><a class="link-arrow" href="/paths">TODAS AS TRILHAS</a></div>
+  <div class="grid-3">
+    {% for other in related %}
+    <a class="card card-pad card-hover" href="/paths/{{ other.slug }}">
+      <div class="mono-label">{{ other.estimated_hours }}H · {{ difficulty_labels[other.difficulty] }}</div>
+      <h3 style="font-size:14px;margin:7px 0 5px">{{ other.title }}</h3>
+      <p class="muted" style="font-size:11px;margin:0">{{ other.description[:110] }}…</p>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

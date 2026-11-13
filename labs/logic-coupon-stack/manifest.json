@@ -1,0 +1,79 @@
+{
+  "slug": "logic-coupon-stack",
+  "title": "Aplique de novo",
+  "codename": "TICKETFORGE",
+  "summary": "A Ticketforge permite que o mesmo código promocional seja aplicado repetidamente. Acumule o desconto até que o Vault Pass custe nada e então conclua o checkout.",
+  "category": "logic",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "logic-coupon-stack",
+  "estimated_minutes": 16,
+  "xp": 105,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "Promotions"
+  ],
+  "tags": [
+    "business-logic",
+    "coupon-abuse",
+    "discount"
+  ],
+  "story": "A página de marketing diz que cada código é de uso único por cliente. O serviço de checkout mantém a lista de códigos aplicados, mas apenas compara a string. Nunca verifica se o código já está presente.",
+  "objective": "Acumule o cupom `VAULT10` até o total chegar a zero e conclua a compra do Vault Pass.",
+  "rules": "Use apenas a loja local. O cupom está incluído na página de propósito.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do Vault Pass",
+      "flag_type": "user",
+      "points": 105,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Observe o total",
+      "body": "Cada aplicação subtrai $40 dos $400 do pass. A página lista os códigos aplicados, mas o backend verifica duplicatas?",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Repita a requisição",
+      "body": "Envie o mesmo cupom dez vezes. Você pode usar o formulário ou repetir o POST com curl mantendo o cookie da sessão.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Zere o total",
+      "body": "Após dez aplicações de `VAULT10`, o total é $0 e o checkout fica habilitado. Conclua a compra para ver a flag.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Aplique `VAULT10` uma vez; o total cai de $400 para $360.\n2. Aplique mais nove vezes sem limpar o carrinho. Não existe verificação de duplicata.\n3. Em $0, clique em Complete purchase.\n4. A página do pass exibe a flag. Envie-a.",
+    "root_cause": "O carrinho trata códigos promocionais como uma lista somente-anexável e recalcula o desconto multiplicando a quantidade de códigos. Ele não aplica uso único, elegibilidade nem um limite inferior no total.",
+    "mitigation": "Valide cada cupom contra um registro de resgate no servidor vinculado ao cliente, aplique uso único e produtos elegíveis, limite os totais em zero, revalide no checkout e use idempotency keys para operações de compra."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Business logic vulnerabilities",
+      "url": "https://portswigger.net/web-security/logic-flaws",
+      "source_type": "official",
+      "description": "Padrões de abuso de cupons e de workflows."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Business Logic",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/",
+      "source_type": "standard",
+      "description": "Metodologia de validação de regras de negócio."
+    },
+    {
+      "title": "CWE-840 — Business Logic Errors",
+      "url": "https://cwe.mitre.org/data/definitions/840.html",
+      "source_type": "standard",
+      "description": "Fraqueza de aplicação de regras."
+    }
+  ]
+}

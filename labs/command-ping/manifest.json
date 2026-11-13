@@ -1,0 +1,80 @@
+{
+  "slug": "command-ping",
+  "title": "Sonda com shell",
+  "codename": "NETPULSE",
+  "summary": "O Netpulse aceita um hostname e executa uma verificação de conectividade via shell. O campo host é interpolado diretamente no comando. Saia do contexto, leia o arquivo de flag do serviço e prove a execução de comandos.",
+  "category": "server",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "command-ping",
+  "estimated_minutes": 18,
+  "xp": 120,
+  "tech": [
+    "Flask",
+    "subprocess",
+    "Shell"
+  ],
+  "tags": [
+    "command-injection",
+    "rce",
+    "shell"
+  ],
+  "story": "O Netpulse é uma página de diagnóstico de outra época. Ele executa um resolvedor de nomes por meio do shell e retorna o stdout. O input é 'só um hostname', segundo o formulário. O shell discorda.",
+  "objective": "Injete um comando de shell pelo campo host e leia `/tmp/redvault-command-flag.txt`.",
+  "rules": "Execute apenas dentro do processo do lab. Não ataque a plataforma, serviços do host ou outros labs.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag de execução de comando",
+      "flag_type": "root",
+      "points": 120,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Teste o limite",
+      "body": "A sonda provavelmente é `getent hosts <input>`. Tente um hostname seguido de `; echo marker`. Os metacaracteres são interpretados pelo shell, não pelo getent.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Encontre o arquivo",
+      "body": "A página menciona um arquivo temporário privado. O caminho é `/tmp/redvault-command-flag.txt`. Leia-o com `cat`.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "A injeção",
+      "body": "Envie `127.0.0.1; cat /tmp/redvault-command-flag.txt` como host. A saída da sonda inclui a flag e o objetivo é registrado.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Envie `127.0.0.1` e observe a saída do resolvedor.\n2. Envie `127.0.0.1; id` para confirmar a execução de comandos de shell.\n3. Envie `127.0.0.1; cat /tmp/redvault-command-flag.txt`.\n4. Leia a flag na saída da sonda e envie-a.",
+    "root_cause": "Injeção de comando de sistema operacional. O valor do host é interpolado em uma string executada com `shell=True`. Os metacaracteres do shell encerram o comando pretendido e iniciam comandos arbitrários.",
+    "mitigation": "Evite shells; chame uma API de resolvedor ou execute um binário fixo com um vetor de argumentos e `shell=False`. Valide estritamente a sintaxe do hostname contra uma allowlist, reduza privilégios, use um perfil de sandbox/seccomp e nunca coloque input do usuário em strings de comando de shell."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — OS command injection",
+      "url": "https://portswigger.net/web-security/os-command-injection",
+      "source_type": "official",
+      "description": "Operadores de injeção, variantes cegas e prevenção."
+    },
+    {
+      "title": "OWASP Command Injection Defenses",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Como evitar shells e validar argumentos."
+    },
+    {
+      "title": "CWE-78 — OS Command Injection",
+      "url": "https://cwe.mitre.org/data/definitions/78.html",
+      "source_type": "standard",
+      "description": "Definição da fraqueza e suas consequências."
+    }
+  ]
+}

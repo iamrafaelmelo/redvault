@@ -1,0 +1,79 @@
+{
+  "slug": "access-bfla-admin",
+  "title": "O endpoint oculto",
+  "codename": "GRIDLINE OPS",
+  "summary": "A Gridline esconde da UI uma exportação administrativa, mas nunca verifica o papel (role) do chamador no endpoint. Use a conta de analista com baixo privilégio para alcançar a exportação e capturar a vault note.",
+  "category": "access",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "access-bfla-admin",
+  "estimated_minutes": 15,
+  "xp": 100,
+  "tech": [
+    "Flask",
+    "JSON",
+    "Role checks"
+  ],
+  "tags": [
+    "bfla",
+    "forced-browsing",
+    "missing-authorization"
+  ],
+  "story": "O console de analista da Gridline não mostra nenhum botão de admin. Mesmo assim, o worker de exportação chama `/admin/audit/export` todas as noites. A rota nunca recebeu uma verificação de papel porque 'só a UI de admin aponta para ela'.",
+  "objective": "Faça login como `analyst`, descubra e chame o endpoint de exportação administrativa, e envie o `vault_note`.",
+  "rules": "Use a conta `analyst` já preenchida. Apenas a origem loopback designada está no escopo.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Vault note da exportação de auditoria",
+      "flag_type": "api",
+      "points": 100,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Rotas não são links",
+      "body": "A ausência de um botão não significa que o endpoint não existe. Pense em ações administrativas: exportações, gerenciamento de usuários, logs de auditoria.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Tente o caminho óbvio",
+      "body": "Com um cookie autenticado, faça uma request para `/admin/audit/export`. A rota verifica apenas se existe uma sessão.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Leia o JSON",
+      "body": "`GET /admin/audit/export` retorna o objeto de auditoria, incluindo `vault_note`. Envie esse valor.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Faça login como `analyst` / `analyst123`.\n2. Faça uma request para `/admin/audit/export` com o cookie de sessão.\n3. A response JSON inclui `vault_note` com a flag.\n\n```bash\ncurl -b cookie.txt http://127.0.0.1:PORT/admin/audit/export\n```",
+    "root_cause": "Broken Function Level Authorization. A aplicação confunde autenticação com autorização e depende da descoberta pela UI como controle de acesso. Qualquer usuário autenticado consegue chamar a exportação administrativa.",
+    "mitigation": "Aplique verificações de papel e permissão no lado do servidor para toda rota administrativa, preferencialmente de forma centralizada. Negue por padrão, teste forced browsing com contas de baixo privilégio e trate todo endpoint como descobrível."
+  },
+  "references": [
+    {
+      "title": "OWASP API Security Top 10 2023 — A5: BFLA",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa5-broken-function-level-authorization/",
+      "source_type": "standard",
+      "description": "Falhas de autorização no nível de função."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Bypassing Authorization Schema",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/05-Authorization_Testing/02-Testing_for_Bypassing_Authorization_Schema",
+      "source_type": "standard",
+      "description": "Metodologia de forced browsing."
+    },
+    {
+      "title": "PortSwigger — Access control vulnerabilities",
+      "url": "https://portswigger.net/web-security/access-control",
+      "source_type": "official",
+      "description": "Escalonamento vertical de privilégios e controles baseados em URL."
+    }
+  ]
+}

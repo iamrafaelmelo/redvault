@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Ambientes{% endblock %}
+{% block crumb %}OPERAÇÕES / AMBIENTES{% endblock %}
+{% block page_title %}Ambientes{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <span class="eyebrow">GERENCIADOR DE LABS / SANDBOX LOOPBACK</span>
+    <h2>Superfície de ataque ativa</h2>
+    <p>Cada lab é um processo separado em uma porta loopback dedicada. Esta página é o kill switch central: inspecione, pare ou reinicie qualquer alvo em execução. O histórico é mantido para auditoria.</p>
+  </div>
+  <div class="page-actions">
+    <span class="tag">{{ active_labs|length }}/{{ max_labs }} SLOTS EM USO</span>
+    <a class="btn" href="/challenges">{{ m.icon("target", 13) }} LANÇAR ALVO</a>
+  </div>
+</div>
+
+<div class="env-note">
+  {{ m.icon("shield", 16) }}
+  <span>
+    <strong>Status do isolamento:</strong>
+    {% if bwrap %}bubblewrap disponível — os labs rodam com visão somente leitura do sistema, PID namespace privado, tmpfs, limites de recursos e sem montar seu diretório home.{% else %}<span style="color:var(--red-soft)">bubblewrap não detectado — os labs rodam como processos nativos com limites de recursos. Instale o bwrap ou use Docker antes de tratar isto como um ambiente hardened.</span>{% endif %}
+    Bot: {% if bot.enabled %}Chromium headless habilitado{% else %}desabilitado{% endif %}.
+    Nada está vinculado a uma interface pública. Estes são alvos intencionalmente vulneráveis — nunca exponha as portas.
+  </span>
+</div>
+
+<div class="section-head" style="margin-top:0">
+  <div><span class="eyebrow">PROCESSOS ATIVOS</span><h3>Labs em execução <span id="active-env-count" style="color:var(--dim)">({{ active_labs|length }})</span></h3></div>
+  <span class="mono-label">MÁX. {{ max_labs }} SIMULTÂNEOS</span>
+</div>
+
+{% if active_labs %}
+<div class="env-grid">
+  {% for entry in active_labs %}
+  <article class="env-card">
+    <div class="env-top">
+      <div>
+        <h3>{{ entry.challenge.title }}</h3>
+        <small>{{ {"machine": "MÁQUINA", "realistic": "REALISTA"}.get(entry.challenge.kind, "DESAFIO") }} · PID {{ entry.lab.process.pid }} · RESETS {{ entry.row.reset_count if entry.row else 0 }}</small>
+      </div>
+      <span class="env-state"><span class="status-dot"></span>EM EXECUÇÃO</span>
+    </div>
+    <div class="env-url">{{ m.icon("external", 11) }}<span>http://127.0.0.1:{{ entry.lab.port }}/</span><button class="icon-btn" style="padding:3px" data-copy="http://127.0.0.1:{{ entry.lab.port }}/" type="button">{{ m.icon("copy", 11) }}</button></div>
+    <div class="env-meta">
+      <span>PORTA {{ entry.lab.port }}</span>
+      <span>INÍCIO {{ entry.row.started_at.strftime("%H:%M:%S") if entry.row else "—" }}</span>
+      <span>{{ difficulty_labels.get(entry.challenge.difficulty, entry.challenge.difficulty)|upper }}</span>
+    </div>
+    <div class="env-actions">
+      <a class="btn btn-primary btn-sm" href="http://127.0.0.1:{{ entry.lab.port }}/" target="_blank" rel="noopener">{{ m.icon("external", 11) }} ABRIR</a>
+      <button class="btn btn-sm js-env-action" data-slug="{{ entry.challenge.slug }}" data-action="reset" type="button">{{ m.icon("refresh", 11) }} RESET</button>
+      <button class="btn btn-danger btn-sm js-env-action" data-slug="{{ entry.challenge.slug }}" data-action="stop" type="button">{{ m.icon("stop", 11) }} PARAR</button>
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+{{ m.empty_state("server", "Nenhum ambiente ativo", "Escolha um desafio e inicie o lab. Os processos aparecem aqui com porta, PID e controles de reset.", "/challenges", "EXPLORAR DESAFIOS") }}
+{% endif %}
+
+<section class="section">
+  <div class="section-head">
+    <div><span class="eyebrow">REGISTRO DE SESSÕES</span><h3>Ambientes recentes</h3></div>
+    <span class="mono-label">ÚLTIMOS 24</span>
+  </div>
+  <div class="card" style="overflow-x:auto">
+    <table class="history-table">
+      <thead><tr><th>Início</th><th>Alvo</th><th>Porta</th><th>Status</th><th>Resets</th><th>Observação</th></tr></thead>
+      <tbody>
+        {% for row, challenge in history %}
+        <tr>
+          <td class="mono" style="font-size:9px">{{ row.started_at.strftime("%d/%m %H:%M") }}</td>
+          <td><a href="/{{ 'machines' if challenge.kind != 'challenge' else 'challenges' }}/{{ challenge.slug }}" style="color:var(--text-soft)">{{ challenge.title }}</a></td>
+          <td class="mono" style="font-size:9px">:{{ row.port }}</td>
+          <td><span class="{% if row.status == 'running' %}ok{% else %}bad{% endif %}">{{ row.status|upper }}</span></td>
+          <td class="mono" style="font-size:9px">{{ row.reset_count }}</td>
+          <td class="muted" style="font-size:9px">{{ row.error or "—" }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="muted">Nenhuma sessão ainda.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

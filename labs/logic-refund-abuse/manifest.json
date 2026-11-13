@@ -1,0 +1,78 @@
+{
+  "slug": "logic-refund-abuse",
+  "title": "Loop de reembolso",
+  "codename": "REFUND LOOP",
+  "summary": "O setor de reembolsos credita o pedido mais recente a cada chamada e nunca marca esse pedido como reembolsado. Repita o reembolso e o saldo cresce até o vault pass ficar acessível.",
+  "category": "logic",
+  "difficulty": "medium",
+  "lab_dir": "logic-refund-abuse",
+  "estimated_minutes": 15,
+  "xp": 180,
+  "tech": [
+    "Flask",
+    "Sessions"
+  ],
+  "tags": [
+    "business-logic",
+    "refund-abuse",
+    "workflow",
+    "state"
+  ],
+  "story": "O abastecimento de campo começou com um setor de reembolsos simples: credite o último pedido para que os operadores possam reservar equipamentos rapidamente. A política diz que cada pedido pode ser reembolsado uma vez, mas nada aplica isso. O vault pass custa mais que o saldo da conta.",
+  "objective": "Compre um sensor de 100 créditos, reembolse-o mais de uma vez para inflar o saldo e então compre o vault pass de 200 créditos.",
+  "rules": "Fique na origem loopback atribuída. O estado da conta fica na sessão do lab.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Credencial de acesso ao vault",
+      "flag_type": "bonus",
+      "points": 180,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia a política",
+      "body": "A página da loja diz que cada pedido pode ser reembolsado uma vez. O setor de reembolsos não tem registro de reembolsos além de um contador. Compare o status do histórico de pedidos com o saldo real após um reembolso.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Repita a ação",
+      "body": "Compre um sensor (100 créditos) e faça POST em `/refund` duas vezes. O saldo vai 150 → 50 → 150 → 250 enquanto o pedido ainda aparece como PAID.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Compre o vault pass",
+      "body": "Após dois reembolsos o saldo é 250. Faça POST em `/buy` com `item=vault` para receber a credencial.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "```bash\ncurl -c jar -X POST http://127.0.0.1:PORT/buy -d item=sensor\ncurl -b jar -X POST http://127.0.0.1:PORT/refund\ncurl -b jar -X POST http://127.0.0.1:PORT/refund\ncurl -b jar -X POST http://127.0.0.1:PORT/buy -d item=vault\n```\n\nO segundo reembolso restaura o saldo para 250, o suficiente para o vault pass de 200 créditos.",
+    "root_cause": "A operação de reembolso altera o saldo, mas não o estado do pedido, e não existe idempotency key nem livro de reembolsos. Regras de negócio como um reembolso por pedido existem apenas na documentação.",
+    "mitigation": "Modele reembolsos como transições de estado com um registro de reembolso único por pedido, aplique a regra de forma transacional e exija uma idempotency key para ações que movimentam dinheiro. Adicione reconciliação entre o status do pedido e as mudanças de saldo."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Business logic vulnerabilities",
+      "url": "https://portswigger.net/web-security/logic-flaws",
+      "source_type": "official",
+      "description": "Falhas em que a aplicação não aplica as restrições pretendidas."
+    },
+    {
+      "title": "OWASP WSTG — Business Logic Testing",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10_Business_Logic_Testing/",
+      "source_type": "standard",
+      "description": "Teste de workflows, valores negativos e operações repetidas."
+    },
+    {
+      "title": "CWE-840 — Business Logic Errors",
+      "url": "https://cwe.mitre.org/data/definitions/840.html",
+      "source_type": "standard",
+      "description": "Erros na aplicação de regras de negócio."
+    }
+  ]
+}

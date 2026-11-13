@@ -1,0 +1,81 @@
+{
+  "slug": "logic-signup-bonus-loop",
+  "title": "Loop do bônus de boas-vindas",
+  "codename": "KILN SIGNUP",
+  "summary": "O integração da Kiln concede um bônus de boas-vindas de 250 créditos em GET /api/welcome, mas nada marca o bônus como resgatado. Chame o endpoint repetidamente até a carteira pagar o artisan founder pass de 2000 créditos e seu founder locker.",
+  "category": "logic",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "logic-signup-bonus-loop",
+  "estimated_minutes": 15,
+  "xp": 110,
+  "tech": [
+    "Flask",
+    "Sessions",
+    "REST API"
+  ],
+  "tags": [
+    "business-logic",
+    "value-dispensing",
+    "replay",
+    "onboarding"
+  ],
+  "story": "A Kiln dá a toda nova conta um bônus de boas-vindas para que o primeiro pedido pareça grátis. A biblioteca cliente repete a chamada de integração em redes lentas, então o backend foi escrito para ser tolerante: toda chamada a /api/welcome credita o bônus. A documentação ainda diz 'call once after signup'. O artisan founder pass custa 2000 créditos, exatamente oito bônus a mais do que uma nova conta começa.",
+  "objective": "Resgate o bônus de boas-vindas mais de uma vez para a mesma conta, depois compre o artisan founder pass e leia a flag do founder locker.",
+  "rules": "Use apenas a origem loopback atribuída. Não faça varredura em outras portas.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Flag do founder locker",
+      "flag_type": "root",
+      "points": 110,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "O que marca um bônus como resgatado?",
+      "body": "Olhe o JSON retornado por `GET /api/welcome`. Ele informa um saldo e um contador `welcome_events`, mas a chamada seguinte ainda paga. Nada vincula o bônus à conta.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Repita a chamada de integração",
+      "body": "Requisite `/api/welcome` várias vezes na mesma sessão. Cada resposta adiciona 250 créditos: `for i in $(seq 9); do curl -s -b jar -c jar http://127.0.0.1:PORT/api/welcome; done`.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Gaste o multiplicador",
+      "body": "Quando o saldo passar de 2000, faça `POST /store/buy` com `item=founder-pass`. A página do founder locker contém a flag.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "**Veja a integração.** `GET /` explica que o bônus 'deveria' ser resgatado uma vez; `GET /api/welcome` retorna `{\"bonus\": 250, \"balance\": 250, \"welcome_events\": 1}`.\n\n**Faça o loop.** Nada registra que o bônus foi pago, então chame até a carteira ficar grande o suficiente:\n```bash\nBASE=http://127.0.0.1:PORT\nfor i in $(seq 9); do curl -s -c jar -b jar \"$BASE/api/welcome\"; echo; done\n# {\"ok\":true,\"bonus\":250,\"balance\":2250,\"welcome_events\":9}\n```\nA conta agora tem nove bônus (2250 créditos) em vez de um.\n\n**Resgate o saldo.**\n```bash\ncurl -s -c jar -b jar -X POST -d 'item=founder-pass' \"$BASE/store/buy\"\n```\nA página renderiza o founder locker com a flag e registra o objetivo.",
+    "root_cause": "Falta uma garantia de uso único em uma operação que distribui valor (CWE-837, aplicação imprópria de uma ação única e exclusiva). O bônus de boas-vindas é creditado a cada requisição em vez de ser controlado por estado no servidor, como `bonus_claimed_at`, então a orientação no cliente de 'call once' se torna o único controle.",
+    "mitigation": "Registre a concessão em armazenamento no servidor com uma restrição de unicidade em (account_id, bonus_type) e recuse duplicatas, ou torne o crédito um insert condicional atômico. Trate a chamada de integração como idempotente retornando o resultado já concedido, adicione limites vitalícios de promoção por conta e nunca dependa da UI para aplicar uma ação de uso único."
+  },
+  "references": [
+    {
+      "title": "OWASP — Business Logic Security Cheat Sheet",
+      "url": "https://cheatsheetseries.owasp.org/cheatsheets/Business_Logic_Security_Cheat_Sheet.html",
+      "source_type": "standard",
+      "description": "Rejeite replays de etapas concluídas e proteja recursos que distribuem valor, como bônus de cadastro."
+    },
+    {
+      "title": "CWE-837 — Improper Enforcement of a Single, Unique Action",
+      "url": "https://cwe.mitre.org/data/definitions/837.html",
+      "source_type": "standard",
+      "description": "Fraqueza por trás de operações de uso único que podem ser reexecutadas, como bônus e vouchers."
+    },
+    {
+      "title": "PortSwigger — Business logic vulnerabilities",
+      "url": "https://portswigger.net/web-security/logic-flaws",
+      "source_type": "official",
+      "description": "Como premissas falhas sobre o comportamento do usuário permitem extração repetida de valor."
+    }
+  ]
+}

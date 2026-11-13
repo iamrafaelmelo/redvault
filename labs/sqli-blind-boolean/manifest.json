@@ -1,0 +1,79 @@
+{
+  "slug": "sqli-blind-boolean",
+  "title": "O cofre de um bit",
+  "codename": "GREYLOCK DIRECTORY",
+  "summary": "A busca de diretório da Greylock só responde se uma conta existe. O username é concatenado no SQL, então um predicado booleano sobre o cofre oculto transforma esse único bit em uma extração caractere por caractere.",
+  "category": "sqli",
+  "difficulty": "medium",
+  "kind": "challenge",
+  "lab_dir": "sqli-blind-boolean",
+  "estimated_minutes": 26,
+  "xp": 210,
+  "tech": [
+    "Flask",
+    "SQLite",
+    "Boolean SQLi"
+  ],
+  "tags": [
+    "sql-injection",
+    "blind",
+    "boolean-oracle"
+  ],
+  "story": "O diretório de funcionários da Greylock é uma pequena busca interna: entra um username, saem duas respostas possíveis. Os erros são engolidos e as linhas nunca são exibidas. Ao lado da tabela de usuários há um cofre com um único segredo, e a resposta binária da busca é suficiente para lê-lo.",
+  "objective": "Use o parâmetro username de `/lookup` para transformar a resposta found / not-found em um oracle booleano sobre `vault.secret`, recupere a flag e submeta.",
+  "rules": "Fique na origem loopback atribuída. O cofre não é roteável diretamente; o oracle é o caminho pretendido.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Segredo do cofre do diretório",
+      "flag_type": "hidden",
+      "points": 210,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Calibre o oracle",
+      "body": "Busque por `alice` e depois por `nobody`. A página retorna exatamente `Account found` ou `No account found`, mesmo quando o SQL gera erro.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Anexe um predicado",
+      "body": "Feche o username entre aspas e anexe uma condição sobre o cofre. Por exemplo, `alice' AND (SELECT substr(secret,1,1) FROM vault)='R' -- ` retorna found quando o primeiro caractere é R e not found caso contrário.",
+      "cost": 20
+    },
+    {
+      "level": 3,
+      "title": "Automatize a extração",
+      "body": "Itere sobre o comprimento do segredo e teste cada caractere com `substr`. Defina o username do payload como `alice` para que a linha base exista, e use `unicode(substr(...))` se preferir comparar números. Extraia até a chave de fechamento.",
+      "cost": 25
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Confirme o oracle com `/lookup?username=alice` e `/lookup?username=nobody`.\n2. Injete uma condição verdadeira para o primeiro caractere do segredo:\n\n```text\n/lookup?username=alice' AND (SELECT substr(secret,1,1) FROM vault)='R' -- \n```\n\n3. Para cada posição, teste caracteres candidatos e mantenha o que retorna `Account found`.\n4. Pare quando a string recuperada terminar em `}` e submeta o valor `RV{...}`.\n\nUm pequeno loop em Python contra o endpoint é suficiente; nenhuma linha precisa ser exibida.",
+    "root_cause": "A busca concatena o username numa string SQL. Embora a aplicação oculte linhas e erros, as duas respostas distintas preservam um bit de verdade SQL controlado pelo atacante, o que é suficiente para extração blind booleana de qualquer tabela legível.",
+    "mitigation": "Use queries parametrizadas e trate o username como dado. Dê à conta de banco da busca acesso apenas à tabela de usuários, evite expor estados distintos de existência ou erro quando possível, e adicione rate limit e monitoramento como defesa em profundidade, não como correção principal."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Blind SQL injection",
+      "url": "https://portswigger.net/web-security/sql-injection/blind",
+      "source_type": "official",
+      "description": "Oracles booleanos e baseados em tempo para extrair dados um bit por vez."
+    },
+    {
+      "title": "OWASP WSTG — Testing for SQL Injection",
+      "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/05-Testing_for_SQL_Injection",
+      "source_type": "standard",
+      "description": "Procedimentos de detecção e exploração para injeção blind."
+    },
+    {
+      "title": "CWE-89 — SQL Injection",
+      "url": "https://cwe.mitre.org/data/definitions/89.html",
+      "source_type": "standard",
+      "description": "Referência canônica da fraqueza."
+    }
+  ]
+}

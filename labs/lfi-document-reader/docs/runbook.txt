@@ -1,0 +1,8 @@
+MIGRATION RUNBOOK
+
+- Reader root: the local docs directory.
+- State mount: /state
+- The application can read its own state, but clients should never be able to
+  traverse outside the docs directory.
+
+TODO: replace open() with a basename-only lookup.

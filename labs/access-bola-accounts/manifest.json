@@ -1,0 +1,79 @@
+{
+  "slug": "access-bola-accounts",
+  "title": "Objeto de interesse",
+  "codename": "VAULTLINE API",
+  "summary": "A API de parceiros da Vaultline autentica o chamador, mas nunca verifica qual objeto de conta foi solicitado. Percorra os IDs de conta, encontre o administrador e extraia a nota privada.",
+  "category": "access",
+  "difficulty": "easy",
+  "kind": "challenge",
+  "lab_dir": "access-bola-accounts",
+  "estimated_minutes": 16,
+  "xp": 100,
+  "tech": [
+    "Flask",
+    "JSON API",
+    "Sessions"
+  ],
+  "tags": [
+    "bola",
+    "api",
+    "authorization"
+  ],
+  "story": "A Vaultline expõe uma API mobile limpa. O console mostra apenas o registro de Alice. A API aceita qualquer ID de conta numérico e retorna o que o banco de dados tiver.",
+  "objective": "Autentique-se como `alice`, enumere `/api/v1/accounts/<id>` e envie o `private_note` da conta do administrador.",
+  "rules": "As credenciais preenchidas do lab são `alice` / `alice123`. Fique na porta loopback designada.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Nota privada do administrador",
+      "flag_type": "api",
+      "points": 100,
+      "required": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Leia o console",
+      "body": "Faça login e abra `/api/v1/accounts/1`. O objeto JSON é buscado diretamente e o cookie de sessão é a única proteção.",
+      "cost": 10
+    },
+    {
+      "level": 2,
+      "title": "Tente outro objeto",
+      "body": "Troque `1` por `2`. A API retorna a conta mesmo que o console nunca tenha apontado para ela.",
+      "cost": 15
+    },
+    {
+      "level": 3,
+      "title": "Extraia a nota",
+      "body": "`GET /api/v1/accounts/2` retorna o objeto do admin com um `private_note` contendo a flag.",
+      "cost": 20
+    }
+  ],
+  "solution": {
+    "walkthrough": "1. Faça login como `alice` / `alice123`.\n2. Faça uma request para `/api/v1/accounts/1` e observe o schema JSON.\n3. Faça uma request para `/api/v1/accounts/2` com a mesma sessão.\n4. A response pertence a `admin` e contém `private_note` com a flag.\n\n```bash\ncurl -b cookie.txt http://127.0.0.1:PORT/api/v1/accounts/2\n```",
+    "root_cause": "Broken Object Level Authorization (BOLA). A autenticação prova quem está chamando, não quais objetos essa pessoa pode ler. O endpoint busca o objeto pelo ID fornecido pelo chamador e o serializa diretamente.",
+    "mitigation": "Derive os IDs de objetos acessíveis a partir do subject autenticado, ou aplique uma verificação explícita de propriedade/tenant antes da serialização. Use middleware de autorização com negação por padrão, teste toda rota de objeto com IDs de outro usuário e retorne 404 para objetos não autorizados."
+  },
+  "references": [
+    {
+      "title": "OWASP API Security Top 10 2023 — A1: BOLA",
+      "url": "https://owasp.org/API-Security/editions/2023/en/0xa1-broken-object-level-authorization/",
+      "source_type": "standard",
+      "description": "Referência principal para autorização de objetos em APIs."
+    },
+    {
+      "title": "PortSwigger — Access control vulnerabilities",
+      "url": "https://portswigger.net/web-security/access-control",
+      "source_type": "official",
+      "description": "Problemas de privilégio horizontal e vertical."
+    },
+    {
+      "title": "OWASP ASVS 5.0 — Authorization",
+      "url": "https://owasp.org/www-project-application-security-verification-standard/",
+      "source_type": "standard",
+      "description": "Requisitos de verificação para controle de acesso."
+    }
+  ]
+}

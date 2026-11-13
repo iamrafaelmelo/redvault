@@ -1,0 +1,273 @@
+{% extends "lab_base.html" if lab_mode else "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}{{ challenge.title }}{% endblock %}
+{% block crumb %}{{ "MÁQUINA" if challenge.kind != "challenge" else "DESAFIO" }} / {{ challenge.category.name|upper }}{% endblock %}
+{% block page_title %}{{ challenge.title }}{% endblock %}
+{% block body_attrs %}data-challenge-slug="{{ challenge.slug }}"{% endblock %}
+
+{% block content %}
+<a class="detail-back" href="/{{ 'machines' if challenge.kind != 'challenge' else 'challenges' }}">
+  {{ m.icon("arrow-right", 12, "rot180") }} VOLTAR PARA {{ "MÁQUINAS" if challenge.kind != "challenge" else "DESAFIOS" }}
+</a>
+
+<section class="detail-hero">
+  <div class="detail-top">
+    {{ m.difficulty_badge(challenge.difficulty, difficulty_labels[challenge.difficulty]) }}
+    <span class="cat-chip">{{ m.category_icon(challenge.category.slug, 12) }} {{ challenge.category.name }}</span>
+    <span class="tag">{{ {"machine": "MÁQUINA", "realistic": "REALISTA"}.get(challenge.kind, "DESAFIO") }}</span>
+    {% if completed %}<span class="tag" style="color:var(--green);border-color:var(--green-dim)">● CONCLUÍDO</span>{% endif %}
+    {% if not lab_mode %}
+    <a class="tag" style="margin-left:auto" href="/lab/{{ challenge.slug }}" title="Abrir em página dedicada">
+      {{ m.icon("external", 11) }} PÁGINA DO DESAFIO
+    </a>
+    {% endif %}
+  </div>
+  <div class="codename">ALVO // {{ challenge.slug|upper }}{% if challenge.codename %} · {{ challenge.codename|upper }}{% endif %}</div>
+  <div class="detail-title-row">
+    <div>
+      <h2>{{ challenge.title }}</h2>
+      <p class="detail-summary">{{ challenge.summary }}</p>
+    </div>
+  </div>
+  <div class="tech-row">
+    {% for tech in challenge.tech %}<span class="tech-chip">{{ tech }}</span>{% endfor %}
+    {% for tag in challenge.tags %}<span class="tech-chip">#{{ tag }}</span>{% endfor %}
+  </div>
+  <div class="detail-hero-meta">
+    <div class="hero-meta-item"><span>RECOMPENSA</span><strong>{{ challenge.xp }} XP</strong></div>
+    <div class="hero-meta-item"><span>ESTIMATIVA</span><strong>{{ challenge.estimated_minutes }} MIN</strong></div>
+    <div class="hero-meta-item"><span>FLAGS CAPTURADAS</span><strong><span id="solved-count">{{ solved_flags|length }}</span>/{{ challenge.flags|length }}</strong></div>
+    <div class="hero-meta-item"><span>TEMPO NO ALVO</span><strong id="time-spent">{{ duration(progress.time_spent_seconds) }}</strong></div>
+    <div class="hero-meta-item"><span>HINTS USADOS</span><strong><span id="hints-used">{{ progress.hints_used }}</span>/{{ challenge.hints|length }}</strong></div>
+    {% if completed %}<div class="hero-meta-item"><span>XP CONCEDIDO</span><strong class="green">+{{ progress.xp_awarded }}</strong></div>{% endif %}
+  </div>
+</section>
+
+{% if completed %}
+<div class="flash flash-ok" style="margin-top:14px">
+  {{ m.icon("check", 16) }}
+  <span><strong>Alvo concluído.</strong> Todas as flags obrigatórias foram aceitas{% if progress.completed_without_hints %} sem um único hint{% endif %}. Volte ao lab se quiser reproduzir a cadeia ou testar a hipótese de mitigação.</span>
+</div>
+{% endif %}
+
+<div class="detail-grid">
+  <div class="detail-main">
+    <section class="detail-panel">
+      <div class="detail-panel-head">
+        <h3>{{ m.icon("terminal", 14) }} BRIEFING</h3>
+        <span class="mono-label">LEIA PRIMEIRO</span>
+      </div>
+      <div class="detail-panel-body prose">
+        {{ md(challenge.story_md) }}
+        {% if challenge.objective_md %}
+        <h3 style="color:var(--red-soft);font-size:12px;font-family:var(--font-mono);letter-spacing:.08em;margin-top:22px">OBJETIVO</h3>
+        {{ md(challenge.objective_md) }}
+        {% endif %}
+        {% if challenge.rules_md %}
+        <h3 style="font-size:12px;font-family:var(--font-mono);letter-spacing:.08em;margin-top:22px">REGRAS DE ENGAJAMENTO</h3>
+        {{ md(challenge.rules_md) }}
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="detail-panel" id="hints">
+      <div class="detail-panel-head">
+        <h3>{{ m.icon("unlock", 14) }} HINTS PROGRESSIVOS</h3>
+        <span class="mono-label" id="hint-total" data-total="{{ challenge.hints|length }}">{{ challenge.hints|length }} NÍVEIS · <span id="hint-penalty">{{ "-" ~ progress.hint_penalty ~ " XP" if progress.hint_penalty else "SEM PENALIDADE AINDA" }}</span></span>
+      </div>
+      <div class="detail-panel-body">
+        <p class="muted" style="font-size:11px;margin:0 0 12px">Os hints são desbloqueados individualmente. Cada um custa XP deste alvo e fica registrado no seu histórico. Nada é revelado até você pedir.</p>
+        <div class="hint-stack">
+          {% for hint in challenge.hints %}
+          {% set unlocked = hint.id in unlocked_hints %}
+          <div class="hint-card {% if unlocked %}unlocked{% endif %}">
+            <div class="hint-summary">
+              <span class="hint-level">{{ "%02d"|format(hint.level) }}</span>
+              <span class="hint-title">{{ hint.title }}</span>
+              <span class="hint-cost {% if unlocked %}paid{% endif %}">{% if unlocked %}USADO{% else %}-{{ hint.cost }} XP{% endif %}</span>
+            </div>
+            {% if unlocked %}
+            <div class="hint-body prose">{{ md(hint.body_md) }}</div>
+            {% else %}
+            <div class="hint-actions">
+              <button class="btn btn-sm js-unlock-hint" data-slug="{{ challenge.slug }}" data-level="{{ hint.level }}">
+                {{ m.icon("unlock", 12) }} DESBLOQUEAR HINT {{ hint.level }}
+              </button>
+            </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-panel" id="solution">
+      <div class="detail-panel-head">
+        <h3>{{ m.icon("book", 14) }} WALKTHROUGH E CAUSA RAIZ</h3>
+        <span class="mono-label">PÓS-AÇÃO</span>
+      </div>
+      <div class="detail-panel-body">
+        <div class="solution-gate" id="solution-gate" {% if progress.solution_unlocked %}hidden{% endif %}>
+          <p class="solution-locked-copy" {% if completed %}hidden{% endif %} style="margin:0">
+            {% if completed %}
+            Alvo concluído. O walkthrough está disponível quando você quiser comparar anotações.
+            {% else %}
+            O walkthrough completo fica criptografado até todos os {{ challenge.hints|length }} hints serem desbloqueados. Resolva sem ler a resposta antes — é aí que o aprendizado acontece.
+            {% endif %}
+          </p>
+          <button class="btn btn-danger" id="solution-unlock" data-slug="{{ challenge.slug }}"
+            {% if not completed and not all_hints_unlocked %}hidden{% endif %}>
+            {{ m.icon("unlock", 13) }} DESBLOQUEAR WALKTHROUGH
+          </button>
+        </div>
+        <div id="solution-slot" class="solution-content" {% if not progress.solution_unlocked %}hidden{% endif %}>
+          <div class="solution-section">
+            <h4>01 / WALKTHROUGH DE EXPLORAÇÃO</h4>
+            <div class="prose" id="solution-walkthrough">{% if progress.solution_unlocked and challenge.solution %}{{ md(challenge.solution.walkthrough_md) }}{% endif %}</div>
+          </div>
+          <div class="solution-section">
+            <h4>02 / CAUSA RAIZ</h4>
+            <div class="prose" id="solution-root">{% if progress.solution_unlocked and challenge.solution %}{{ md(challenge.solution.root_cause_md) }}{% endif %}</div>
+          </div>
+          <div class="solution-section">
+            <h4>03 / MITIGAÇÃO</h4>
+            <div class="prose" id="solution-mitigation">{% if progress.solution_unlocked and challenge.solution %}{{ md(challenge.solution.mitigation_md) }}{% endif %}</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-panel">
+      <div class="detail-panel-head">
+        <h3>{{ m.icon("book", 14) }} REFERÊNCIAS</h3>
+        <span class="mono-label">{{ challenge.references|length }} FONTES</span>
+      </div>
+      <div class="references">
+        {% for ref in challenge.references %}
+        <div class="ref-item">
+          {{ m.icon("external", 14) }}
+          <div class="ref-main">
+            <a href="{{ ref.url }}" target="_blank" rel="noopener noreferrer">{{ ref.title }}</a>
+            <small>{{ ref.description or ref.url }}</small>
+          </div>
+          <span class="ref-type">{{ ref.source_type }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <aside class="detail-side">
+    <section class="lab-control {% if lab %}live{% endif %}" id="lab-control" data-slug="{{ challenge.slug }}">
+      <div class="lab-control-head">
+        <h3>{{ m.icon("server", 13) }} AMBIENTE DO LAB</h3>
+        <span class="lab-state {% if lab %}live{% endif %}">
+          <span class="status-dot"></span>{{ "EM EXECUÇÃO" if lab else "PARADO" }}
+        </span>
+      </div>
+      <div class="lab-control-body">
+        <p>Uma instância descartável do alvo. O processo roda em sandbox e as flags pertencem a este desafio. Inicie, aponte o Burp ou o curl para a porta e teste a hipótese.</p>
+        {% if lan_share %}
+        <p class="lab-lan-note">{{ m.icon("server", 12) }} Este lab aceita conexões da sua rede local: outros computadores podem atacar o endereço acima, sem VPN.</p>
+        {% endif %}
+        <div class="lab-url-row">
+          <div class="lab-url">{{ m.icon("external", 12) }}<span>{{ lab_url or "não está rodando" }}</span></div>
+          {% if lab %}<button class="icon-btn" type="button" data-copy="{{ lab_url }}" title="Copiar lab URL">{{ m.icon("copy", 13) }}</button>{% endif %}
+        </div>
+        <div class="btn-row">
+          <a class="btn btn-primary js-lab-open" href="{{ lab_url or '#' }}" target="_blank" rel="noopener" {% if not lab %}hidden{% endif %}>{{ m.icon("external", 12) }} ABRIR ALVO</a>
+          <button class="btn btn-primary js-lab-start" type="button" {% if lab %}hidden{% endif %}>{{ m.icon("play", 12) }} INICIAR LAB</button>
+          <button class="btn btn-ghost js-lab-stop" type="button" {% if not lab %}hidden{% endif %}>{{ m.icon("stop", 12) }} PARAR</button>
+          <button class="btn btn-ghost js-lab-reset" type="button" {% if not lab %}hidden{% endif %}>{{ m.icon("refresh", 12) }} RESET</button>
+        </div>
+        <div class="lab-note">
+          {{ m.icon("shield", 13) }}
+          <span>Apenas este alvo é alcançável na porta atribuída. Sistemas externos nunca estão no escopo. O reset limpa o estado interno do lab e as evidências de objetivo.</span>
+        </div>
+        <p class="lab-lifetime">Desligamento automático: {{ lab_idle_minutes }} min sem tráfego ou {{ lab_lifetime_minutes // 60 }}h de vida, o que vier primeiro. Tráfego vindo de outro computador conta como atividade.</p>
+        <div class="lab-meta">
+          <span>PORTA <b id="lab-port">{% if lab %}:{{ lab.port }}{% else %}—{% endif %}</b></span>
+          <span>INÍCIO <b id="lab-started">{% if lab %}{{ lab.started_at.strftime("%H:%M:%S") }}{% else %}—{% endif %}</b></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-panel">
+      <div class="detail-panel-head">
+        <h3>{{ m.icon("flag", 14) }} FLAGS</h3>
+        <span class="mono-label"><span class="js-solved-count">{{ solved_flags|length }}</span>/{{ challenge.flags|length }} CAPTURADAS</span>
+      </div>
+      <div class="flag-list">
+        {% for flag in challenge.flags %}
+        {% set is_solved = flag.key in solved_flags %}
+        {% set objective = objective_states.get(flag.key) %}
+        <div class="flag-row" data-flag="{{ flag.key }}">
+          <div class="flag-head">
+            <div class="flag-label">{{ m.icon("flag", 12) }} {{ flag.label }} <span class="flag-type">{{ flag.flag_type }}</span></div>
+            <span class="flag-state {% if is_solved %}solved{% endif %}">{% if is_solved %}● CAPTURADA{% else %}○ ABERTA{% endif %}</span>
+          </div>
+          {% if flag.requires_objective and not is_solved %}
+            {% if objective and objective.met %}
+            <div class="objective-warning objective-ok">{{ m.icon("check", 11) }} Estado de exploração registrado. Flag aceita.</div>
+            {% else %}
+            <div class="objective-warning">{{ m.icon("alert", 11) }} Flag atrelada ao estado: o lab precisa registrar o exploit antes de aceitar o envio.</div>
+            {% endif %}
+          {% endif %}
+          <form class="flag-form js-flag-form" data-slug="{{ challenge.slug }}" data-flag="{{ flag.key }}">
+            <input type="text" name="value" placeholder="{% if is_solved %}capturada{% else %}RV{…}{% endif %}" autocomplete="off" spellcheck="false" {% if is_solved %}disabled{% endif %} aria-label="{{ flag.label }}">
+            <button class="btn {% if is_solved %}btn-ghost{% else %}btn-primary{% endif %}" type="submit" {% if is_solved %}disabled{% endif %}>{% if is_solved %}CAPTURADA{% else %}ENVIAR{% endif %}</button>
+          </form>
+          <div class="flag-result"></div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="detail-panel">
+      <div class="detail-panel-head">
+        <h3>{{ m.icon("terminal", 14) }} ANOTAÇÕES DO OPERADOR</h3>
+        <span class="mono-label">SÓ LOCAL</span>
+      </div>
+      <div class="detail-panel-body">
+        <textarea id="notes-area" class="notes-area" rows="5" placeholder="Requests, hipóteses, evidências, becos sem saída…">{{ progress.notes }}</textarea>
+        <div class="notes-foot">
+          <span class="notes-status">{{ "salvo" if progress.notes else "não salvo" }}</span>
+          <button class="btn btn-sm js-save-notes" data-slug="{{ challenge.slug }}" type="button">{{ m.icon("check", 11) }} SALVAR</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="detail-panel">
+      <div class="detail-panel-head">
+        <h3>DADOS DO ALVO</h3>
+        {{ m.category_icon(challenge.category.slug, 14) }}
+      </div>
+      <div class="detail-panel-body">
+        <div class="meta-block">
+          <div class="meta-line"><span>Categoria</span><strong>{{ challenge.category.name }}</strong></div>
+          <div class="meta-line"><span>Dificuldade</span><strong>{{ difficulty_labels[challenge.difficulty] }}</strong></div>
+          <div class="meta-line"><span>Tipo</span><strong>{{ {"machine": "Máquina", "realistic": "Realista"}.get(challenge.kind, "Desafio") }}</strong></div>
+          <div class="meta-line"><span>Base XP</span><strong>{{ challenge.xp }}</strong></div>
+          <div class="meta-line"><span>Hints usados</span><strong>{{ progress.hints_used }}/{{ challenge.hints|length }}</strong></div>
+          <div class="meta-line"><span>Tentativas</span><strong>{{ progress.attempts }}</strong></div>
+          <div class="meta-line"><span>Aberto em</span><strong>{{ progress.started_at.strftime("%d %b %Y") }}</strong></div>
+        </div>
+      </div>
+    </section>
+
+    {% if submissions %}
+    <section class="detail-panel">
+      <div class="detail-panel-head"><h3>REGISTRO DE ENVIOS</h3><a class="link-arrow" href="/profile">COMPLETO</a></div>
+      <div class="panel-body" style="padding:10px 14px">
+        {% for sub in submissions %}
+        <div class="meta-line" style="margin-bottom:6px">
+          <span class="mono" style="font-size:8px">{{ sub.created_at.strftime("%H:%M") }} · {{ sub.flag_key }}</span>
+          <strong class="{% if sub.status == 'correct' %}green{% else %}red{% endif %}" style="font-size:8px">{{ "CORRETA" if sub.status == "correct" else "INCORRETA" }}</strong>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}
