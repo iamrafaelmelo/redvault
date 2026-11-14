@@ -38,7 +38,7 @@ python3 -m pip install --upgrade pip
 python3 -m pip install -r requirements.txt
 ```
 
-The main dependencies are FastAPI, Uvicorn, SQLAlchemy, Jinja2, bcrypt, httpx, PyYAML, Markdown, Flask (inside each lab), and Selenium for the browser bot.
+The main dependencies are FastAPI, Uvicorn, SQLAlchemy, Jinja2, httpx, PyYAML, Markdown, Flask (inside each lab), and Selenium for the browser bot. Passwords are not used (single local operator), so no password-hashing library is required.
 
 ## 3. Start the platform
 
@@ -59,6 +59,19 @@ Open **http://127.0.0.1:8000**. On first run:
 2. The local operator (`operator`) is created automatically; there is no login screen and no password.
 3. Challenge and machine manifests are seeded automatically.
 4. Use **Challenges → Start lab**, then open the shown `127.0.0.1:<port>` URL.
+
+The library (Knowledge Base) starts empty except for the 24 documents written for
+REDVAULT. Import the external sources on your own machine, from your own clones:
+
+```bash
+git clone --depth 1 https://github.com/swisskyrepo/PayloadsAllTheThings /tmp/patt
+git clone --depth 1 --branch pt https://github.com/HackTricks-wiki/hacktricks /tmp/hacktricks-pt
+python3 scripts/import_kb.py --source payloads-all-the-things --path /tmp/patt --rebuild-index
+python3 scripts/import_kb.py --source hacktricks --path /tmp/hacktricks-pt --rebuild-index
+```
+
+HackTricks is CC BY-NC 4.0: the import is for non-commercial, attributed use and
+stays on your machine (see `/kb/sources` for the licence of every source).
 
 `/login` and `/setup` only redirect to the dashboard. The only session state is a per-browser cookie that carries the CSRF token; **Settings → Rotate session** issues a new token and signs out other browsers. Because there is no authentication, never bind the platform to a non-loopback address (see `REDVAULT_HOST` below).
 

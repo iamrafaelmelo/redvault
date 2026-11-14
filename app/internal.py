@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from fastapi import Depends
@@ -16,6 +18,8 @@ from .flags import mark_objective
 from .lab_manager import lab_manager
 from .traffic import lab_traffic
 from .models import Activity, Challenge, LabSession, ObjectiveState
+
+logger = logging.getLogger("redvault.internal")
 
 router = APIRouter(prefix="/internal", include_in_schema=False)
 
@@ -72,7 +76,17 @@ async def lab_callback(request: Request, db: Session = Depends(get_db)):
     except Exception as exc:
         raise HTTPException(status_code=400, detail="corpo inválido") from exc
     token = str(body.get("token", ""))
-    row = _session_from_token(db, token)
+    try:
+        row = _session_from_token(db, token)
+    except HTTPException as exc:
+        # The lab only logs a boolean, so the reason has to reach the server log.
+        # uvicorn only shows ``redvault.*`` loggers at WARNING, so this line is
+        # visible in the standard service log.
+        logger.warning(
+            "lab-callback rejected (HTTP %s): session=%s key=%r", exc.status_code,
+            body.get("session"), body.get("flag_key"),
+        )
+        raise
     challenge = db.get(Challenge, row.challenge_id)
     if not challenge:
         raise HTTPException(status_code=404, detail="desafio ausente")
@@ -119,7 +133,13 @@ async def run_lab_bot(request: Request, db: Session = Depends(get_db)):
     if not lab:
         raise HTTPException(status_code=409, detail="lab não está ativo")
     try:
-        result = run_bot(target, expected_port=lab.port, cookies=safe_cookies)
+        # Selenium is blocking for as long as the browser is open (5+ s). Running
+        # it on the event loop froze the whole platform: the lab's own callback
+        # (XSS -> /collect -> objective) timed out while the bot was still
+        # visiting, so no XSS lab could ever register its objective.
+        result = await run_in_threadpool(
+            run_bot, target, expected_port=lab.port, cookies=safe_cookies
+        )
     except BotError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     return result

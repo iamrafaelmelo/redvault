@@ -20,6 +20,18 @@ from .internal import router as internal_router
 
 logger = logging.getLogger("redvault")
 
+# uvicorn configures only its own loggers; without an explicit handler the
+# ``redvault.*`` lines (learning-path warnings, rejected lab callbacks) are
+# dropped by Python's last-resort handler below WARNING and invisible even at
+# WARNING when the app runs under another launcher. ``basicConfig`` is a no-op
+# when a handler already exists, so tests and uvicorn keep their own output.
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter("%(levelname)s:     [%(name)s] %(message)s"))
+    logger.addHandler(_handler)
+    logger.setLevel(logging.INFO)
+    logger.propagate = False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

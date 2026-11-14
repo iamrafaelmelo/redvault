@@ -35,6 +35,7 @@ from app.models import (  # noqa: E402
     AuthSession,
     Challenge,
     Flag,
+    LabSession,
     ObjectiveState,
     Progress,
     User,
@@ -346,6 +347,119 @@ def test_internal_callback_rejects_unknown_token(client):
         json={"token": "not-a-real-lab-token", "flag_key": "flag"},
     )
     assert response.status_code == 403
+
+
+def test_started_lab_receives_its_own_session_id(session):
+    """The lab must receive its own session id, not the placeholder 0.
+
+    Regression: the LabSession row used to be created *after* the process was
+    spawned, so every lab started with ``LAB_SESSION_ID=0`` and each
+    ``lab.objective()`` call was rejected with 403. Every lab then refused its
+    objective-gated flag ("estado de exploração exigido"), which broke 49 of
+    the 97 labs through the real UI while the exploit tests still passed.
+    """
+    client = session["client"]
+    csrf = session["csrf"]
+    slug = "ssrf-image-fetcher"
+
+    started = client.post(f"/api/challenges/{slug}/start", headers=api_headers(csrf))
+    assert started.status_code == 200, started.text
+    port = started.json()["port"]
+    try:
+        with SessionLocal() as db:
+            row = (
+                db.query(LabSession)
+                .filter_by(port=port)
+                .order_by(LabSession.id.desc())
+                .first()
+            )
+        assert row.status == "running" and row.id > 0
+        env = _process_env(row.pid)
+        assert env["LAB_SESSION_ID"] == str(row.id)
+        assert env["LAB_SESSION_ID"] != "0"
+        assert env["LAB_CALLBACK_TOKEN"]
+    finally:
+        client.post(f"/api/challenges/{slug}/stop", headers=api_headers(csrf))
+
+
+def test_lab_callback_records_the_objective(session):
+    """End of the same chain: the token the lab holds is accepted by the API."""
+    client = session["client"]
+    csrf = session["csrf"]
+    slug = "ssrf-image-fetcher"
+    started = client.post(f"/api/challenges/{slug}/start", headers=api_headers(csrf))
+    port = started.json()["port"]
+    try:
+        with SessionLocal() as db:
+            # Ports are reused between sessions; the live row is the latest one.
+            row = (
+                db.query(LabSession)
+                .filter_by(port=port)
+                .order_by(LabSession.id.desc())
+                .first()
+            )
+        token = _process_env(row.pid)["LAB_CALLBACK_TOKEN"]
+        response = client.post(
+            "/internal/lab-callback",
+            json={"token": token, "flag_key": "flag", "evidence": "integration test"},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["objective"] == "flag"
+        with SessionLocal() as db:
+            state = (
+                db.query(ObjectiveState)
+                .filter_by(user_id=row.user_id, challenge_id=row.challenge_id, flag_key="flag")
+                .order_by(ObjectiveState.id.desc())
+                .first()
+            )
+            assert state.met is True
+    finally:
+        client.post(f"/api/challenges/{slug}/stop", headers=api_headers(csrf))
+
+
+def test_concurrent_start_stop_does_not_crash_the_manager(session):
+    """Two lab operations at once must not corrupt the registry.
+
+    Regression: ``active_for`` iterated the live ``self._labs`` dict while the
+    UI's status poller and a start/stop mutated it, raising "dictionary changed
+    size during iteration" and taking the whole platform down (500 on every
+    page). The iteration now runs over a snapshot.
+    """
+    import threading
+
+    from app.lab_manager import lab_manager
+
+    client = session["client"]
+    csrf = session["csrf"]
+    slug = "recon-cloud-listing"
+    errors: list[BaseException] = []
+
+    def churn() -> None:
+        try:
+            for _ in range(25):
+                lab_manager.active_labs()
+                client.get(f"/api/challenges/{slug}/status")
+        except BaseException as exc:  # noqa: BLE001 - collected for the assert
+            errors.append(exc)
+
+    client.post(f"/api/challenges/{slug}/start", headers=api_headers(csrf))
+    threads = [threading.Thread(target=churn) for _ in range(4)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=30)
+    client.post(f"/api/challenges/{slug}/stop", headers=api_headers(csrf))
+    assert errors == []
+    assert client.get("/health").status_code == 200
+
+
+def _process_env(pid: int) -> dict[str, str]:
+    """Read the environment the lab process was started with (Linux only)."""
+    environ = open(f"/proc/{pid}/environ", "rb").read().split(b"\0")
+    return {
+        key.decode(): value.decode()
+        for key, _, value in (item.partition(b"=") for item in environ if b"=" in item)
+    }
 
 
 # ---------------------------------------------------------------------------

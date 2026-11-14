@@ -103,12 +103,17 @@ def run_analytics(sort: str) -> dict[str, object]:
     terms = " ".join(_WORD.findall(sort or "")) or "id"
     sql = f"SELECT name, category FROM products ORDER BY {terms} ASC"
     rows = conn.execute(sql).fetchall()
-    print("ANALYTICS-DBG", sql, flush=True)
     return {
         "job": uuid.uuid4().hex[:8],
         "sql": sql,
         "ranked": [{"rank": i + 1, "name": r[0], "category": r[1]} for i, r in enumerate(rows)],
     }
+
+
+def direction_clause(raw: str) -> str:
+    # The storefront keeps a custom ordering suffix in the direction field, so
+    # anything that is not plain "desc" is passed through verbatim.
+    return "desc" if raw.lower() == "desc" else raw
 
 
 def render_catalog() -> object:
@@ -118,7 +123,7 @@ def render_catalog() -> object:
     error = ""
     rows: list[sqlite3.Row] = []
     try:
-        rows = query_products(sql_sort, "desc" if direction.lower() == "desc" else "asc")
+        rows = query_products(sql_sort, direction_clause(direction))
     except sqlite3.Error as exc:
         error = f"<div class='flash err'>Could not sort the catalog: {exc}</div>"
     items = "".join(
@@ -166,7 +171,7 @@ def api_products():
     direction = request.args.get("dir", "asc")
     sql_sort = normalize_sort(sort)
     try:
-        rows = query_products(sql_sort, "desc" if direction.lower() == "desc" else "asc")
+        rows = query_products(sql_sort, direction_clause(direction))
     except sqlite3.Error as exc:
         return {"error": str(exc)}, 500
     return {

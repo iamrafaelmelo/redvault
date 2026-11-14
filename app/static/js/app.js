@@ -340,6 +340,9 @@
     if (port) port.textContent = active ? `:${data.port}` : "—";
     const started = $("#lab-started");
     if (started && data.started_at) started.textContent = new Date(data.started_at).toLocaleTimeString();
+    // The start button is hidden by setLabUI once the lab is live, so it must be
+    // re-enabled here: if the lab is stopped later it becomes clickable again.
+    if (start && active) { start.disabled = false; start.textContent = "INICIAR LAB"; }
   }
 
   async function labAction(action) {
@@ -365,8 +368,15 @@
             const response = await fetch(`/api/challenges/${slug}/status`, { credentials: "same-origin" });
             const status = await response.json();
             setLabUI(status);
-            if (status.active || attempts > 20) clearInterval(labPoll);
-          } catch (_) { clearInterval(labPoll); }
+            // Poll until the lab answers, not until the row says "active": the
+            // process takes a second or two to bind its port, and a click on
+            // "abrir alvo" before that lands on a closed port.
+            if (!status.active || attempts > 20) clearInterval(labPoll);
+          } catch (_) {
+            clearInterval(labPoll);
+            if (button) { button.disabled = false; button.textContent = "INICIAR LAB"; }
+            toast("Não foi possível confirmar o estado do lab. Recarregue a página.", "error", 6000);
+          }
         }, 1000);
       }
     } catch (error) {

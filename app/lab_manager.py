@@ -21,6 +21,7 @@ import socket
 import subprocess
 import threading
 import time
+import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -183,7 +184,10 @@ class LabManager:
 
     def active_for(self, user_id: int, challenge_id: int) -> ActiveLab | None:
         with self._lock:
-            for lab in self._labs.values():
+            # Snapshot: a concurrent start/stop mutates the dict and a live view
+            # raises "dictionary changed size during iteration", which 500'd the
+            # whole platform during a lab launch.
+            for lab in list(self._labs.values()):
                 if lab.user_id == user_id and lab.challenge_id == challenge_id:
                     if lab.process.poll() is None:
                         return lab
@@ -201,7 +205,7 @@ class LabManager:
 
     def lab_on_port(self, port: int) -> ActiveLab | None:
         with self._lock:
-            for lab in self._labs.values():
+            for lab in list(self._labs.values()):
                 if lab.port == port and lab.process.poll() is None:
                     return lab
             return None
@@ -237,18 +241,46 @@ class LabManager:
         port = self._alloc_port()
         token = os.urandom(32).hex()
         state_dir = DATA_DIR / "labs" / "state" / f"{challenge.slug}-{user.id}-{int(time.time())}"
+        # One directory per *session*, not per second: two labs of the same
+        # challenge started within the same second used to share a state dir,
+        # so the second run overwrote the first run's log and its capture.
+        if state_dir.exists():
+            state_dir = state_dir.with_name(f"{state_dir.name}-{uuid.uuid4().hex[:6]}")
         state_dir.mkdir(parents=True, exist_ok=True)
         log_path = DATA_DIR / "labs" / "logs" / f"{challenge.slug}-{user.id}.log"
         log_path.parent.mkdir(parents=True, exist_ok=True)
 
+        # The row must exist before the lab starts: the lab gets its token and
+        # session id from the environment and cannot report objectives without
+        # them. A placeholder row (session_id 0) would leave LAB_SESSION_ID=0
+        # and every `lab.objective()` call would be rejected.
+        row = LabSession(
+            challenge_id=challenge.id,
+            user_id=user.id,
+            port=port,
+            pid=0,
+            token_hash=sha256(token),
+            state_dir=str(state_dir),
+            status="starting",
+            started_at=datetime.now(timezone.utc),
+            last_active=datetime.now(timezone.utc),
+        )
+        db.add(row)
+        db.commit()
         placeholder = ActiveLab(
-            session_id=0, challenge_id=challenge.id, user_id=user.id, port=port,
+            session_id=row.id, challenge_id=challenge.id, user_id=user.id, port=port,
             token=token, process=None, state_dir=state_dir, log_path=log_path,  # type: ignore[arg-type]
         )
         env = self._base_env(port, placeholder, challenge, user.id)
-        if not self._bwrap_available():
-            env["LAB_STATE_DIR"] = str(state_dir)
+        # The sandbox binds the state dir at /state; without bwrap the lab needs
+        # the real path or its log/database drift to /tmp.
+        env["LAB_STATE_DIR"] = "/state" if self._bwrap_available() else str(state_dir)
         env["PYTHONPATH"] = "/shared" if self._bwrap_available() else str(LABS_DIR / "_shared")
+        # Keep the lab's diagnostics where the operator can find them: inside the
+        # sandboxed run stderr/print go to /state/lab.log instead of the platform
+        # service log (started by systemd/nohup, or closed).
+        if self._bwrap_available():
+            env["LAB_LOG_FILE"] = "/state/lab.log"
         command = self._build_command(lab_dir, state_dir, env)
 
         log = log_path.open("ab")
@@ -265,6 +297,9 @@ class LabManager:
         except OSError as exc:
             log.close()
             self._release_port(port)
+            row.status = "failed"
+            row.error = f"unable to spawn lab: {exc}"[:500]
+            db.commit()
             raise LabError(f"unable to spawn lab: {exc}") from exc
         finally:
             try:
@@ -272,18 +307,7 @@ class LabManager:
             except Exception:
                 pass
 
-        row = LabSession(
-            challenge_id=challenge.id,
-            user_id=user.id,
-            port=port,
-            pid=process.pid,
-            token_hash=sha256(token),
-            state_dir=str(state_dir),
-            status="starting",
-            started_at=datetime.now(timezone.utc),
-            last_active=datetime.now(timezone.utc),
-        )
-        db.add(row)
+        row.pid = process.pid
         db.commit()
         active = ActiveLab(
             session_id=row.id,

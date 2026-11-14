@@ -99,6 +99,8 @@ SLUG_BY_TEST = {
     "test_server_ssrf_webhook": "server-ssrf-webhook",
     "test_server_xxe_reader": "server-xxe-reader",
     "test_sqli_blind_boolean": "sqli-blind-boolean",
+    "test_sqli_order_by_case": "sqli-order-by-case",
+    "test_sqli_stacked_update": "sqli-stacked-update",
     "test_sqli_login_bypass": "sqli-login-bypass",
     "test_sqli_second_order": "sqli-second-order",
     "test_sqli_union_catalog": "sqli-union-catalog",

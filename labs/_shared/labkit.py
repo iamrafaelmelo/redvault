@@ -10,6 +10,7 @@ import html
 import json
 import os
 import secrets
+import sys
 import threading
 import time
 import urllib.error
@@ -70,7 +71,22 @@ class Lab:
         self.token = os.environ.get("LAB_CALLBACK_TOKEN", "")
         self.callback_url = os.environ.get("LAB_CALLBACK_URL", "")
         self.platform_url = os.environ.get("LAB_PLATFORM_URL", "http://127.0.0.1:8000")
-        self.state_dir = Path(os.environ.get("LAB_STATE_DIR", "/tmp/redvault-state"))
+        # The platform passes LAB_STATE_DIR=/state, which only exists inside the
+        # bwrap sandbox; standalone runs fall back to a writable directory.
+        state_dir = os.environ.get("LAB_STATE_DIR", "/tmp/redvault-state")
+        if not os.access(os.path.dirname(state_dir) or "/", os.W_OK) and not os.path.isdir(state_dir):
+            state_dir = "/tmp/redvault-state"
+        self.state_dir = Path(state_dir)
+        # Same reason as ``run()``: inside the platform the lab's own process
+        # group owns stderr, so diagnostics go where the operator can find them.
+        log_path = os.environ.get("LAB_LOG_FILE", "")
+        if log_path:
+            try:
+                self._log_handle = open(log_path, "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+            except OSError:
+                self._log_handle = None
+        else:
+            self._log_handle = None
         self.state_dir.mkdir(parents=True, exist_ok=True)
         self.accent = accent
         self.app = Flask(name)
@@ -83,9 +99,28 @@ class Lab:
         return self.flags.get(key, "RV{missing_flag}")
 
     def objective(self, key: str, evidence: str = "") -> bool:
+        ok = self._objective(key, evidence)
+        if not ok:
+            self._log(
+                f"[objective] rejected: key={key!r} session={os.environ.get('LAB_SESSION_ID')} "
+                f"callback={self.callback_url!r} token={'set' if self.token else 'missing'}"
+            )
+        return ok
+
+    def _log(self, line: str) -> None:
+        """Diagnostics: ``<state>/lab.log`` under the platform, stderr standalone."""
+        stream = getattr(self, "_log_handle", None) or sys.stderr
+        print(line, file=stream, flush=True)
+
+    def _objective(self, key: str, evidence: str = "") -> bool:
         if not self.callback_url or not self.token:
             return False
-        payload = json.dumps({"token": self.token, "flag_key": key, "evidence": evidence[:280]}).encode()
+        payload = json.dumps({
+            "token": self.token,
+            "session": os.environ.get("LAB_SESSION_ID", ""),
+            "flag_key": key,
+            "evidence": evidence[:280],
+        }).encode()
         req = urllib.request.Request(
             self.callback_url,
             data=payload,
@@ -95,7 +130,11 @@ class Lab:
         try:
             with urllib.request.urlopen(req, timeout=3) as response:
                 return response.status == 200
-        except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, OSError):
+        except urllib.error.HTTPError as exc:
+            self._log(f"[objective] callback HTTP {exc.code}: {exc.read()[:200]!r}")
+            return False
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            self._log(f"[objective] callback unreachable: {exc!r}")
             return False
 
     def objective_async(self, key: str, evidence: str = "") -> None:
@@ -281,4 +320,13 @@ class Lab:
 
     def run(self) -> None:
         bind = os.environ.get("LAB_BIND", "127.0.0.1")
+        # Under the platform, stdout/stderr are the service log; the platform sets
+        # LAB_LOG_FILE so lab errors land next to the lab state instead.
+        log_path = os.environ.get("LAB_LOG_FILE", "")
+        if log_path:
+            try:
+                handle = open(log_path, "a", buffering=1, encoding="utf-8")  # noqa: SIM115
+                sys.stdout = sys.stderr = handle
+            except OSError:
+                pass
         self.app.run(host=bind, port=self.port, debug=False, use_reloader=False, threaded=True)

@@ -22,8 +22,8 @@ The original target was **150–200 challenge labs and at least 15 multi-stage m
 | Library documents | — | **135** | Imported (MIT) |
 | Library payloads | — | **477** | With context |
 | Document ↔ lab links | — | **291** | Implemented |
-| Standalone exploit tests | one per lab | **95** | Passing |
-| Platform integration tests | auth, flags, labs | **23** | Passing |
+| Standalone exploit tests | one per lab | **97** | Passing |
+| Platform integration tests | auth, flags, labs | **42** | Passing |
 | Progressive hints | 3 per item | **291** | Implemented |
 | Flags (incl. 3 per machine) | — | **113** | Implemented |
 | Real references | ≥1 per item | **291** (151 unique) | Implemented |

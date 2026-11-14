@@ -7,6 +7,7 @@ the lab collect the exfiltrated data itself. It never returns page contents.
 from __future__ import annotations
 
 import ipaddress
+import os
 import threading
 import time
 from urllib.parse import urlparse
@@ -41,7 +42,14 @@ def _driver():
     ):
         options.add_argument(arg)
     options.add_experimental_option("excludeSwitches", ["enable-logging"])
-    return webdriver.Chrome(service=Service(CHROMEDRIVER), options=options)
+    # Chromium forks its own process group. ``start_new_session=True`` (see
+    # lab_manager) only detaches the lab, so a runaway chromium would keep the
+    # platform's group alive after the server stops. ``preexec_fn=os.setsid``
+    # gives the browser its own group; ``driver.quit()`` tears it down.
+    return webdriver.Chrome(
+        service=Service(CHROMEDRIVER, preexec_fn=os.setsid if hasattr(os, "setsid") else None),
+        options=options,
+    )
 
 
 def validate_target(url: str, expected_port: int) -> str:

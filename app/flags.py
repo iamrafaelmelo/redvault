@@ -11,7 +11,7 @@ import hashlib
 import hmac
 from datetime import datetime, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from .config import load_secret
@@ -55,6 +55,42 @@ def validate_flag(db: Session, user_id: int, challenge: Challenge, flag: Flag, s
 
 
 def mark_objective(db: Session, user_id: int, challenge_id: int, flag_key: str, evidence: str = "") -> ObjectiveState:
+    # Read with the ORM but write with a literal UPSERT: the runner calls this
+    # from more than one place (HTTP callback, bot, CLI repair) and two writers
+    # racing on ``if not state: db.add(...)`` used to create duplicate rows for
+    # the same (user, challenge, flag) triple. The unique key is the triple, so
+    # the second writer updates instead of inserting.
+    now = datetime.now(timezone.utc)
+    text_evidence = (evidence or "objetivo executado")[:300]
+    if db.get_bind().dialect.name == "sqlite":
+        db.execute(
+            text(
+                """
+                INSERT INTO objective_states
+                    (user_id, challenge_id, flag_key, met, met_at, evidence)
+                VALUES (:user_id, :challenge_id, :flag_key, 1, :now, :evidence)
+                ON CONFLICT(user_id, challenge_id, flag_key) DO UPDATE SET
+                    met = 1, met_at = excluded.met_at, evidence = excluded.evidence
+                """
+            ),
+            {
+                "user_id": user_id,
+                "challenge_id": challenge_id,
+                "flag_key": flag_key,
+                "now": now,
+                "evidence": text_evidence,
+            },
+        )
+        state = db.scalar(
+            select(ObjectiveState).where(
+                ObjectiveState.user_id == user_id,
+                ObjectiveState.challenge_id == challenge_id,
+                ObjectiveState.flag_key == flag_key,
+            )
+        )
+        db.flush()
+        return state
+
     state = db.scalar(
         select(ObjectiveState).where(
             ObjectiveState.user_id == user_id,
@@ -66,7 +102,7 @@ def mark_objective(db: Session, user_id: int, challenge_id: int, flag_key: str, 
         state = ObjectiveState(user_id=user_id, challenge_id=challenge_id, flag_key=flag_key)
         db.add(state)
     state.met = True
-    state.met_at = datetime.now(timezone.utc)
-    state.evidence = (evidence or "objetivo executado")[:300]
+    state.met_at = now
+    state.evidence = text_evidence
     db.flush()
     return state

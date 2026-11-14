@@ -2,6 +2,31 @@
 
 All notable changes to REDVAULT are documented here. The project follows a pragmatic version sequence; it is pre-1.0 and the content catalog is incomplete.
 
+## [1.7.2] — 2026-11-14
+
+### Fixed
+
+- **Labs objetivos falhavam na UI real (49 de 97).** A linha de `lab_sessions` só era criada depois de o processo do lab subir, então cada lab recebia `LAB_SESSION_ID=0` e todo `lab.objective()` era recusado (`403`): a flag certa era reconhecida, mas a plataforma pedia "estado de exploração exigido" para sempre. Os testes de exploit não pegavam porque rodam o lab direto, sem callback. A sessão agora é gravada antes do `Popen`, e o laboratório reporta na mesma sessão.
+- **Plataforma caía ao iniciar/deixar um lab.** `active_for`/`lab_on_port` iteravam o dicionário `_labs` ao vivo; o polling de status do front mutava o dicionário durante a iteração e disparava `RuntimeError: dictionary changed size during iteration`, derrubando o processo inteiro. A iteração passou a usar uma cópia.
+- **Estado do lab compartilhado entre sessões.** duas sessões do mesmo desafio iniciadas no mesmo segundo dividiam o diretório de estado (log e captura se sobrescreviam). Cada sessão agora tem diretório próprio.
+- **Logs do lab vazavam para o log do serviço.** Dentro do sandbox, o stdout do lab ia para o log do uvicorn; agora vai para `<state>/lab.log`, com o motivo de cada recusa de objetivo registrado no mesmo arquivo.
+- **Callbacks recusados eram invisíveis.** `/internal/lab-callback` registra a recusa com sessão e chave, e o logger `redvault.*` passou a ter handler próprio (o uvicorn só configura os loggers dele; avisos de trilhas e recusas de lab ficavam sem saída).
+- **Nenhum lab com XSS registrava objetivo.** O bot do Selenium rodava dentro do event loop do FastAPI; enquanto o Chromium visitava a página (5+ s), a plataforma ficava bloqueada e o callback do próprio lab (`/collect` → `/internal/lab-callback`) estourava em `TimeoutError`. A visita agora roda em thread pool e o callback do lab é atendido em paralelo.
+- **Botão "Iniciar lab" preso em "PROVISIONANDO…"** quando o polling de status falhava; e o polling agora espera o lab responder, não apenas a linha "ativa".
+- `objective_states` recebia linhas duplicadas para a mesma (usuário, desafio, flag); a gravação passou a ser um UPSERT sobre a chave única.
+- O bot do Chromium herda o grupo de processos do serviço; passou a rodar em sessão própria, para parar junto com o servidor.
+
+### Added
+
+- **Dois labs de SQL injection que estavam sem teste**: `sqli-order-by-case` e `sqli-stacked-update` agora têm teste de exploit próprio.
+- Dica do lab de XSS refletido corrigida: um espaço no payload vira `+` na URL e quebra o script; o exemplo agora usa `%2B`.
+
+### Tests
+
+- `tests/test_platform.py`: **17 testes** (antes 14) — sessão do lab no ambiente do processo, callback registrando objetivo, concorrência de start/stop.
+- `tests/test_labs_phase3.py`: **36 testes** (antes 34).
+- Suíte completa: **9/9 módulos, 198 testes**.
+
 ## [1.7.1] — 2026-11-13
 
 ### Fixed

