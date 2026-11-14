@@ -1,0 +1,854 @@
+{
+  "slug": "linux-security",
+  "title": "Linux Security & Privilege Escalation",
+  "codename": "LNX",
+  "domain": "linux",
+  "summary": "Modelo de permissão, enumeração metódica, escalada local, containers e pós-exploração em sistemas Linux.",
+  "description": "A trilha constrói o entendimento do modelo de privilégio do Linux (uid/euid, bits, capabilities, PATH) e usa esse entendimento para enumerar, priorizar e explorar escalada de privilégios em laboratório. A segunda metade trata containers como fronteira testável e pós-exploração com persistência e remoção documentadas. Ferramentas (LinPEAS, pspy, linux-exploit-suggester, GTFOBins) aparecem como apoio, nunca como substituto do raciocínio.",
+  "entry_level": "usuário de Linux confortável com shell e permissões",
+  "exit_level": "capaz de enumerar, escalar e documentar privesc Linux, incluindo containers",
+  "estimated_hours": 50,
+  "priority": 30,
+  "phase": 1,
+  "icon": "terminal",
+  "accent": "green",
+  "prerequisites": [],
+  "competencies": [
+    "Prever o efeito de permissão, bit e capability",
+    "Enumerar privilégio fora do usuário e priorizar achados",
+    "Explorar SUID, capabilities, sudo e cron com evidência",
+    "Avaliar e testar isolamento de container",
+    "Implementar e remover persistência documentada"
+  ],
+  "tools": [
+    "LinPEAS",
+    "LinEnum",
+    "pspy",
+    "linux-exploit-suggester",
+    "GTFOBins",
+    "find",
+    "getcap",
+    "sudo"
+  ],
+  "equipment": "Somente software: containers locais e as máquinas da plataforma.",
+  "modules": [
+    {
+      "slug": "fundamentos-linux",
+      "title": "Fundamentos de Linux para segurança",
+      "summary": "Sem dominar uid/euid, bits e PATH, todo achado de privesc vira chute.",
+      "objective": "Ler o modelo de processo, arquivo e permissão do Linux com precisão suficiente para prever o efeito de uma configuração errada.",
+      "competencies": [
+        "filesystem",
+        "permissões",
+        "usuários e grupos",
+        "processos",
+        "descritores",
+        "variáveis de ambiente"
+      ],
+      "units": [
+        {
+          "slug": "modelo",
+          "title": "Arquivos, permissões e identidade",
+          "objective": "Explicar como o kernel decide se um processo pode ler, escrever ou executar um arquivo.",
+          "competencies": [
+            "rwx e bits especiais",
+            "uid/gid/euid",
+            "ACL",
+            "hard link e symlink"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "lx-m0-u1-kb-basics",
+              "kind": "theory",
+              "title": "Fundamentos de Linux",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-linux-basics"
+            },
+            {
+              "slug": "lx-m0-u1-kb-files",
+              "kind": "theory",
+              "title": "Arquivos interessantes e permissões",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-interesting-files-permissions"
+            },
+            {
+              "slug": "lx-m0-u1-kb-links",
+              "kind": "theory",
+              "title": "Symlinks, hardlinks e descritores de arquivo",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-linux-hardening-main-system-information-filesystem-links-and-file-descriptors"
+            },
+            {
+              "slug": "lx-m0-u1-kb-euid",
+              "kind": "theory",
+              "title": "euid, ruid e o bit SUID",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-user-information-euid-ruid-suid"
+            },
+            {
+              "slug": "lx-m0-u1-ex-model",
+              "kind": "exercises",
+              "title": "Exercício: provar o modelo de permissão",
+              "estimated_minutes": 45,
+              "body_md": "Num container ou VM que você controla, execute e registre a saída:\n\n1. Crie dois usuários. Como o usuário A, crie `a.txt` modo `600`.\n2. Tente ler como B. Registre o erro exato do kernel.\n3. Adicione A ao grupo de B e repita com modo `640`.\n4. Crie um binário mínimo, aplique `chmod 4755` e imprima `id` — explique por que\n   o euid é `0` e o ruid não é.\n5. Crie um hard link e um symlink para o mesmo arquivo, apague o original e\n   explique por que um continua acessível e o outro não.\n\nEscreva a explicação em 1 parágrafo por item, citando uid/euid e o bit testado."
+            }
+          ]
+        },
+        {
+          "slug": "processos",
+          "title": "Processos, serviços e ambiente",
+          "objective": "Identificar quem executa o quê, com qual identidade e com qual ambiente.",
+          "competencies": [
+            "ps e /proc",
+            "systemd",
+            "cron",
+            "/etc/passwd e shadow",
+            "env e PATH"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "lx-m0-u2-kb-env",
+              "kind": "theory",
+              "title": "Variáveis de ambiente do Linux",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening-linux-basics-linux-environment-variables"
+            },
+            {
+              "slug": "lx-m0-u2-kb-proc",
+              "kind": "theory",
+              "title": "Enumeração de processos e caminhos de serviços",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-linux-hardening-processes-crontab-systemd-dbus-process-enumeration-and-service-paths"
+            },
+            {
+              "slug": "lx-m0-u2-kb-cron",
+              "kind": "theory",
+              "title": "Cron e timers do systemd",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-linux-hardening-processes-crontab-systemd-dbus-cron-and-systemd-timers"
+            },
+            {
+              "slug": "lx-m0-u2-kb-users",
+              "kind": "theory",
+              "title": "Usuários, sessões e artefatos de credenciais",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-user-information-user-and-session-triage"
+            },
+            {
+              "slug": "lx-m0-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: identidade efetiva",
+              "estimated_minutes": 20,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Um arquivo `root:root` modo 4755 é executado por `alice`. Qual é o euid do processo?",
+                  "accepted": [
+                    "0",
+                    "root",
+                    "zero"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Qual arquivo guarda os hashes de senha em sistemas Linux modernos?",
+                  "accepted": [
+                    "/etc/shadow",
+                    "etc/shadow",
+                    "shadow"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Que seção da configuração de um timer systemd define o comando executado?",
+                  "accepted": [
+                    "execstart",
+                    "exec start",
+                    "unit"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Exercício entregue e avaliação ≥ 70%.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "enumeracao",
+      "title": "Enumeração de Linux",
+      "summary": "Enumeração é a etapa que separa privesc real de tentativa aleatória de exploit de kernel.",
+      "objective": "Produzir um inventário que responda 'onde há privilégio fora do meu usuário?'.",
+      "competencies": [
+        "SUID/SGID",
+        "capabilities",
+        "sudoers",
+        "cron gravável",
+        "NFS",
+        "grupos"
+      ],
+      "units": [
+        {
+          "slug": "manual",
+          "title": "Enumeração manual",
+          "objective": "Executar a checklist na ordem que rende resultado, entendendo cada comando.",
+          "competencies": [
+            "find",
+            "getcap",
+            "sudo -l",
+            "id",
+            "mount"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "lx-m1-u1-kb-checklist",
+              "kind": "theory",
+              "title": "Checklist de escalada de privilégios no Linux",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-main-system-information-linux-privilege-escalation-checklist"
+            },
+            {
+              "slug": "lx-m1-u1-kb-suid",
+              "kind": "theory",
+              "title": "SUID, SGID, ACLs e arquivos sensíveis",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-linux-hardening-interesting-files-permissions-suid-sgid-and-acl-triage"
+            },
+            {
+              "slug": "lx-m1-u1-kb-caps",
+              "kind": "theory",
+              "title": "Linux Capabilities (detalhado)",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-linux-hardening-interesting-files-permissions-linux-capabilities"
+            },
+            {
+              "slug": "lx-m1-u1-kb-sudo",
+              "kind": "theory",
+              "title": "Abuso de comandos do sudo",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-linux-hardening-main-system-information-sudo-command-abuse"
+            },
+            {
+              "slug": "lx-m1-u1-kb-groups",
+              "kind": "theory",
+              "title": "Grupos interessantes para privesc",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening-user-information-interesting-groups-linux-pe"
+            },
+            {
+              "slug": "lx-m1-u1-kb-nfs",
+              "kind": "theory",
+              "title": "NFS com no_root_squash",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-interesting-files-permissions-nfs-no-root-squash-misconfiguration-pe"
+            },
+            {
+              "slug": "lx-m1-u1-ex-enum",
+              "kind": "exercises",
+              "title": "Exercício: inventário de privilégio",
+              "estimated_minutes": 60,
+              "body_md": "Rode a checklist num sistema de laboratório e produza uma tabela com:\n\n- binário/arquivo/permissão encontrado;\n- por que existe (qual pacote, `dpkg -S`, ou configuração);\n- se gera privilégio e por qual mecanismo (SUID, capability, sudo, grupo);\n- esforço estimado de exploração.\n\nO objetivo não é explorar. É **priorizar** com evidência. Um `find` com SUID\nnão tem o mesmo valor de um `vim` com SUID: mostre que você sabe a diferença."
+            }
+          ]
+        },
+        {
+          "slug": "ferramentas",
+          "title": "Ferramentas de enumeração",
+          "objective": "Usar LinPEAS, LinEnum e pspy sem virar dependente delas.",
+          "competencies": [
+            "linpeas",
+            "linenum",
+            "pspy",
+            "linux-exploit-suggester"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "lx-m1-u2-kb-privesc",
+              "kind": "theory",
+              "title": "Escalada de privilégios no Linux (documento completo)",
+              "estimated_minutes": 90,
+              "kb_slug": "ht-linux-hardening-linux-basics-linux-privilege-escalation"
+            },
+            {
+              "slug": "lx-m1-u2-ex-linpeas",
+              "kind": "exercises",
+              "title": "Exercício: ler a saída do LinPEAS como investigador",
+              "estimated_minutes": 45,
+              "body_md": "Execute `linpeas.sh` num alvo de laboratório e responda:\n\n1. Liste os 5 achados que o LinPEAS marcou em vermelho. Para cada um, explique\n   com suas palavras **por que** ele é um caminho de escalada.\n2. Aponte dois falsos positivos que o LinPEAS destacou mas que não dão privilégio.\n3. Rode `pspy64` por 5 minutos e registre qualquer processo que execute como\n   root a partir de um caminho gravável por usuário comum.\n\nFerramentas de enumeração listam; o operador decide. Registre a decisão."
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Inventário priorizado entregue e exercício de LinPEAS concluído.",
+      "estimated_minutes": 180,
+      "requires_module": "fundamentos-linux"
+    },
+    {
+      "slug": "escalada-local",
+      "title": "Escalada de privilégios local",
+      "summary": "Má configuração primeiro. Kernel só quando não existe outra via — e com justificativa.",
+      "objective": "Escalar para root em sistemas reais usando configuração errada, sem depender de CVE.",
+      "competencies": [
+        "SUID abuse",
+        "capabilities",
+        "sudo",
+        "cron",
+        "PATH hijacking",
+        "ld.so",
+        "kernel"
+      ],
+      "units": [
+        {
+          "slug": "misconfiguracao",
+          "title": "Má configuração: o caminho mais comum",
+          "objective": "Explorar cada classe de configuração errada e escrever a evidência.",
+          "competencies": [
+            "gtfobins",
+            "cap_setuid",
+            "LD_PRELOAD",
+            "PATH",
+            "cron gravável"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "lx-m2-u1-kb-gtfobins",
+              "kind": "theory",
+              "title": "GTFOBins: viver do sistema com binários legítimos",
+              "estimated_minutes": 25,
+              "kb_slug": "own-gtfobins-metodologia"
+            },
+            {
+              "slug": "lx-m2-u1-kb-ldso",
+              "kind": "theory",
+              "title": "Exemplo de exploit de privesc via ld.so",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-linux-hardening-interesting-files-permissions-ld-so-conf-example"
+            },
+            {
+              "slug": "lx-m2-u1-kb-suidsolib",
+              "kind": "theory",
+              "title": "Bibliotecas compartilhadas e linker em SUID",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-linux-hardening-interesting-files-permissions-suid-shared-library-and-linker-abuse"
+            },
+            {
+              "slug": "lx-m2-u1-kb-wildcards",
+              "kind": "theory",
+              "title": "Truques com wildcards",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening-interesting-files-permissions-wildcards-spare-tricks"
+            },
+            {
+              "slug": "lx-m2-u1-kb-lxd",
+              "kind": "theory",
+              "title": "Grupo lxd/lxc e escalada de privilégios",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-user-information-interesting-groups-linux-pe-lxd-privilege-escalation"
+            },
+            {
+              "slug": "lx-m2-u1-ex-suid",
+              "kind": "exercises",
+              "title": "Exercício: explorar um SUID e documentar",
+              "estimated_minutes": 60,
+              "body_md": "Escolha um binário encontrado no inventário do módulo anterior e:\n\n1. Prove a versão e a origem do pacote (`dpkg -S`, `--version`).\n2. Execute o primitivo do GTFOBins aplicável ao contexto (SUID, sudo ou capability).\n3. Capture a saída de `id` antes e depois.\n4. Proponha a correção: remover bit, remover capability, restringir sudoers.\n\nSe o primitivo não funcionar, registre o motivo — versão, sem TTY, `secure_path`.\nFalha documentada também é resultado válido."
+            }
+          ]
+        },
+        {
+          "slug": "kernel-e-servicos",
+          "title": "Kernel e serviços mal configurados",
+          "objective": "Avaliar quando usar exploit de kernel e quando atacar configuração de serviço.",
+          "competencies": [
+            "linux-exploit-suggester",
+            "service races",
+            "cron",
+            "D-Bus",
+            "PAM"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "lx-m2-u2-kb-kernel",
+              "kind": "theory",
+              "title": "Avaliação de vulnerabilidades do kernel",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-linux-hardening-main-system-information-kernel-vulnerability-assessment"
+            },
+            {
+              "slug": "lx-m2-u2-kb-kernelcve",
+              "kind": "theory",
+              "title": "Material sobre kernel, LPE e CVEs",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-main-system-information-kernel-lpe-cves"
+            },
+            {
+              "slug": "lx-m2-u2-kb-modprobe",
+              "kind": "theory",
+              "title": "Módulos do kernel e abuso do modprobe",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-linux-hardening-main-system-information-kernel-modules-and-modprobe"
+            },
+            {
+              "slug": "lx-m2-u2-kb-dbus",
+              "kind": "theory",
+              "title": "D-Bus: enumeração e privesc por injeção",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening-processes-crontab-systemd-dbus-d-bus-enumeration-and-command-injection-privilege-esc"
+            },
+            {
+              "slug": "lx-m2-u2-kb-pam",
+              "kind": "theory",
+              "title": "PAM — Pluggable Authentication Modules",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-linux-hardening-software-information-pam-pluggable-authentication-modules"
+            },
+            {
+              "slug": "lx-m2-u2-kb-write",
+              "kind": "theory",
+              "title": "Escrita arbitrária de arquivos como root",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-linux-hardening-interesting-files-permissions-write-to-root"
+            },
+            {
+              "slug": "lx-m2-u2-ex-kernel",
+              "kind": "exercises",
+              "title": "Exercício: decidir sobre exploit de kernel",
+              "estimated_minutes": 60,
+              "body_md": "Com `linux-exploit-suggester.sh` num alvo de laboratório:\n\n1. Registre a versão do kernel (`uname -r`) e a distro.\n2. Liste os candidatos sugeridos e, para cada um, o critério de aplicabilidade.\n3. Descarte os que exigem pré-requisito ausente (config de compilação, módulo,\n   namespace não permitido).\n4. Justifique por escrito por que exploit de kernel é **última** opção:\n   instabilidade, perda de evidência, detectabilidade.\n\nA resposta correta costuma ser: nenhum. O exercício vale pela justificativa."
+            },
+            {
+              "slug": "lx-m2-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: escolher a via de escalada",
+              "estimated_minutes": 25,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Um binário tem `cap_setuid+ep`. Qual efeito direto isso permite?",
+                  "accepted": [
+                    "setuid",
+                    "mudar uid",
+                    "trocar uid",
+                    "chamar setuid"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "`sudo -l` mostra `(root) NOPASSWD: /usr/bin/tar`. Qual classe de falha é essa?",
+                  "accepted": [
+                    "sudoers",
+                    "misconfiguracao",
+                    "má configuração",
+                    "gtfobins"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Por que um exploit de kernel é considerado última opção num pentest?",
+                  "accepted": [
+                    "instabilidade",
+                    "crash",
+                    "risco",
+                    "reboot",
+                    "perda"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Pelo menos dois caminhos de escalada explorados com evidência e avaliação ≥ 70%.",
+      "estimated_minutes": 420,
+      "requires_module": "enumeracao"
+    },
+    {
+      "slug": "containers-e-docker",
+      "title": "Containers e Docker",
+      "summary": "Container não é sandbox. É processo com nome diferente — e as fronteiras são testáveis.",
+      "objective": "Entender isolamento de container como fronteira de segurança, não como garantia.",
+      "competencies": [
+        "namespaces",
+        "capabilities em container",
+        "docker socket",
+        "privileged",
+        "runc",
+        "seccomp",
+        "AppArmor"
+      ],
+      "units": [
+        {
+          "slug": "isolamento",
+          "title": "O que um container isola",
+          "objective": "Explicar o que um namespace, cgroup, seccomp e AppArmor impedem e o que não impedem.",
+          "competencies": [
+            "namespaces",
+            "cgroups",
+            "seccomp",
+            "AppArmor",
+            "SELinux"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "lx-m3-u1-kb-containers",
+              "kind": "theory",
+              "title": "Containers e Namespaces",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-containers-namespaces"
+            },
+            {
+              "slug": "lx-m3-u1-kb-sec",
+              "kind": "theory",
+              "title": "Segurança de Containers",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security"
+            },
+            {
+              "slug": "lx-m3-u1-kb-ns",
+              "kind": "theory",
+              "title": "Namespaces: PID, rede, montagem e usuário",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-protections-namespaces"
+            },
+            {
+              "slug": "lx-m3-u1-kb-caps",
+              "kind": "theory",
+              "title": "Capabilities em containers",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-protections-capabilities"
+            },
+            {
+              "slug": "lx-m3-u1-kb-seccomp",
+              "kind": "theory",
+              "title": "seccomp",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-protections-seccomp"
+            },
+            {
+              "slug": "lx-m3-u1-kb-apparmor",
+              "kind": "theory",
+              "title": "AppArmor",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-protections-apparmor"
+            },
+            {
+              "slug": "lx-m3-u1-kb-masked",
+              "kind": "theory",
+              "title": "Caminhos mascarados e somente leitura",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-protections-masked-paths"
+            },
+            {
+              "slug": "lx-m3-u1-kb-nnp",
+              "kind": "theory",
+              "title": "`no_new_privs`",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-protections-no-new-privileges"
+            }
+          ]
+        },
+        {
+          "slug": "escape",
+          "title": "Escape de container",
+          "objective": "Testar as condições concretas que quebram o isolamento.",
+          "competencies": [
+            "docker socket",
+            "privileged",
+            "host mounts",
+            "runc",
+            "containerd"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "lx-m3-u2-kb-priv",
+              "kind": "theory",
+              "title": "Escape de containers `--privileged`",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-privileged-containers"
+            },
+            {
+              "slug": "lx-m3-u2-kb-mounts",
+              "kind": "theory",
+              "title": "Montagens sensíveis do host",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-sensitive-host-mounts"
+            },
+            {
+              "slug": "lx-m3-u2-kb-api",
+              "kind": "theory",
+              "title": "Exposição da API do runtime e do daemon",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-runtime-api-and-daemon-exposure"
+            },
+            {
+              "slug": "lx-m3-u2-kb-runc",
+              "kind": "theory",
+              "title": "Escalação de privilégios do runC",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-runc-privilege-escalation"
+            },
+            {
+              "slug": "lx-m3-u2-kb-ctr",
+              "kind": "theory",
+              "title": "Escalação de privilégios do containerd (ctr)",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-containerd-ctr-privilege-escalation"
+            },
+            {
+              "slug": "lx-m3-u2-ex-escape",
+              "kind": "exercises",
+              "title": "Exercício: mapa de isolamento",
+              "estimated_minutes": 75,
+              "body_md": "Suba um container deliberadamente mal configurado que **você mesmo** criou\n(nunca um terceiro). Monte uma matriz:\n\n| Configuração | Que escape é possível | Por quê |\n\nCasos mínimos: `--privileged`, `-v /:/host`, socket docker montado, `--pid=host`,\n`--cap-add SYS_ADMIN`.\n\nComprove cada linha com um comando e a saída que demonstra acesso ao host.\nSe a tentativa falhou, registre qual controle bloqueou (seccomp, AppArmor, userns)."
+            }
+          ]
+        },
+        {
+          "slug": "hardening",
+          "title": "Avaliação e hardening",
+          "objective": "Produzir recomendação de endurecimento com referência à configuração testada.",
+          "competencies": [
+            "distroless",
+            "assinatura de imagem",
+            "authorization plugins",
+            "read-only"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "lx-m3-u3-kb-assess",
+              "kind": "theory",
+              "title": "Avaliação e hardening de containers",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-assessment-and-hardening"
+            },
+            {
+              "slug": "lx-m3-u3-kb-img",
+              "kind": "theory",
+              "title": "Segurança, assinatura e secrets de imagens",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-image-security-and-secrets"
+            },
+            {
+              "slug": "lx-m3-u3-kb-distroless",
+              "kind": "theory",
+              "title": "Containers distroless",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-distroless"
+            },
+            {
+              "slug": "lx-m3-u3-kb-authz",
+              "kind": "theory",
+              "title": "Plugins de autorização em runtime",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening-containers-namespaces-container-security-authorization-plugins"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Matriz de isolamento comprovada e recomendação de hardening escrita.",
+      "estimated_minutes": 180,
+      "requires_module": "escalada-local"
+    },
+    {
+      "slug": "pos-exploracao",
+      "title": "Pós-exploração e persistência em Linux",
+      "summary": "Persistência é prova de impacto — e obrigação de remoção documentada.",
+      "objective": "Manter acesso de forma que sobreviva a reboot e documentar cada mecanismo para remoção.",
+      "competencies": [
+        "persistência",
+        "exfiltração",
+        "pivoting básico",
+        "fileless",
+        "limpeza"
+      ],
+      "units": [
+        {
+          "slug": "persistencia",
+          "title": "Persistência",
+          "objective": "Enumerar e construir mecanismos de persistência com evidência e caminho de remoção.",
+          "competencies": [
+            "cron",
+            "systemd",
+            "ld.so",
+            "SSH",
+            "shell startup"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "lx-m4-u1-kb-post",
+              "kind": "theory",
+              "title": "Linux pós-exploração",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-linux-hardening-post-exploitation"
+            },
+            {
+              "slug": "lx-m4-u1-kb-fileless",
+              "kind": "theory",
+              "title": "Execução fileless no Linux",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-linux-hardening-post-exploitation-linux-fileless-execution"
+            },
+            {
+              "slug": "lx-m4-u1-kb-daemons",
+              "kind": "theory",
+              "title": "Daemons trojanizados e reverse proxies",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-post-exploitation-trojanized-system-daemons-and-reverse-proxies"
+            },
+            {
+              "slug": "lx-m4-u1-kb-shellstart",
+              "kind": "theory",
+              "title": "Inicialização do shell, aliases e histórico",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-linux-basics-shell-startup-aliases-and-history"
+            },
+            {
+              "slug": "lx-m4-u1-kb-ssh",
+              "kind": "theory",
+              "title": "SSH agent forwarding",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-linux-hardening-user-information-ssh-forward-agent-exploitation"
+            },
+            {
+              "slug": "lx-m4-u1-kb-payloads",
+              "kind": "theory",
+              "title": "Payloads de execução (cron/systemd/D-Bus)",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-processes-crontab-systemd-dbus-payloads-to-execute"
+            },
+            {
+              "slug": "lx-m4-u1-ex-persist",
+              "kind": "exercises",
+              "title": "Exercício: persistência auditável",
+              "estimated_minutes": 45,
+              "body_md": "Num container descartável, implemente **dois** mecanismos de persistência\n(por exemplo, timer systemd de usuário e entrada em `~/.bashrc`).\n\nPara cada um entregue: artefato criado, caminho, comando de verificação,\ncomando de remoção, e como um analista o encontraria (arquivo, mtime, log).\n\nDestrua o container ao final. Este exercício ensina detecção tanto quanto persistência."
+            }
+          ]
+        },
+        {
+          "slug": "rede-e-movimento",
+          "title": "Rede e movimento",
+          "objective": "Mapear a rede a partir do host comprometido sem quebrar escopo.",
+          "competencies": [
+            "sockets",
+            "egress",
+            "pivot",
+            "tunelamento",
+            "metadados"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "lx-m4-u2-kb-net",
+              "kind": "theory",
+              "title": "Triagem de rede local e sockets",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening-network-information-local-network-and-socket-triage"
+            },
+            {
+              "slug": "lx-m4-u2-kb-egress",
+              "kind": "theory",
+              "title": "Captura de tráfego, firewall e egress",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-linux-hardening-network-information-traffic-capture-and-firewall-egress"
+            },
+            {
+              "slug": "lx-m4-u2-kb-md",
+              "kind": "theory",
+              "title": "Metadados de instância na nuvem a partir de Linux",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-linux-hardening-post-exploitation-cloud-instance-metadata"
+            },
+            {
+              "slug": "lx-m4-u2-lab-meridian",
+              "kind": "lab",
+              "title": "Máquina: Meridian Bank (cadeia web → host)",
+              "estimated_minutes": 60,
+              "challenge_slug": "machine-meridian-bank"
+            },
+            {
+              "slug": "lx-m4-u2-project",
+              "kind": "project",
+              "title": "Relatório de privesc do capstone",
+              "estimated_minutes": 90,
+              "body_md": "Produza o relatório técnico do **capstone** desta trilha a partir do host\ncomprometido.\n\nEstrutura obrigatória:\n\n1. Escopo e origem loopback usada.\n2. Inventário priorizado: arquivo/binário, contexto (SUID, capability, sudo,\n   cron, grupo), por que gera privilégio.\n3. Cadeia: cada elo com comando executado e saída que prova o passo.\n4. Persistência encontrada e persistência criada, com remoção comprovada.\n5. Hardening: por achado, o arquivo/configuração e a linha exata a corrigir.\n\nCritério de aceite: outro operador reproduz cada passo a partir do relatório."
+            },
+            {
+              "slug": "lx-m4-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: persistência e escopo",
+              "estimated_minutes": 20,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Qual unidade systemd define um timer? Responda com o sufixo.",
+                  "accepted": [
+                    ".timer",
+                    "timer",
+                    ".timer unit"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Qual arquivo de configuração do ld.so pode carregar biblioteca em binário SUID?",
+                  "accepted": [
+                    "/etc/ld.so.preload",
+                    "ld.so.preload"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Persistência fora do escopo autorizado é aceitável? Responda sim ou não.",
+                  "accepted": [
+                    "nao",
+                    "não",
+                    "no"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Dois mecanismos implementados, removidos e documentados; avaliação ≥ 70%.",
+      "estimated_minutes": 180,
+      "requires_module": "containers-e-docker"
+    }
+  ],
+  "capstone": {
+    "objective": "Comprometer um host Linux multi-estágio por via de privesc e documentar o caminho completo.",
+    "scope_md": "A máquina `machine-meridian-bank` na origem loopback atribuída pelo gerenciador. Escopo é o container do lab; não testar o host da plataforma.",
+    "resources_md": "REDVAULT, shell, LinPEAS, pspy, GTFOBins, linux-exploit-suggester. Sem recursos pagos.",
+    "steps_md": "1. Reconhecimento do host: identidade, kernel, serviços expostos.\n2. Enumeração completa (SUID, capabilities, sudo, cron, grupos, montagens).\n3. Priorização em tabela, com mecanismo por achado.\n4. Exploração até root com evidência de cada passo.\n5. Mapa de persistência encontrada/criada e remoção.\n6. Recomendações de hardening com arquivo e linha.",
+    "success_criteria": [
+      "Root obtido na máquina",
+      "Cada passo de escalada com comando e saída reproduzíveis",
+      "Inventário de enumeração priorizado e entregue",
+      "Recomendação de hardening correspondente a cada achado"
+    ],
+    "evidence": [
+      "Saída de enumeração (find, getcap, sudo -l, id)",
+      "Comando e saída de cada passo de escalada",
+      "Tabela de achados com mecanismo e correção"
+    ],
+    "expected_result": "Host comprometido com cadeia de privesc documentada e remediações propostas.",
+    "grading_md": "Clareza do inventário (25%), correção técnica de cada exploração (35%), evidência (20%), hardening proposto (20%). Escalada por força bruta sem explicação não pontua.",
+    "challenge_slug": "machine-meridian-bank"
+  }
+}

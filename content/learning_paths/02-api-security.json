@@ -1,0 +1,540 @@
+{
+  "slug": "api-security",
+  "title": "API Security & API Pentesting",
+  "codename": "API",
+  "domain": "api",
+  "summary": "Segurança de APIs REST, GraphQL e federação de identidade, com laboratórios reais da plataforma.",
+  "description": "A trilha trata a API como sistema distribuído: contrato, autorização em três níveis (objeto, função, propriedade), identidade via JWT/OAuth/OIDC, e protocolos que não são REST. Os laboratórios são aplicações reais que expõem API, e o capstone exige o relatório com matriz de autorização.",
+  "entry_level": "confortável com HTTP e ferramentas de linha de comando",
+  "exit_level": "capaz de auditar APIs e documentar falhas de autorização encadeadas",
+  "estimated_hours": 45,
+  "priority": 20,
+  "phase": 1,
+  "icon": "plug",
+  "accent": "amber",
+  "prerequisites": [
+    "web-application-pentesting"
+  ],
+  "competencies": [
+    "Escrever contrato observado de API",
+    "Provar BOLA/BFLA com duas identidades",
+    "Identificar exposição excessiva e mass assignment",
+    "Atacar JWT e falhas de federação OIDC",
+    "Testar GraphQL e webhooks",
+    "Encadear falhas de API até acesso administrativo"
+  ],
+  "tools": [
+    "Burp Suite",
+    "OWASP ZAP",
+    "curl",
+    "jq",
+    "httpx",
+    "ffuf",
+    "Postman/Insomnia"
+  ],
+  "equipment": "Somente software.",
+  "modules": [
+    {
+      "slug": "contratos-e-http",
+      "title": "Contratos de API e HTTP",
+      "summary": "Antes de testar autorização, é preciso saber o que a API promete.",
+      "objective": "Ler o contrato de uma API e saber onde cada decisão de segurança deveria estar.",
+      "competencies": [
+        "REST",
+        "verbos",
+        "status codes",
+        "JSON",
+        "versionamento",
+        "documentação"
+      ],
+      "units": [
+        {
+          "slug": "rest",
+          "title": "REST, verbos e status",
+          "objective": "Distinguir uma API resource-oriented de RPC disfarçado e o que isso muda no teste.",
+          "competencies": [
+            "métodos",
+            "idempotência",
+            "status semântico"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "api-m0-u1-kb-academy",
+              "kind": "theory",
+              "title": "Segurança de API: contratos, objetos e versões",
+              "estimated_minutes": 30,
+              "academy_slug": "api-security"
+            },
+            {
+              "slug": "api-m0-u1-lab-docs",
+              "kind": "lab",
+              "title": "Descobrir documentação exposta",
+              "estimated_minutes": 20,
+              "challenge_slug": "recon-api-docs"
+            },
+            {
+              "slug": "api-m0-u1-lab-learning",
+              "kind": "lab",
+              "title": "Listagem de dados de aprendizado",
+              "estimated_minutes": 20,
+              "challenge_slug": "recon-cloud-listing"
+            },
+            {
+              "slug": "api-m0-u1-ex-contract",
+              "kind": "exercises",
+              "title": "Exercício: escrever o contrato observado",
+              "estimated_minutes": 45,
+              "body_md": "Escolha um lab de API no ar e, **sem ler o código do lab**, escreva o contrato observado:\n\n1. Liste cada rota com método, parâmetros (path, query, body) e status de sucesso.\n2. Marque quais rotas são idempotentes na prática (repita a request 3× e compare).\n3. Marque o que a documentação pública diz e onde a implementação diverge.\n\nA divergência entre documentação e implementação é o achado: registre as duas versões."
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Contrato escrito de um alvo com divergências anotadas.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "objetos-e-funcoes",
+      "title": "Autorização de objetos, funções e propriedades",
+      "summary": "Cada nível de autorização tem um teste próprio.",
+      "objective": "Provar BOLA, BFLA e exposição excessiva com duas identidades.",
+      "competencies": [
+        "BOLA",
+        "BFLA",
+        "mass assignment",
+        "excessive data exposure",
+        "tenant"
+      ],
+      "units": [
+        {
+          "slug": "bola-bfla",
+          "title": "Objeto e função",
+          "objective": "Diferenciar e testar cada nível de autorização.",
+          "competencies": [
+            "duas contas",
+            "troca de id",
+            "rota admin"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "api-m1-u1-own-bola",
+              "kind": "theory",
+              "title": "BOLA: autorização em nível de objeto",
+              "estimated_minutes": 25,
+              "kb_slug": "own-bola-autorizacao-objeto"
+            },
+            {
+              "slug": "api-m1-u1-kb-access",
+              "kind": "theory",
+              "title": "Controle de acesso em revisão",
+              "estimated_minutes": 25,
+              "academy_slug": "access-control"
+            },
+            {
+              "slug": "api-m1-u1-lab-bola",
+              "kind": "lab",
+              "title": "BOLA em contas",
+              "estimated_minutes": 30,
+              "challenge_slug": "access-bola-accounts"
+            },
+            {
+              "slug": "api-m1-u1-lab-bfla",
+              "kind": "lab",
+              "title": "BFLA em admin",
+              "estimated_minutes": 30,
+              "challenge_slug": "access-bfla-admin"
+            },
+            {
+              "slug": "api-m1-u1-lab-tenant",
+              "kind": "lab",
+              "title": "Tenant header",
+              "estimated_minutes": 30,
+              "challenge_slug": "access-tenant-header"
+            },
+            {
+              "slug": "api-m1-u1-lab-method",
+              "kind": "lab",
+              "title": "Method override",
+              "estimated_minutes": 25,
+              "challenge_slug": "access-method-override"
+            },
+            {
+              "slug": "api-m1-u1-lab-hpp",
+              "kind": "lab",
+              "title": "HTTP parameter pollution",
+              "estimated_minutes": 30,
+              "challenge_slug": "access-http-parameter-pollution"
+            }
+          ]
+        },
+        {
+          "slug": "propriedades",
+          "title": "Propriedades e dados excessivos",
+          "objective": "Testar o que o servidor aceita gravar e o que ele devolve a mais.",
+          "competencies": [
+            "mass assignment",
+            "excessive data",
+            "paginação"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "api-m1-u2-lab-mass",
+              "kind": "lab",
+              "title": "Mass assignment",
+              "estimated_minutes": 30,
+              "challenge_slug": "access-mass-assignment"
+            },
+            {
+              "slug": "api-m1-u2-lab-excessive",
+              "kind": "lab",
+              "title": "Excessive data exposure",
+              "estimated_minutes": 30,
+              "challenge_slug": "api-excessive-data"
+            },
+            {
+              "slug": "api-m1-u2-lab-pagination",
+              "kind": "lab",
+              "title": "Vazamento por paginação",
+              "estimated_minutes": 35,
+              "challenge_slug": "api-pagination-leak"
+            },
+            {
+              "slug": "api-m1-u2-lab-version",
+              "kind": "lab",
+              "title": "Downgrade de versão",
+              "estimated_minutes": 35,
+              "challenge_slug": "api-version-downgrade"
+            },
+            {
+              "slug": "api-m1-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: nomear a categoria",
+              "estimated_minutes": 20,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "A resposta de /users/me traz o hash de senha e o salário. Qual categoria OWASP API?",
+                  "accepted": [
+                    "api3",
+                    "excessive data",
+                    "excessive data exposure",
+                    "exposição excessiva"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Você envia `\"role\":\"admin\"` num PUT /profile e vira admin. Qual classe?",
+                  "accepted": [
+                    "mass assignment",
+                    "mass-assignment"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Qual teste distingue BOLA de BFLA?",
+                  "accepted": [
+                    "papel",
+                    "role",
+                    "duas contas",
+                    "different role"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Todos os labs e avaliação ≥ 70%.",
+      "estimated_minutes": 180,
+      "requires_module": "contratos-e-http"
+    },
+    {
+      "slug": "identidade-e-tokens",
+      "title": "Identidade, tokens e federação",
+      "summary": "Token é assinatura + claims + validação. Falha em qualquer um dos três.",
+      "objective": "Analisar JWT, OAuth 2.0 e OIDC como sistemas de confiança e atacar cada ponto de validação.",
+      "competencies": [
+        "JWT",
+        "OAuth 2.0",
+        "OIDC",
+        "sessão",
+        "refresh"
+      ],
+      "units": [
+        {
+          "slug": "jwt",
+          "title": "JWT",
+          "objective": "Ataque assinatura, header e claims.",
+          "competencies": [
+            "alg confusion",
+            "kid traversal",
+            "jku injection"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "api-m2-u1-kb-jwt",
+              "kind": "theory",
+              "title": "JWT: assinaturas, claims e chaves",
+              "estimated_minutes": 30,
+              "academy_slug": "jwt"
+            },
+            {
+              "slug": "api-m2-u1-lab-weak",
+              "kind": "lab",
+              "title": "Chave fraca",
+              "estimated_minutes": 30,
+              "challenge_slug": "auth-jwt-weak-key"
+            },
+            {
+              "slug": "api-m2-u1-lab-alg",
+              "kind": "lab",
+              "title": "Algorithm confusion",
+              "estimated_minutes": 40,
+              "challenge_slug": "auth-jwt-alg-confusion"
+            },
+            {
+              "slug": "api-m2-u1-lab-kid",
+              "kind": "lab",
+              "title": "kid traversal",
+              "estimated_minutes": 40,
+              "challenge_slug": "auth-jwt-kid-traversal"
+            },
+            {
+              "slug": "api-m2-u1-lab-jku",
+              "kind": "lab",
+              "title": "jku injection",
+              "estimated_minutes": 40,
+              "challenge_slug": "auth-jwt-jku-injection"
+            }
+          ]
+        },
+        {
+          "slug": "oauth-oidc",
+          "title": "OAuth 2.0 e OpenID Connect",
+          "objective": "Entender fluxo, redirect_uri, state e validação de ID Token.",
+          "competencies": [
+            "fluxos",
+            "redirect_uri",
+            "ID Token",
+            "nonce"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "api-m2-u2-own-oidc",
+              "kind": "theory",
+              "title": "OpenID Connect: ID Token e validação",
+              "estimated_minutes": 30,
+              "kb_slug": "own-oidc-openid-connect"
+            },
+            {
+              "slug": "api-m2-u2-kb-oauth",
+              "kind": "theory",
+              "title": "OAuth Misconfiguration",
+              "estimated_minutes": 20,
+              "kb_slug": "patt-oauth-misconfiguration-readme"
+            },
+            {
+              "slug": "api-m2-u2-lab-sso",
+              "kind": "lab",
+              "title": "Replay de assertion SSO",
+              "estimated_minutes": 45,
+              "challenge_slug": "auth-sso-assertion-replay"
+            },
+            {
+              "slug": "api-m2-u2-lab-reset",
+              "kind": "lab",
+              "title": "Reset host poisoning",
+              "estimated_minutes": 30,
+              "challenge_slug": "auth-reset-host"
+            },
+            {
+              "slug": "api-m2-u2-lab-fixation",
+              "kind": "lab",
+              "title": "Session fixation",
+              "estimated_minutes": 30,
+              "challenge_slug": "auth-session-fixation"
+            },
+            {
+              "slug": "api-m2-u2-lab-otp",
+              "kind": "lab",
+              "title": "Bruteforce de OTP",
+              "estimated_minutes": 30,
+              "challenge_slug": "auth-otp-bruteforce"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Labs de JWT e SSO concluídos.",
+      "estimated_minutes": 180,
+      "requires_module": "objetos-e-funcoes"
+    },
+    {
+      "slug": "graphql-e-protocolos",
+      "title": "GraphQL, SOAP e webhooks",
+      "summary": "API não é só REST. Cada protocolo tem seu modelo de confiança.",
+      "objective": "Testar APIs que não são REST: autenticação por campo, batch, schema e webhook.",
+      "competencies": [
+        "GraphQL",
+        "batch",
+        "SOAP",
+        "webhook",
+        "rate limit"
+      ],
+      "units": [
+        {
+          "slug": "graphql",
+          "title": "GraphQL",
+          "objective": "Testar autorização por campo e por operação.",
+          "competencies": [
+            "introspection",
+            "field auth",
+            "alias",
+            "batch"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "api-m3-u1-kb-graphql",
+              "kind": "theory",
+              "title": "GraphQL Injection e enumeração de schema",
+              "estimated_minutes": 25,
+              "kb_slug": "patt-graphql-injection-readme"
+            },
+            {
+              "slug": "api-m3-u1-lab-field",
+              "kind": "lab",
+              "title": "Autorização por campo",
+              "estimated_minutes": 40,
+              "challenge_slug": "api-graphql-field-auth"
+            },
+            {
+              "slug": "api-m3-u1-lab-batch",
+              "kind": "lab",
+              "title": "Batch endpoint auth",
+              "estimated_minutes": 40,
+              "challenge_slug": "api-batch-endpoint-auth"
+            }
+          ]
+        },
+        {
+          "slug": "outros-protocolos",
+          "title": "Webhooks, SOAP e limites",
+          "objective": "Explorar confiança em callbacks e ausência de limite.",
+          "competencies": [
+            "webhook forging",
+            "SSRF em webhook",
+            "rate limit"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "api-m3-u2-lab-webhook",
+              "kind": "lab",
+              "title": "Webhook SSRF",
+              "estimated_minutes": 35,
+              "challenge_slug": "server-ssrf-webhook"
+            },
+            {
+              "slug": "api-m3-u2-lab-race",
+              "kind": "lab",
+              "title": "Corrida em operação de API",
+              "estimated_minutes": 40,
+              "challenge_slug": "logic-race-withdraw"
+            },
+            {
+              "slug": "api-m3-u2-lab-otp",
+              "kind": "lab",
+              "title": "Ausência de rate limit em OTP",
+              "estimated_minutes": 30,
+              "challenge_slug": "auth-otp-bruteforce"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Labs de GraphQL e webhook concluídos.",
+      "estimated_minutes": 180,
+      "requires_module": "identidade-e-tokens"
+    },
+    {
+      "slug": "pentest-api-realista",
+      "title": "Pentest de API realista",
+      "summary": "Duas máquinas com superfície de API real.",
+      "objective": "Executar avaliação completa de API multi-serviço e entregar relatório.",
+      "competencies": [
+        "inventário",
+        "autorização",
+        "encadeamento",
+        "relatório"
+      ],
+      "units": [
+        {
+          "slug": "engajamento",
+          "title": "Engajamento",
+          "objective": "Aplicar o método em máquina orientada a API.",
+          "competencies": [
+            "recon",
+            "exploração",
+            "relatório"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "api-m4-u1-lab-logistics",
+              "kind": "lab",
+              "title": "Máquina: Wayline Logistics",
+              "estimated_minutes": 70,
+              "challenge_slug": "machine-logistics-api"
+            },
+            {
+              "slug": "api-m4-u1-lab-fintech",
+              "kind": "lab",
+              "title": "Máquina: Finch Support",
+              "estimated_minutes": 70,
+              "challenge_slug": "machine-fintech-support"
+            },
+            {
+              "slug": "api-m4-u1-report",
+              "kind": "project",
+              "title": "Relatório de avaliação de API",
+              "estimated_minutes": 90,
+              "body_md": "Produza o relatório de **uma** das máquinas deste módulo.\n\nObrigatório: inventário de endpoints com o método de descoberta; matriz de autorização (ator × objeto × função); cada achado com request/response; classificação OWASP API Top 10; correção por achado.\n\nO relatório deve permitir que outro operador reproduza cada achado."
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Máquina concluída e relatório entregue.",
+      "estimated_minutes": 240,
+      "requires_module": "graphql-e-protocolos"
+    }
+  ],
+  "capstone": {
+    "objective": "Avaliar duas aplicações com API e entregar relatório com matriz de autorização.",
+    "scope_md": "As máquinas `machine-logistics-api` e `machine-fintech-support`, em loopback.",
+    "resources_md": "REDVAULT, Burp/ZAP, curl, jq.",
+    "steps_md": "1. Descobrir documentação e inventariar endpoints.\n2. Criar duas identidades e montar a matriz ator × objeto × função.\n3. Testar cada célula da matriz.\n4. Explorar os achados até as flags.\n5. Escrever o relatório.",
+    "success_criteria": [
+      "Matriz de autorização completa para ao menos uma máquina",
+      "Achados com request/response reproduzíveis",
+      "Classificação OWASP API Top 10 por achado",
+      "Correção proposta por achado"
+    ],
+    "evidence": [
+      "Export do Burp/ZAP",
+      "Matriz de autorização em tabela",
+      "Relatório em Markdown"
+    ],
+    "expected_result": "Relatório de segurança de API com matriz de autorização validada.",
+    "grading_md": "Cobertura da matriz 30%, evidência 30%, correção 20%, encadeamento 20%.",
+    "challenge_slug": "machine-logistics-api"
+  }
+}

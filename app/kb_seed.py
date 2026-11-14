@@ -64,6 +64,43 @@ CATEGORY_TREE = [
     ("business-logic", "Falhas de lógica de negócio", "web", 290, "web-app-security"),
     ("info-disclosure", "Information Disclosure", "web", 300, "web-app-security"),
 
+    # Post-exploitation mapped to platform tracks (own documents + HackTricks)
+    ("post-exploitation", "Pós-exploração de sistemas", "post", 5, None),
+    ("linux-privesc", "Linux — escalada de privilégios", "post", 10, "post-exploitation"),
+    ("windows-privesc", "Windows — escalada de privilégios", "post", 20, "post-exploitation"),
+
+    # Hardware: only the methodology the imported material does not cover.
+    ("hardware", "Hardware Hacking", "hardware", 10, None),
+    ("hardware-recon", "Reconhecimento de placa", "hardware", 20, "hardware"),
+    ("hardware-signals", "Captura e decodificação de sinais", "hardware", 30, "hardware"),
+    ("hardware-firmware", "Análise de firmware", "hardware", 40, "hardware"),
+    ("hardware-rf", "Rádio e SDR", "hardware", 50, "hardware"),
+
+    # Phase-3 tracks: methodology the imported material does not cover.
+    ("malware-analysis", "Análise de malware", "malware", 5, None),
+    ("malware-detection", "Detecção e assinaturas", "malware", 15, "malware-analysis"),
+    ("forensics", "Forense digital", "forensics", 5, None),
+    ("forensics-memory", "Forense de memória", "forensics", 15, "forensics"),
+    ("forensics-timeline", "Timeline e cadeia de custódia", "forensics", 25, "forensics"),
+    ("cloud-security", "Cloud e containers", "cloud", 5, None),
+    ("cloud-iam", "IAM e permissões", "cloud", 15, "cloud-security"),
+    ("cloud-serverless", "Serverless", "cloud", 25, "cloud-security"),
+    ("reversing", "Engenharia reversa", "reversing", 5, None),
+    ("reversing-extensions", "Extensões e plugins de desassemblador", "reversing", 15, "reversing"),
+    ("exploit-dev", "Exploit development", "binexp", 5, None),
+    ("exploit-heap", "Heap e glibc", "binexp", 15, "exploit-dev"),
+    ("exploit-tooling", "Tooling de exploit", "binexp", 25, "exploit-dev"),
+    ("applied-crypto", "Criptografia aplicada", "crypto", 5, None),
+    ("crypto-primitives", "Primitivas e MACs", "crypto", 15, "applied-crypto"),
+    ("crypto-pki", "PKI e identidade", "crypto", 25, "applied-crypto"),
+    ("osint", "OSINT", "osint", 5, None),
+    ("osint-infra", "Infraestrutura exposta", "osint", 15, "osint"),
+    ("osint-people", "Pessoas e organizações", "osint", 25, "osint"),
+    ("red-team", "Red Team", "redteam", 5, None),
+    ("red-team-infra", "Infraestrutura de operação", "redteam", 15, "red-team"),
+    ("iot", "IoT e sistemas embarcados", "iot", 5, None),
+    ("iot-protocols", "Protocolos de dispositivo", "iot", 15, "iot"),
+
     ("api-security", "API Security", "api", 10, None),
     ("api-rest", "REST API", "api", 20, "api-security"),
     ("graphql", "GraphQL", "api", 30, "api-security"),

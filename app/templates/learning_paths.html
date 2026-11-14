@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}Learning Paths{% endblock %}
+{% block crumb %}PROGRESSÃO / LEARNING PATHS{% endblock %}
+{% block page_title %}Learning Paths{% endblock %}
+
+{% block content %}
+<div class="lp-hero">
+  <div class="lp-hero-copy">
+    <span class="eyebrow">PROGRAMAS DE FORMAÇÃO TÉCNICA</span>
+    <h2>Trilhas com módulos, prática e projeto final.</h2>
+    <p>
+      Cada trilha é um programa independente: disciplinas teóricas ancoradas na biblioteca,
+      exercícios guiados, laboratórios reais da plataforma e um capstone com critérios objetivos.
+      O progresso é gravado por atividade — abrir a página não conclui nada.
+    </p>
+    <div class="lp-hero-stats">
+      <div><strong>{{ rows|length }}</strong><span>TRILHAS</span></div>
+      <div><strong>{{ unlocked }}</strong><span>LIBERADAS</span></div>
+      <div><strong>{{ complete }}</strong><span>CONCLUÍDAS</span></div>
+      <div><strong>{{ cert_count }}</strong><span>CERTIFICADOS</span></div>
+    </div>
+  </div>
+  <div class="lp-hero-actions">
+    <a class="btn btn-primary" href="/learning-paths/recommendations">{{ m.icon("bolt", 14) }} O QUE ESTUDAR AGORA</a>
+    <button class="btn" type="button" data-toggle="lp-custom" aria-expanded="false">{{ m.icon("layers", 14) }} NOVA TRILHA</button>
+  </div>
+</div>
+
+<div class="card card-pad lp-custom" id="lp-custom" hidden>
+  <div class="section-head" style="margin-bottom:14px">
+    <div><span class="eyebrow">TRILHA PERSONALIZADA</span><h3>Criar ou duplicar</h3></div>
+  </div>
+  <form method="post" action="/learning-paths/custom" class="form-stack">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div class="lp-form-grid">
+      <label class="field"><span>TÍTULO</span>
+        <input type="text" name="title" required maxlength="160" placeholder="Ex.: Red Team — cadeia de ataque interna">
+      </label>
+      <label class="field"><span>SLUG</span>
+        <input type="text" name="slug" required pattern="[a-z0-9-]+" placeholder="ex.: red-team-interna">
+        <small>Somente minúsculas, números e hífen.</small>
+      </label>
+      <label class="field"><span>DUPLICAR DE (OPCIONAL)</span>
+        <select name="source_slug">
+          <option value="">— começar do zero —</option>
+          {% for row in rows %}
+          <option value="{{ row.path.slug }}">{{ row.path.title }}</option>
+          {% endfor %}
+        </select>
+        <small>Duplicar copia módulos, disciplinas e capstone para você editar.</small>
+      </label>
+      <label class="field"><span>HORAS ESTIMADAS</span>
+        <input type="text" name="estimated_hours" inputmode="numeric" placeholder="10">
+      </label>
+    </div>
+    <label class="field"><span>OBJETIVO DA TRILHA</span>
+      <textarea name="goal" rows="3" placeholder="O que você quer saber fazer ao final e como vai comprovar."></textarea>
+    </label>
+    <div class="btn-row">
+      <button class="btn btn-primary" type="submit">{{ m.icon("check", 13) }} CRIAR</button>
+    </div>
+  </form>
+</div>
+
+{% if recs %}
+<section class="section" style="margin-top:22px">
+  <div class="section-head">
+    <div><span class="eyebrow">RECOMENDAÇÕES</span><h3>Próximos passos calculados do seu progresso</h3></div>
+    <a class="link-arrow" href="/learning-paths/recommendations">VER TODAS {{ m.icon("arrow-right", 12) }}</a>
+  </div>
+  <div class="lp-recs">
+    {% for rec in recs %}
+    <a class="lp-rec lp-rec-{{ rec.kind }}" href="{{ rec.url }}">
+      <span class="lp-rec-kind">{{ rec_labels.get(rec.kind, rec.kind) }}</span>
+      <strong>{{ rec.title }}</strong>
+      <small>{{ rec.reason }}</small>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<div class="chip-row" style="margin-top:26px">
+  <a class="chip {% if not active_state %}active{% endif %}" href="/learning-paths{% if active_domain %}?domain={{ active_domain }}{% endif %}">Todas</a>
+  <a class="chip {% if active_state == 'unlocked' %}active{% endif %}" href="/learning-paths?state=unlocked">Liberadas</a>
+  <a class="chip {% if active_state == 'started' %}active{% endif %}" href="/learning-paths?state=started">Em andamento</a>
+  <a class="chip {% if active_state == 'done' %}active{% endif %}" href="/learning-paths?state=done">Concluídas</a>
+  {% for domain in domains %}
+  <a class="chip {% if active_domain == domain %}active{% endif %}" href="/learning-paths?domain={{ domain }}">{{ domain_labels.get(domain, domain|upper) }}</a>
+  {% endfor %}
+</div>
+
+<div class="lp-grid">
+  {% for row in rows %}
+  {% set path = row.path %}
+  {% set pp = row.pp %}
+  <article class="lp-card lp-accent-{{ path.accent }} {% if pp.completed_all %}is-done{% elif pp.started %}is-current{% endif %}">
+    <div class="lp-card-top">
+      <div class="lp-card-icon">{{ m.icon(path.icon, 20) }}</div>
+      <div class="lp-card-title">
+        <div class="mono-label">{{ path.codename or path.domain|upper }} · FASE {{ path.phase }}</div>
+        <h3><a href="/learning-paths/{{ path.slug }}">{{ path.title }}</a></h3>
+      </div>
+      {% if not row.unlocked %}
+      <span class="lp-lock" title="Pré-requisito pendente">{{ m.icon("lock", 14) }}</span>
+      {% elif pp.completed_all %}
+      <span class="lp-badge done">{{ m.icon("check", 11) }} CONCLUÍDA</span>
+      {% endif %}
+    </div>
+
+    <p class="lp-card-summary">{{ path.summary }}</p>
+
+    <div class="lp-card-meta">
+      <span>{{ m.icon("layers", 11) }} {{ path.modules|length }} módulos</span>
+      <span>{{ m.icon("clock", 11) }} ~{{ path.estimated_hours }}h</span>
+      <span>{{ m.icon("target", 11) }} {{ pp.total }} atividades</span>
+    </div>
+
+    <div class="lp-card-kinds">
+      {% for kind, count in pp.by_kind.items() %}
+      <span class="lp-kind lp-kind-{{ kind }}" title="{{ kind_labels.get(kind, kind) }}: {{ count.done }}/{{ count.total }}">{{ kind_labels.get(kind, kind) }} {{ count.done }}/{{ count.total }}</span>
+      {% endfor %}
+    </div>
+
+    {% if path.competencies %}
+    <div class="lp-skills">
+      {% for skill in path.competencies[:3] %}<span>{{ skill }}</span>{% endfor %}
+      {% if path.competencies|length > 3 %}<span class="dim">+{{ path.competencies|length - 3 }}</span>{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="lp-card-foot">
+      <div class="lp-card-progress">
+        <div class="path-progress-top"><span>{{ pp.completed }}/{{ pp.total }}</span><span>{{ pp.percent }}%</span></div>
+        <div class="bar {% if pp.percent == 100 %}bar-green{% endif %}"><span style="width: {{ pp.percent }}%"></span></div>
+      </div>
+      <a class="btn btn-sm {% if pp.started and not pp.completed_all %}btn-primary{% endif %}" href="/learning-paths/{{ path.slug }}">
+        {% if pp.completed_all %}REVISAR{% elif pp.started %}CONTINUAR{% else %}ABRIR{% endif %}
+      </a>
+    </div>
+  </article>
+  {% else %}
+  {{ m.empty_state("graduation", "Nenhuma trilha neste filtro", "Ajuste o filtro para ver os programas disponíveis.", "/learning-paths", "VER TODAS") }}
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('[data-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var el = document.getElementById(btn.getAttribute('data-toggle'));
+      if (!el) return;
+      el.hidden = !el.hidden;
+      btn.setAttribute('aria-expanded', String(!el.hidden));
+      if (!el.hidden) el.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    });
+  });
+</script>
+{% endblock %}

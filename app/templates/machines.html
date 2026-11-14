@@ -25,12 +25,12 @@
   {% set completed = p and p.status == "completed" %}
   {% set required = machine.flags|selectattr("required")|list %}
   {% set found = solved.get(machine.id, []) %}
-  <a class="machine-card {{ machine.difficulty }}" href="/machines/{{ machine.slug }}">
+  <article class="machine-card {{ machine.difficulty }}">
     <div class="machine-stripe"></div>
     <div class="machine-card-body">
       <div class="machine-glyph">{{ m.icon("skull" if machine.kind == "machine" else "crosshair", 25) }}</div>
       <div class="machine-main">
-        <h3>{{ machine.title }}</h3>
+        <h3><a href="/machines/{{ machine.slug }}">{{ machine.title }}</a></h3>
         <div class="codename">{{ machine.codename or "ALVO DO AMBIENTE PRIVADO" }}</div>
         <p>{{ machine.summary }}</p>
         <div class="meta-row">
@@ -60,7 +60,7 @@
       <span class="link-arrow">BRIEFING {{ m.icon("arrow-right", 12) }}</span>
       {% endif %}
     </div>
-  </a>
+  </article>
   {% endfor %}
 </div>
 {% else %}

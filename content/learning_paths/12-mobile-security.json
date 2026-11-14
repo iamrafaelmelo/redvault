@@ -1,0 +1,548 @@
+{
+  "slug": "mobile-security",
+  "title": "Segurança Mobile",
+  "codename": "MOB",
+  "domain": "mobile",
+  "summary": "Android de ponta a ponta: manifesto, decompilação, instrumentação com Frida, componentes expostos, transporte e atestação.",
+  "description": "A trilha usa o acervo importado de Android, que é extenso e atual: componentes, Drozer, Frida, Objection, WebView, pinning, atestação e código nativo. A plataforma não distribui APK nem emulador configurado, e a trilha diz isso: a análise estática roda sobre qualquer APK que o operador possua, e os passos dinâmicos ficam marcados como bloqueados quando não há emulador utilizável. iOS entra pelo que a base cobre — forense de backup.",
+  "entry_level": "Linux e linha de comando; noções de Java",
+  "exit_level": "capaz de avaliar um app Android completo e declarar o que ficou bloqueado",
+  "estimated_hours": 30,
+  "priority": 76,
+  "phase": 3,
+  "icon": "target",
+  "accent": "green",
+  "prerequisites": [
+    "web-application-pentesting",
+    "linux-security"
+  ],
+  "competencies": [
+    "Ler o manifesto e prever alcançabilidade de componentes",
+    "Localizar segredo e endpoint no APK descompilado",
+    "Instrumentar app com Frida e documentar o hook",
+    "Inventariar componentes exportados e classificar risco",
+    "Avaliar transporte distinguindo mecanismo de falha de ferramenta",
+    "Reconhecer proteções evasivas e o que elas realmente garantem"
+  ],
+  "tools": [
+    "jadx",
+    "apktool",
+    "Frida",
+    "Objection",
+    "Drozer",
+    "adb",
+    "Android Studio/AVD",
+    "MobSF",
+    "Burp Suite"
+  ],
+  "equipment": "Somente software, com ressalva: a análise estática roda na máquina do operador sem dispositivo. A análise dinâmica exige emulador (AVD) ou aparelho próprio, que a plataforma não fornece. Onde isso acontece, o exercício declara o limite e aceita a entrega estática como alternativa.",
+  "modules": [
+    {
+      "slug": "fundamentos-android",
+      "title": "Fundamentos de Android",
+      "summary": "Componentes, permissões e o sandbox por app. Antes de atacar, entender o modelo.",
+      "objective": "Entender o modelo de segurança do Android antes de procurar falha.",
+      "competencies": [
+        "componentes",
+        "permissões",
+        "sandbox",
+        "emulador"
+      ],
+      "units": [
+        {
+          "slug": "modelo",
+          "title": "Modelo de segurança",
+          "objective": "Saber o que o sistema garante e o que o app precisa garantir.",
+          "competencies": [
+            "manifest",
+            "exported",
+            "permissões",
+            "UID por app"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "mob-m0-u1-kb-basics",
+              "kind": "theory",
+              "title": "Noções básicas sobre aplicações Android",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-android-applications-basics",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m0-u1-kb-adb",
+              "kind": "theory",
+              "title": "Comandos ADB",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-adb-commands",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m0-u1-kb-avd",
+              "kind": "theory",
+              "title": "AVD — Android Virtual Device",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-avd-android-virtual-device",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m0-u1-ex-manifest",
+              "kind": "exercises",
+              "title": "Exercício: ler o manifesto e prever o que é alcançável",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.** Sem dispositivo: use um APK que você já tenha (ou um app de código aberto que você baixe por conta própria).\n\n1. Extraia o `AndroidManifest.xml` do APK.\n2. Liste cada componente e seu atributo `exported`.\n3. Para cada componente exportado, responda: quem pode chamá-lo?\n4. Identifique as permissões declaradas e as realmente usadas.\n\nEntregue a tabela. `exported=true` sem verificação de chamador é a falha mais comum de app Android — e a mais fácil de detectar só lendo o manifesto.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Mapa de componentes exportados a partir do manifesto.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "analise-estatica",
+      "title": "Análise estática do APK",
+      "summary": "Decompilação, smali, nativo e ofuscação. Ler o app como código.",
+      "objective": "Ler o app sem executá-lo e localizar o que não deveria estar exposto.",
+      "competencies": [
+        "decompilação",
+        "smali",
+        "bibliotecas nativas",
+        "ofuscação"
+      ],
+      "units": [
+        {
+          "slug": "decompilacao",
+          "title": "Decompilação",
+          "objective": "Transformar o APK em código legível e navegar com objetivo.",
+          "competencies": [
+            "dex",
+            "smali",
+            "JADX",
+            "assets"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "mob-m1-u1-kb-apk",
+              "kind": "theory",
+              "title": "Decompiladores de APK",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-apk-decompilers",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m1-u1-kb-smali",
+              "kind": "theory",
+              "title": "Smali — descompilando, modificando e compilando",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-smali-changes",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m1-u1-ex-apk",
+              "kind": "exercises",
+              "title": "Exercício: procurar segredo e endpoint no APK",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Descompile o APK (JADX ou `apktool`).\n2. Procure por: URLs, chaves de API, nomes de bucket e strings de autenticação.\n3. Para cada achado, classifique: **hardcoded real**, **placeholder** ou **ruído**.\n4. Verifique se a string está também em `res/` ou em recurso comprimido.\n\nEntregue a lista com caminho do arquivo e linha. Segredo hardcoded sem localização citável não é achado.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "nativo-e-ofuscacao",
+          "title": "Código nativo e ofuscação",
+          "objective": "Reconhecer onde a lógica saiu da linguagem gerenciada.",
+          "competencies": [
+            "JNI",
+            ".so",
+            "obfuscação",
+            "React Native",
+            "Flutter"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "mob-m1-u2-kb-native",
+              "kind": "theory",
+              "title": "Reversão de bibliotecas nativas",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-reversing-native-libraries",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m1-u2-kb-manual",
+              "kind": "theory",
+              "title": "Técnicas de desofuscação manual",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-manual-deobfuscation",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m1-u2-kb-react",
+              "kind": "theory",
+              "title": "Análise de aplicação React Native",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-react-native-application",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m1-u2-kb-flutter",
+              "kind": "theory",
+              "title": "Flutter",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-flutter",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m1-u2-ex-nativo",
+              "kind": "exercises",
+              "title": "Exercício: localizar a fronteira entre Java e nativo",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. No APK descompilado, liste as bibliotecas `.so`.\n2. Identifique as chamadas `native` em Java/Kotlin.\n3. Escolha uma e diga o que você precisaria fazer para analisá-la.\n\nResponda: por que lógica movida para nativo **dificulta** mas não **impede** a análise? Cite a técnica de análise estática que continua válida no binário.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "fundamentos-android",
+      "completion": "Lista de achados estáticos com localização e fronteira Java/nativo mapeada.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "analise-dinamica",
+      "title": "Análise dinâmica",
+      "summary": "Frida, Objection, Drozer e o abuso de componentes expostos.",
+      "objective": "Instrumentar o app em execução e verificar o que ele faz na prática.",
+      "competencies": [
+        "Frida",
+        "Objection",
+        "Drozer",
+        "proxy de interceptação"
+      ],
+      "units": [
+        {
+          "slug": "instrumentacao",
+          "title": "Instrumentação",
+          "objective": "Interceptar chamada e alterar comportamento sem reconstruir o APK.",
+          "competencies": [
+            "Frida",
+            "Objection",
+            "hooks",
+            "UnCrackable"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "mob-m2-u1-kb-frida",
+              "kind": "theory",
+              "title": "Tutorial do Frida",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-frida-tutorial",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m2-u1-kb-objection",
+              "kind": "theory",
+              "title": "Tutorial do Objection",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-frida-tutorial-objection-tutorial",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m2-u1-ex-uncrackable",
+              "kind": "exercises",
+              "title": "Exercício: resolver o UnCrackable nível 1 num AVD",
+              "estimated_minutes": 70,
+              "body_md": "**SOMENTE SOFTWARE.** Precisa de AVD (emulador) e do app de treino OWASP UnCrackable, que você baixa por conta própria. A plataforma não distribui o APK.\n\n1. Suba o AVD e instale o app.\n2. Localize a verificação de senha em estático.\n3. Use Frida para observar o valor comparado em tempo de execução.\n4. Registre o comando usado e a saída.\n\nSe não conseguir emular com a aceleração disponível na sua máquina, entregue a análise estática da rotina de verificação e diga explicitamente que o passo dinâmico ficou bloqueado — não invente saída de terminal.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "superficie-de-componentes",
+          "title": "Superfície de componentes",
+          "objective": "Alcançar componentes expostos e medir o impacto.",
+          "competencies": [
+            "Drozer",
+            "content provider",
+            "intent",
+            "WebView"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "mob-m2-u2-kb-drozer",
+              "kind": "theory",
+              "title": "Tutorial do Drozer",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-drozer-tutorial",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m2-u2-kb-content",
+              "kind": "theory",
+              "title": "Content Protocol no Android",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-content-protocol",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m2-u2-kb-cp",
+              "kind": "theory",
+              "title": "Explorando Content Providers",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-drozer-tutorial-exploiting-content-providers",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m2-u2-kb-intent",
+              "kind": "theory",
+              "title": "Intent Injection",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-intent-injection",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m2-u2-kb-webview",
+              "kind": "theory",
+              "title": "Ataques a WebView",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-webview-attacks",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m2-u2-kb-debuggable",
+              "kind": "theory",
+              "title": "Explorando uma aplicação debuggable",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-exploiting-a-debuggeable-applciation",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m2-u2-ex-inventory",
+              "kind": "exercises",
+              "title": "Exercício: inventariar componentes exportados e classificar risco",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.** Estático, funciona sem emulador.\n\nCom o mapa de componentes do módulo 0:\n\n1. Classifique cada exportado em: **informativo**, **ação sensível**, **confiança implícita**.\n2. Para cada ação sensível, escreva o cenário de abuso concreto.\n3. Indique a evidência necessária para confirmar em execução.\n\nComponente exportado sem cenário de abuso é ruído, não achado. O relatório cresce com a segunda coluna, não com a primeira.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "analise-estatica",
+      "completion": "Instrumentação documentada e inventário de componentes classificado por risco.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "transporte-e-protecoes",
+      "title": "Transporte, integridade e proteções evasivas",
+      "summary": "Transporte, biometria, sobreposição e atestação: controles reais versus dificuldade.",
+      "objective": "Verificar o que protege a comunicação e o que é apenas dificuldade de análise.",
+      "competencies": [
+        "certificado",
+        "pinning",
+        "biometria",
+        "tapjacking",
+        "attestation"
+      ],
+      "units": [
+        {
+          "slug": "transporte",
+          "title": "Transporte",
+          "objective": "Distinguir pinning real de configuração frouxa e avaliar o que a rede vê.",
+          "competencies": [
+            "proxy",
+            "certificado de CA",
+            "pinning",
+            "anti-instrumentação"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "mob-m3-u1-kb-burp",
+              "kind": "theory",
+              "title": "Instalar certificado do Burp",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-install-burp-certificate",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m3-u1-kb-ca",
+              "kind": "theory",
+              "title": "Fazer um APK confiar em certificado de CA do usuário",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-make-apk-accept-ca-certificate",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m3-u1-kb-pinning",
+              "kind": "theory",
+              "title": "Anti-instrumentação e SSL pinning bypass",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-android-anti-instrumentation-and-ssl-pinning-bypass",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m3-u1-ex-transporte",
+              "kind": "exercises",
+              "title": "Exercício: escrever o teste de transporte em cinco passos",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.** Sem dispositivo obrigatório.\n\nEscreva o procedimento para responder 'o app protege a comunicação?' em cinco passos, com a evidência de **cada** passo:\n\n1. Configurar proxy.\n2. Aceitar o certificado de interceptação.\n3. Observar a conexão.\n4. Se falhar, determinar o motivo (pinning, pinning de CA, anti-instrumentação).\n5. Documentar o resultado.\n\nRegra: 'não consegui interceptar' não é achado de segurança. O achado é o mecanismo identificado e o fato de ele ser verificável.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "protecoes",
+          "title": "Outras proteções",
+          "objective": "Avaliar biometria, sobreposição e atestação como controles reais.",
+          "competencies": [
+            "biometria",
+            "tapjacking",
+            "task hijacking",
+            "Play Integrity"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "mob-m3-u2-kb-bio",
+              "kind": "theory",
+              "title": "Bypass da autenticação biométrica (Android)",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-bypass-biometric-authentication-android",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m3-u2-kb-tap",
+              "kind": "theory",
+              "title": "Tapjacking",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-tapjacking",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m3-u2-kb-task",
+              "kind": "theory",
+              "title": "Task Hijacking no Android",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-android-task-hijacking",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m3-u2-kb-integrity",
+              "kind": "theory",
+              "title": "Bypass da atestação Play Integrity",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-play-integrity-attestation-bypass",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m3-u2-kb-ios",
+              "kind": "theory",
+              "title": "Forense de backup do iOS",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-ios-backup-forensics",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m3-u2-kb-physical",
+              "kind": "theory",
+              "title": "Ataques físicos ao Android",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-mobile-pentesting-android-app-pentesting-android-physical-attacks",
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m3-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: segurança mobile",
+              "estimated_minutes": 35,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "O que `android:exported=\"true\"` significa para um componente?",
+                  "accepted": [
+                    "outros apps podem chamá-lo",
+                    "qualquer app pode invocar"
+                  ],
+                  "explanation": "Exportado significa alcançável por outros apps; sem verificação de chamador, vira superfície de ataque."
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Por que segredo hardcoded no APK é sempre comprometido?",
+                  "accepted": [
+                    "o APK é distribuído ao usuário",
+                    "o binário pode ser descompilado"
+                  ],
+                  "explanation": "O APK fica com o usuário, que pode descompilá-lo e extrair qualquer string."
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Pinning SSL impede a análise?",
+                  "accepted": [
+                    "não",
+                    "nao",
+                    "dificulta mas não impede",
+                    "apenas dificulta"
+                  ],
+                  "explanation": "Pinning dificulta a interceptação, mas contorna-se com instrumentação; é obstáculo, não impossibilidade."
+                },
+                {
+                  "id": "q4",
+                  "prompt": "Por que 'não consegui interceptar o tráfego' não é um achado?",
+                  "accepted": [
+                    "falta identificar o mecanismo",
+                    "não localiza a proteção nem avalia a falha"
+                  ],
+                  "explanation": "O achado exige o mecanismo identificado e sua consequência; a falha de ferramenta não é prova de segurança."
+                }
+              ],
+              "equipment": "software"
+            },
+            {
+              "slug": "mob-m3-u2-project",
+              "kind": "project",
+              "title": "Capstone: avaliação de um app",
+              "estimated_minutes": 150,
+              "body_md": "**SOMENTE SOFTWARE.** Entrega do capstone.\n\nAlvo: um APK que **você** escolheu e possui, e que pode analisar. Não é alvo de terceiro sem autorização.\n\nEntregue:\n\n1. Mapa de componentes exportados.\n2. Achados estáticos com localização (arquivo e linha).\n3. Resultado da análise dinâmica (com o que ficou bloqueado declarado).\n4. Avaliação de transporte: mecanismo identificado e evidência.\n5. Proteções avaliadas: biometria, atestação, ofuscação.\n6. Limitações e riscos priorizados.\n\nRecusa: achado sem localização, 'não consegui' apresentado como 'é seguro', ou relatório que descreve dispositivo que você não tem.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "analise-dinamica",
+      "completion": "Procedimento de transporte, avaliação aprovada e proteções avaliadas.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    }
+  ],
+  "capstone": {
+    "objective": "Produzir avaliação de um app Android com achados localizados, análise dinâmica declarada e riscos priorizados.",
+    "scope_md": "Um APK que o operador possui e pode analisar. Não é alvo de terceiro sem autorização escrita.",
+    "resources_md": "jadx/apktool, adb, emulador (se disponível), Frida e Objection (para os passos dinâmicos), proxy de interceptação. Todos gratuitos.",
+    "steps_md": "1. Mapear componentes a partir do manifesto.\n2. Descompilar e procurar segredo, endpoint e lógica sensível.\n3. Identificar a fronteira Java/nativo e o que fica bloqueado.\n4. Rodar análise dinâmica, ou declarar o bloqueio com o motivo.\n5. Testar transporte e identificar o mecanismo de proteção.\n6. Avaliar proteções evasivas e atestação.\n7. Priorizar riscos.",
+    "success_criteria": [
+      "Cada componente exportado com cenário de abuso ou motivo de descarte",
+      "Achado estático com arquivo e linha",
+      "Hook documentado ou bloqueio declarado com causa",
+      "Mecanismo de transporte identificado, não apenas 'não interceptei'",
+      "Proteções avaliadas e classificadas como reais ou dificuldade",
+      "Limitações explícitas"
+    ],
+    "evidence": [
+      "Mapa de componentes",
+      "Lista de achados estáticos localizados",
+      "Log de instrumentação ou registro de bloqueio",
+      "Relatório de transporte",
+      "Relatório final priorizado"
+    ],
+    "expected_result": "Avaliação de app Android com achados reproduzíveis e limites declarados.",
+    "grading_md": "Fidelidade técnica 35%, localização das evidências 25%, análise dinâmica 20%, honestidade de limites 20%.",
+    "challenge_slug": ""
+  }
+}

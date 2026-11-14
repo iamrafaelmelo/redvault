@@ -1,0 +1,490 @@
+{
+  "slug": "applied-crypto",
+  "title": "Criptografia Aplicada",
+  "codename": "CRY",
+  "domain": "crypto",
+  "summary": "Hash, MAC, KDF, RSA, PKI e tokens: avaliar onde a primitiva correta é usada errado e descrever o mecanismo do erro.",
+  "description": "Trilha de avaliação e implementação, não de criptoanálise matemática. Cruza o material importado de primitivas, RSA, TLS e tokens (JWT, OAuth, SAML) com dois documentos próprios sobre HMAC/integridade e PKI. O foco é o erro de uso: primitiva certa no lugar errado, que é a causa da maior parte dos problemas criptográficos reais.",
+  "entry_level": "Programação e noções de redes",
+  "exit_level": "capaz de avaliar uso criptográfico de uma aplicação e escrever achado com mecanismo",
+  "estimated_hours": 28,
+  "priority": 82,
+  "phase": 3,
+  "icon": "key",
+  "accent": "amber",
+  "prerequisites": [
+    "web-application-pentesting",
+    "api-security"
+  ],
+  "competencies": [
+    "Distinguir hash, MAC e KDF pelo problema que resolvem",
+    "Explicar o ataque de extensão de comprimento e o porquê do HMAC",
+    "Demonstrar por que modo ECB e IV fixo são inseguros",
+    "Verificar assinatura e cadeia de certificado corretamente",
+    "Avaliar token e separar garantia de declaração",
+    "Escrever achado criptográfico com mecanismo verificável"
+  ],
+  "tools": [
+    "openssl",
+    "hashcat",
+    "python3 (cryptography/hmac)",
+    "jwt_tool",
+    "Wireshark",
+    "exiftool"
+  ],
+  "equipment": "Somente software, livre, na máquina do operador.",
+  "modules": [
+    {
+      "slug": "primitivas",
+      "title": "Primitivas e o que cada uma garante",
+      "summary": "Hash, MAC, cifra e KDF: qual problema cada um resolve e qual erro cada um permite.",
+      "objective": "Distinguir hash, MAC, cifra e KDF pelo problema que resolvem.",
+      "competencies": [
+        "hash",
+        "MAC",
+        "cifra simétrica",
+        "modo de operação",
+        "KDF"
+      ],
+      "units": [
+        {
+          "slug": "hash-e-mac",
+          "title": "Hash e MAC",
+          "objective": "Saber quando hash basta e quando é preciso chave.",
+          "competencies": [
+            "digest",
+            "integridade",
+            "autenticação",
+            "tempo constante"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "cry-m0-u1-own-hmac",
+              "kind": "theory",
+              "title": "HMAC, hash e MAC",
+              "estimated_minutes": 60,
+              "kb_slug": "own-hmac-e-integridade",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m0-u1-kb-hashes",
+              "kind": "theory",
+              "title": "Hashes, MACs e KDFs",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-crypto-hashes",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m0-u1-kb-ctf",
+              "kind": "theory",
+              "title": "Fluxo de trabalho de Crypto CTF",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-crypto-ctf-workflow",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m0-u1-kb-ctf-misc",
+              "kind": "theory",
+              "title": "Crypto CTF Misc",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-crypto-ctf-misc",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m0-u1-ex-extensao",
+              "kind": "exercises",
+              "title": "Exercício: reproduzir ataque de extensão de comprimento",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Implemente `hash(chave || mensagem)` e `HMAC(chave, mensagem)` com SHA-256.\n2. Para o primeiro, mostre que é possível calcular o hash de `mensagem || extensão` sem conhecer a chave (use a técnica de estado interno do SHA-256; uma biblioteca de referência ou implementação didática serve).\n3. Repita a tentativa com HMAC e mostre por que falha.\n\nEntregue a demonstração e duas frases explicando por que a chave aparece em **dois** pontos no HMAC.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "cifra-e-kdf",
+          "title": "Cifra e KDF",
+          "objective": "Escolher modo e custo corretos, e saber o que cada erro revela.",
+          "competencies": [
+            "modo de operação",
+            "IV",
+            "salt",
+            "PBKDF2",
+            "argon2"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "cry-m0-u2-kb-sym",
+              "kind": "theory",
+              "title": "Criptografia simétrica",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-crypto-symmetric",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m0-u2-ex-modo",
+              "kind": "exercises",
+              "title": "Exercício: demonstrar por que ECB não pode ser usado em dado estruturado",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Cifre uma imagem pequena em ECB e em CBC.\n2. Compare as duas saídas visualmente.\n3. Responda: o que a estrutura visível na saída de ECB revela sobre o texto claro?\n4. Explique por que IV fixo em CBC tem problema equivalente.\n\nEntregue as duas imagens e as respostas. A lição é que modo não é detalhe de implementação: é parte da segurança.",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m0-u2-ex-kdf",
+              "kind": "exercises",
+              "title": "Exercício: medir o custo de um KDF de senha",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Faça um hash de senha com SHA-256 puro e outro com PBKDF2 de 100 000 iterações.\n2. Meça o tempo de cada um.\n3. Estime quantas tentativas por segundo um atacante faria em cada caso.\n\nResponda: por que 'hash de senha' com função rápida é mais perigoso que um vazamento comum? E por que o salt **não** impede ataque de dicionário, apenas o de tabela pré-computada?",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Ataque de extensão reproduzido, ECB demonstrado e custo de KDF medido.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "chave-publica-e-pki",
+      "title": "Chave pública e PKI",
+      "summary": "Assinatura, certificado e cadeia. O que cada um prova e o que nenhum prova.",
+      "objective": "Entender assinatura, certificado e cadeia de confiança.",
+      "competencies": [
+        "RSA",
+        "assinatura",
+        "X.509",
+        "cadeia",
+        "revogação"
+      ],
+      "units": [
+        {
+          "slug": "chave-publica",
+          "title": "Chave pública",
+          "objective": "Separar o que a chave pública garante do que a assinatura garante.",
+          "competencies": [
+            "RSA",
+            "assinatura",
+            "verificação",
+            "padding"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "cry-m1-u1-kb-pub",
+              "kind": "theory",
+              "title": "Criptografia de chave pública",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-crypto-public-key",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m1-u1-kb-rsa",
+              "kind": "theory",
+              "title": "Ataques RSA",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-crypto-public-key-rsa",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m1-u1-ex-assinatura",
+              "kind": "exercises",
+              "title": "Exercício: assinar e verificar com e sem padding",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Gere um par de chaves.\n2. Assine uma mensagem com esquema com padding definido.\n3. Verifique a assinatura; depois altere um byte e verifique de novo.\n4. Descreva o que muda se o esquema não usar padding estruturado.\n\nEntregue o resultado e a explicação. A assinatura é sobre o **hash**, com padding — sem isso a construção perde as propriedades que promete.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "pki",
+          "title": "PKI",
+          "objective": "Avaliar certificado, cadeia, nome e revogação.",
+          "competencies": [
+            "X.509",
+            "SAN",
+            "validade",
+            "cadeia",
+            "revogação"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "cry-m1-u2-own-pki",
+              "kind": "theory",
+              "title": "PKI na prática: cadeia, validação e erros",
+              "estimated_minutes": 60,
+              "kb_slug": "own-pki-cadeia-confianca",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m1-u2-kb-tls",
+              "kind": "theory",
+              "title": "TLS e certificados",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-crypto-tls-and-certificates",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m1-u2-ex-cadeia",
+              "kind": "exercises",
+              "title": "Exercício: inspecionar a cadeia de um certificado real",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Abra uma conexão TLS com um site e extraia a cadeia (`openssl s_client -showcerts`).\n2. Para cada certificado, registre: titular, nomes alternativos, validade, uso e emissor.\n3. Verifique se a cadeia termina numa raiz confiável.\n4. Teste o que acontece se o nome esperado não casar com os SANs.\n\nEntregue a cadeia e as respostas. 'Usa HTTPS' não é evidência de nada; a cadeia é.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "primitivas",
+      "completion": "Assinatura verificada, cadeia inspecionada e teste de nome realizado.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "aplicada-a-protocolos",
+      "title": "Criptografia aplicada a protocolos",
+      "summary": "JWT, OAuth, SAML, LDAP e o que a assinatura garante em cada protocolo.",
+      "objective": "Auditar onde a primitiva correta é usada errado.",
+      "competencies": [
+        "JWT",
+        "OAuth",
+        "SAML",
+        "LDAP",
+        "canal"
+      ],
+      "units": [
+        {
+          "slug": "tokens",
+          "title": "Tokens",
+          "objective": "Avaliar JWT, OAuth e SAML pelo que a assinatura e o canal garantem.",
+          "competencies": [
+            "JWT",
+            "alg confusion",
+            "OAuth",
+            "SAML assertion"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "cry-m2-u1-kb-jwt",
+              "kind": "theory",
+              "title": "Vulnerabilidades JWT",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-pentesting-web-hacking-jwt-json-web-tokens",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m2-u1-kb-jwt-p",
+              "kind": "theory",
+              "title": "JWT — JSON Web Token",
+              "estimated_minutes": 40,
+              "kb_slug": "patt-json-web-token-readme",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m2-u1-kb-oauth",
+              "kind": "theory",
+              "title": "OAuth para tomada de conta",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-pentesting-web-oauth-to-account-takeover",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m2-u1-kb-saml",
+              "kind": "theory",
+              "title": "Ataques SAML",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-pentesting-web-saml-attacks",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m2-u1-lab-jwt",
+              "kind": "lab",
+              "title": "Tomada de conta por JWT",
+              "estimated_minutes": 50,
+              "challenge_slug": "chain-jwt-to-sqli",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "canais",
+          "title": "Canais e diretórios",
+          "objective": "Avaliar canal, assinatura de tráfego e metadado.",
+          "competencies": [
+            "LDAP signing",
+            "TLS",
+            "canal binding",
+            "esteganografia"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "cry-m2-u2-kb-ldap",
+              "kind": "theory",
+              "title": "Fortalecimento de LDAP Signing e Channel Binding",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-ldap-signing-and-channel-binding",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m2-u2-kb-mal",
+              "kind": "theory",
+              "title": "Criptografia em malware",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-crypto-crypto-in-malware",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m2-u2-kb-stego",
+              "kind": "theory",
+              "title": "Stego",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-stego",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m2-u2-ex-token",
+              "kind": "exercises",
+              "title": "Exercício: revisar um JWT e dizer o que ele garante",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.** Use um JWT seu, gerado localmente.\n\n1. Decodifique cabeçalho e corpo (sem validar assinatura).\n2. Identifique algoritmo e campos de expiração.\n3. Liste o que o token **garante** e o que é apenas declaração.\n4. Descreva o que acontece se `alg` for aceito do cliente sem verificação de qual algoritmo o servidor espera.\n\nEntregue as duas listas. A primeira é curta — e é o motivo de tanta falha em JWT.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "chave-publica-e-pki",
+      "completion": "Token revisado e garantias separadas de declaração.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "avaliacao-e-relatorio",
+      "title": "Avaliação e relatório",
+      "summary": "Inventário, mecanismo, correção e a demonstração de um erro real.",
+      "objective": "Aplicar checklist de avaliação criptográfica e descrever achado com mecanismo.",
+      "competencies": [
+        "inventário",
+        "configuração",
+        "achado",
+        "correção"
+      ],
+      "units": [
+        {
+          "slug": "inventario",
+          "title": "Inventário de uso",
+          "objective": "Localizar onde criptografia é usada e com qual configuração.",
+          "competencies": [
+            "inventário",
+            "modo",
+            "chave",
+            "rotação"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "cry-m3-u1-ex-inventario",
+              "kind": "exercises",
+              "title": "Exercício: inventariar uso criptográfico de uma aplicação sua",
+              "estimated_minutes": 60,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nEscolha uma aplicação que você tem (servidor local, app próprio).\n\n1. Onde há criptografia? (transporte, armazenamento, token)\n2. Para cada ponto: primitiva, modo, tamanho de chave, gestão de chave.\n3. Onde há hash usado onde deveria haver MAC? Ou hash rápido onde deveria haver KDF?\n\nEntregue a tabela. O achado criptográfico mais comum não é algoritmo quebrado: é primitiva certa no lugar errado.",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m3-u1-ex-achado",
+              "kind": "exercises",
+              "title": "Exercício: escrever o achado com mecanismo e correção",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nPegue um item do inventário e escreva o achado no formato:\n\n1. **Configuração observada** (com evidência).\n2. **Mecanismo** — por que aquilo permite o que permite.\n3. **Impacto realista**.\n4. **Correção mínima** e o que ela fecha.\n\nSe você escrever 'criptografia fraca' sem o item 2, o achado é recusado: quem lê precisa poder verificar o mecanismo sem confiar na sua word escolhida.",
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m3-u1-assess",
+              "kind": "assessment",
+              "title": "Avaliação: criptografia aplicada",
+              "estimated_minutes": 35,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "O que HMAC impede que hash(chave || mensagem) não impede?",
+                  "accepted": [
+                    "ataque de extensão de comprimento",
+                    "extensao de comprimento"
+                  ],
+                  "explanation": "A chave em dois pontos interrompe a capacidade de estender a mensagem a partir do estado interno conhecido."
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Por que um hash rápido é ruim para senha?",
+                  "accepted": [
+                    "permite muitas tentativas por segundo",
+                    "não tem custo por tentativa"
+                  ],
+                  "explanation": "Sem custo, o atacante testa bilhões de tentativas; KDF adiciona trabalho por tentativa."
+                },
+                {
+                  "id": "q3",
+                  "prompt": "O que o salt impede?",
+                  "accepted": [
+                    "tabela pré-computada",
+                    "rainbow table"
+                  ],
+                  "explanation": "Salt por usuário invalida tabelas prontas; não impede dicionário, que precisa de custo por tentativa."
+                },
+                {
+                  "id": "q4",
+                  "prompt": "Por que desabilitar a verificação de hostname em TLS é grave?",
+                  "accepted": [
+                    "qualquer certificado válido passa a ser aceito",
+                    "permite interceptação"
+                  ],
+                  "explanation": "Sem checar o nome, um certificado legítimo de outro domínio serve para interceptar."
+                }
+              ],
+              "equipment": "software"
+            },
+            {
+              "slug": "cry-m3-u1-project",
+              "kind": "project",
+              "title": "Capstone: avaliação criptográfica de uma aplicação própria",
+              "estimated_minutes": 150,
+              "body_md": "**SOMENTE SOFTWARE.** Entrega do capstone.\n\nEscolha uma aplicação sua (serviço local, API própria) e avalie o uso criptográfico.\n\nEntregue:\n\n1. Inventário completo com primitiva, modo, tamanho e gestão de chave.\n2. Demonstração de pelo menos um erro de uso (ECB, hash rápido para senha, assinatura sem padding, token sem verificação de algoritmo) com o comportamento observado.\n3. Achados com mecanismo, impacto e correção.\n4. Avaliação de transporte: cadeia e verificação de nome.\n5. Limitações.\n\nRecusa: achado sem mecanismo, ou 'está seguro' sem inventário.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "aplicada-a-protocolos",
+      "completion": "Inventário criptográfico, achado com mecanismo e avaliação aprovada.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    }
+  ],
+  "capstone": {
+    "objective": "Avaliar o uso criptográfico de uma aplicação própria, demonstrar ao menos um erro de uso e propor correção com mecanismo.",
+    "scope_md": "Aplicação que o operador controla. Nenhum serviço de terceiro.",
+    "resources_md": "openssl, python3, jwt_tool, navegador para inspecionar cadeia. Liberado como software na trilha.",
+    "steps_md": "1. Inventariar todo uso criptográfico.\n2. Escolher um erro de uso e reproduzi-lo.\n3. Registrar comportamento observado.\n4. Escrever achado com mecanismo, impacto e correção.\n5. Avaliar transporte (cadeia e nome).\n6. Declarar limitações.",
+    "success_criteria": [
+      "Inventário com primitiva, modo, tamanho e gestão",
+      "Erro de uso demonstrado com comportamento observado",
+      "Achado com mecanismo verificável",
+      "Cadeia TLS inspecionada e nome verificado",
+      "Correção mínima justificada",
+      "Limitações explícitas"
+    ],
+    "evidence": [
+      "Tabela de inventário",
+      "Registro da demonstração",
+      "Achados",
+      "Saída de inspeção de certificado",
+      "Relatório final"
+    ],
+    "expected_result": "Avaliação criptográfica com demonstração de erro e correção fundamentada.",
+    "grading_md": "Inventário 25%, demonstração 30%, escrita do achado 30%, limitações 15%.",
+    "challenge_slug": ""
+  }
+}

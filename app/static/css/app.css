@@ -692,7 +692,8 @@ textarea { resize: vertical; min-height: 90px; }
 .machine-hero-stat strong { display: block; font-family: var(--font-mono); font-size: 23px; font-weight: 500; }
 .machine-hero-stat span { font-family: var(--font-mono); font-size: 8px; color: var(--dim); letter-spacing: .08em; }
 .machine-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 14px; }
-.machine-card { display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--panel); overflow: hidden; transition: border-color .15s; }
+.machine-card { display: flex; flex-direction: column; border: 1px solid var(--line); background: var(--panel); overflow: hidden; position: relative; transition: border-color .15s; }
+.machine-card h3 a:hover { color: var(--red-soft); }
 .machine-card:hover { border-color: #3a3c43; }
 .machine-stripe { height: 3px; background: var(--line-strong); }
 .machine-card.beginner .machine-stripe { background: #2f6e56; }
@@ -1101,6 +1102,8 @@ textarea { resize: vertical; min-height: 90px; }
 .kb-prov-grid a { color: var(--red-soft); }
 .kb-prov-note { margin: 10px 0 0; font-size: 10px; color: var(--dim); line-height: 1.55; }
 .kb-prov-reference p { margin: 0; font-size: 11.5px; color: var(--muted); line-height: 1.6; }
+.kb-nc-notice { margin-top: 12px; padding: 9px 11px; border: 1px solid #23415f; border-left: 3px solid var(--blue); background: rgba(52, 120, 190, .06); font-size: 10.5px; line-height: 1.55; color: var(--text-soft); }
+.kb-nc-notice strong { color: var(--blue); }
 
 /* payload cards */
 .payload-section, .kb-payload-section, .kb-references, .kb-labs { margin-top: 34px; }
@@ -1142,6 +1145,7 @@ textarea { resize: vertical; min-height: 90px; }
 .kb-source-head small { color: var(--dim); font-size: 10.5px; }
 .kb-license { font-family: var(--font-mono); font-size: 8.5px; padding: 3px 7px; border: 1px solid var(--line-strong); white-space: nowrap; }
 .kb-license-ok { color: var(--green); border-color: var(--green-dim); }
+.kb-license-nc { color: var(--blue); border-color: #23415f; }
 .kb-license-no { color: var(--amber); border-color: #4a3a1c; }
 
 @media (max-width: 1100px) {

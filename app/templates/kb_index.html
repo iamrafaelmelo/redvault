@@ -87,6 +87,7 @@
     </div>
     {% endif %}
 
+    {# Tag listing is independent of the group filter. #}
     {% if tag %}
     <div class="section-head">
       <div><span class="eyebrow">TAG #{{ tag|upper }}</span><h3>{{ tagged|length }} documento{{ "s" if tagged|length != 1 }}</h3></div>
@@ -103,11 +104,15 @@
     </div>
     {% endif %}
 
+    {% if not q %}
+    {% set shown = namespace(count=0) %}
     {% for key, label in groups %}
       {% set items = grouped.get(key, []) %}
       {% if items and (not group or group == key) %}
+      {% set shown.count = shown.count + 1 %}
       <div class="section-head">
         <div><span class="eyebrow">{{ items|sum(attribute="count") }} DOCUMENTOS</span><h3>{{ label }}</h3></div>
+        {% if group %}<a class="link-arrow" href="/kb">VER TODOS OS GRUPOS {{ m.icon("x", 12) }}</a>{% endif %}
       </div>
       <div class="kb-cat-grid">
         {% for item in items %}
@@ -123,10 +128,11 @@
       </div>
       {% endif %}
     {% endfor %}
-    {% if group and not grouped.get(group) %}
+    {% if group and shown.count == 0 %}
     {{ m.empty_state("book", "Nenhum documento neste grupo ainda", "Importe uma fonte ou escreva a primeira página desta área. Nada é exibido como conteúdo vazio.", "/kb", "VER TODOS OS GRUPOS") }}
     {% endif %}
     {% endif %}
+    {% endif %}  {# closes: {% if q %} ... {% else %} #}
   </div>
 </div>
 {% endblock %}

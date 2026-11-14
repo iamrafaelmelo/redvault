@@ -1,0 +1,754 @@
+{
+  "slug": "windows-security",
+  "title": "Windows Security & Privilege Escalation",
+  "codename": "WIN",
+  "domain": "windows",
+  "summary": "Tokens, ACLs, serviços e carregamento de DLL: como o Windows decide permissão e como isso é abusado.",
+  "description": "A trilha começa no modelo de identidade do Windows (token, integridade, NTFS, UAC), passa pela enumeração de serviços, tarefas, ACLs e credenciais, e chega às cadeias de escalada mais presentes em auditoria (DLL hijacking, unqualified service path, SeImpersonate, instaladores). A última parte conecta LOLBAS, PowerShell, logging e pós-exploração, incluindo remoção documentada de persistência.",
+  "entry_level": "usuário de Windows confortável com CMD e PowerShell",
+  "exit_level": "capaz de enumerar, escalar e documentar privesc Windows com visão de detecção",
+  "estimated_hours": 55,
+  "priority": 40,
+  "phase": 1,
+  "icon": "window",
+  "accent": "blue",
+  "prerequisites": [
+    "linux-security"
+  ],
+  "competencies": [
+    "Interpretar token, integridade e ACL",
+    "Enumerar serviços, tarefas e caminhos graváveis",
+    "Executar cadeias clássicas de escalada com evidência",
+    "Usar LOLBAS e explicar a detecção correspondente",
+    "Implementar e remover persistência de forma auditável"
+  ],
+  "tools": [
+    "WinPEAS",
+    "Seatbelt",
+    "Sysinternals (Autoruns, Procmon, PsExec)",
+    "LOLBAS",
+    "PowerView",
+    "icacls",
+    "sc",
+    "schtasks"
+  ],
+  "equipment": "Somente software: VM Windows própria ou o host da plataforma, conforme os labs permitirem.",
+  "modules": [
+    {
+      "slug": "fundamentos-windows",
+      "title": "Fundamentos de Windows para segurança",
+      "summary": "Token, integridade e ACL são o alicerce; sem eles o restante é memorização.",
+      "objective": "Entender identidade, token, ACL e registro como o Windows realmente decide permissão.",
+      "competencies": [
+        "arquitetura",
+        "tokens",
+        "integridade",
+        "NTFS",
+        "registro",
+        "PowerShell",
+        "CMD"
+      ],
+      "units": [
+        {
+          "slug": "identidade-e-acesso",
+          "title": "Identidade, token e integridade",
+          "objective": "Explicar por que o token do processo, não o nome do usuário, define o que é possível.",
+          "competencies": [
+            "SID",
+            "token",
+            "integridade",
+            "UAC"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "win-m0-u1-own-ntfs",
+              "kind": "theory",
+              "title": "NTFS na prática de pentest",
+              "estimated_minutes": 30,
+              "kb_slug": "own-ntfs-para-pentest"
+            },
+            {
+              "slug": "win-m0-u1-kb-tokens",
+              "kind": "theory",
+              "title": "Tokens de acesso",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-access-tokens"
+            },
+            {
+              "slug": "win-m0-u1-kb-integrity",
+              "kind": "theory",
+              "title": "Níveis de integridade",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-integrity-levels"
+            },
+            {
+              "slug": "win-m0-u1-kb-uac",
+              "kind": "theory",
+              "title": "UAC — Controle de Conta de Usuário",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-windows-hardening-authentication-credentials-uac-and-efs-uac-user-account-control"
+            },
+            {
+              "slug": "win-m0-u1-kb-ctrl",
+              "kind": "theory",
+              "title": "Controles de segurança do Windows",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-authentication-credentials-uac-and-efs"
+            },
+            {
+              "slug": "win-m0-u1-ex-token",
+              "kind": "exercises",
+              "title": "Exercício: ler um token",
+              "estimated_minutes": 45,
+              "body_md": "Num Windows que você controla, execute e registre:\n\n1. `whoami /all` — liste SIDs, grupos, privilégios e nível de integridade.\n2. `whoami /priv` antes e depois de abrir um prompt elevado. Explique cada privilégio.\n3. Crie um arquivo e dê `icacls arquivo /grant Usuario:(WDAC)`; explique por que\n   isso é equivalente a Full Control na prática.\n4. Crie um arquivo com fluxo alternativo e mostre que o Explorer não o exibe.\n   (`dir /r` mostra.)\n\nEscreva em cada item qual estrutura do Windows está sendo manipulada."
+            }
+          ]
+        },
+        {
+          "slug": "shell-e-enumeracao",
+          "title": "CMD e PowerShell para operação",
+          "objective": "Enumeração legível e reprodutível em shell nativa.",
+          "competencies": [
+            "cmd",
+            "powershell",
+            ".NET",
+            "PowerView"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "win-m0-u2-kb-cmd",
+              "kind": "theory",
+              "title": "CMD básico para pentesters",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-basic-cmd-for-pentesters"
+            },
+            {
+              "slug": "win-m0-u2-kb-ps",
+              "kind": "theory",
+              "title": "PowerShell básico para pentesters",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-basic-powershell-for-pentesters"
+            },
+            {
+              "slug": "win-m0-u2-kb-dotnet",
+              "kind": "theory",
+              "title": "Enumeração do Windows com .NET",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-windows-hardening-basic-powershell-for-pentesters-dotnet-enumeration"
+            },
+            {
+              "slug": "win-m0-u2-kb-powerview",
+              "kind": "theory",
+              "title": "PowerView/SharpView",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-basic-powershell-for-pentesters-powerview"
+            },
+            {
+              "slug": "win-m0-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: token e integridade",
+              "estimated_minutes": 20,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Qual privilégio permite a um processo ler a memória de outro?",
+                  "accepted": [
+                    "sedebugprivilege",
+                    "sedebug"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Um processo de média integridade pode escrever em `C:\\Windows\\System32`? Sim ou não.",
+                  "accepted": [
+                    "nao",
+                    "não",
+                    "no"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Qual verbo do PowerShell lista privilégios do usuário atual? (whoami /priv em PS)",
+                  "accepted": [
+                    "whoami /all",
+                    "whoami",
+                    "get-acl",
+                    "gettoken"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Exercício entregue e avaliação ≥ 70%.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "enumeracao-windows",
+      "title": "Enumeração de Windows",
+      "summary": "Enumeração de Windows é leitura de configuração: caminho, ACL e identidade de execução.",
+      "objective": "Procurar privilégio fora do usuário em serviços, tarefas, ACLs e credenciais.",
+      "competencies": [
+        "serviços",
+        "tarefas agendadas",
+        "ACLs",
+        "autoruns",
+        "credenciais",
+        "WinPEAS/Seatbelt"
+      ],
+      "units": [
+        {
+          "slug": "superficie",
+          "title": "Serviços, tarefas e caminhos",
+          "objective": "Enumerar quem executa o quê, de onde e com qual permissão de escrita.",
+          "competencies": [
+            "sc qc",
+            "schtasks",
+            "icacls",
+            "autoruns",
+            "unquoted service path"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "win-m1-u1-kb-checklist",
+              "kind": "theory",
+              "title": "Checklist de escalada local no Windows",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-checklist-windows-privilege-escalation"
+            },
+            {
+              "slug": "win-m1-u1-kb-privesc",
+              "kind": "theory",
+              "title": "Escalonamento de privilégios local no Windows (documento completo)",
+              "estimated_minutes": 120,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation"
+            },
+            {
+              "slug": "win-m1-u1-kb-acl",
+              "kind": "theory",
+              "title": "ACLs — DACLs/SACLs/ACEs",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-acls-dacls-sacls-aces"
+            },
+            {
+              "slug": "win-m1-u1-kb-patt",
+              "kind": "theory",
+              "title": "Windows — Privilege Escalation (PayloadsAllTheThings)",
+              "estimated_minutes": 40,
+              "kb_slug": "patt-methodology-and-resources-windows-privilege-escalation"
+            },
+            {
+              "slug": "win-m1-u1-kb-autoruns",
+              "kind": "theory",
+              "title": "Escalação com Autoruns",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-privilege-escalation-with-autorun-binaries"
+            },
+            {
+              "slug": "win-m1-u1-kb-updaters",
+              "kind": "theory",
+              "title": "Atualizadores corporativos e IPC privilegiado",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-abusing-auto-updaters-and-ipc"
+            },
+            {
+              "slug": "win-m1-u1-ex-svc",
+              "kind": "exercises",
+              "title": "Exercício: inventário de serviços",
+              "estimated_minutes": 60,
+              "body_md": "Num Windows de laboratório, produza uma tabela com:\n\n- todo serviço cujo binário está em diretório gravável por `Users` ou `Everyone`;\n- todo serviço com caminho não entre aspas contendo espaço;\n- toda tarefa agendada que executa script em caminho gravável;\n- toda ACL com `(M)`, `(F)`, `(WDAC)` ou `(WO)` para grupos amplos.\n\nComandos base: `sc qc`, `Get-CimInstance Win32_Service`, `schtasks /query /fo LIST /v`,\n`icacls` recursivo, Autoruns. Justifique a priorização de cada linha."
+            }
+          ]
+        },
+        {
+          "slug": "credenciais",
+          "title": "Credenciais e memória",
+          "objective": "Saber onde o Windows guarda segredo e o que protege cada local.",
+          "competencies": [
+            "LSASS",
+            "DPAPI",
+            "SAM",
+            "credenciais salvas",
+            "proteções"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "win-m1-u2-kb-steal",
+              "kind": "theory",
+              "title": "Roubo de credenciais do Windows",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-windows-hardening-stealing-credentials"
+            },
+            {
+              "slug": "win-m1-u2-kb-mimikatz",
+              "kind": "theory",
+              "title": "Mimikatz",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-stealing-credentials-credentials-mimikatz"
+            },
+            {
+              "slug": "win-m1-u2-kb-prot",
+              "kind": "theory",
+              "title": "Proteções de credenciais",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-stealing-credentials-credentials-protections"
+            },
+            {
+              "slug": "win-m1-u2-kb-dpapi",
+              "kind": "theory",
+              "title": "DPAPI — extraindo senhas",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-dpapi-extracting-passwords"
+            },
+            {
+              "slug": "win-m1-u2-kb-ntlm",
+              "kind": "theory",
+              "title": "Onde roubar credenciais NTLM",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-ntlm-places-to-steal-ntlm-creds"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Inventário priorizado entregue.",
+      "estimated_minutes": 420,
+      "requires_module": "fundamentos-windows"
+    },
+    {
+      "slug": "escalada-windows",
+      "title": "Escalada de privilégios no Windows",
+      "summary": "Cada caminho de escalada é uma pergunta específica sobre quem carrega o quê de onde.",
+      "objective": "Escalar de usuário comum a SYSTEM/Administrator por configuração errada.",
+      "competencies": [
+        "DLL hijacking",
+        "unquoted service path",
+        "SeImpersonate",
+        "AlwaysInstallElevated",
+        "COM hijacking",
+        "registro"
+      ],
+      "units": [
+        {
+          "slug": "caminhos",
+          "title": "Caminhos e carregamento",
+          "objective": "Explorar o que o sistema carrega de diretórios graváveis.",
+          "competencies": [
+            "DLL hijacking",
+            "unquoted service path",
+            "writable PATH",
+            "COM hijacking",
+            "hives"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "win-m2-u1-kb-dll",
+              "kind": "theory",
+              "title": "DLL Hijacking",
+              "estimated_minutes": 60,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-dll-hijacking"
+            },
+            {
+              "slug": "win-m2-u1-kb-sideload",
+              "kind": "theory",
+              "title": "Side-loading avançado de DLL",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-dll-hijacking-advanced-html-staged-dll-sideload"
+            },
+            {
+              "slug": "win-m2-u1-kb-syspath",
+              "kind": "theory",
+              "title": "Writable System PATH + DLL Hijacking",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-dll-hijacking-writable-sys-path-dll-hijacking-p"
+            },
+            {
+              "slug": "win-m2-u1-kb-com",
+              "kind": "theory",
+              "title": "COM Hijacking",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-com-hijacking"
+            },
+            {
+              "slug": "win-m2-u1-kb-hives",
+              "kind": "theory",
+              "title": "Primitivas de exploração de hives do registro",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-windows-registry-hive-exploitation"
+            },
+            {
+              "slug": "win-m2-u1-kb-append",
+              "kind": "theory",
+              "title": "AppendData/AddSubdirectory sobre o registro de serviço",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-appenddata-addsubdirectory-permission-over-serv"
+            }
+          ]
+        },
+        {
+          "slug": "tokens-e-impersonacao",
+          "title": "Tokens, impersonação e integridade",
+          "objective": "Usar privilégios concedidos e mecanismos de impersonação.",
+          "competencies": [
+            "SeImpersonate",
+            "SeDebug",
+            "named pipes",
+            "batch logon",
+            "leaked handles"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "win-m2-u2-kb-abuse",
+              "kind": "theory",
+              "title": "Abusando de tokens",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-privilege-escalation-abusing-tokens"
+            },
+            {
+              "slug": "win-m2-u2-kb-seimp",
+              "kind": "theory",
+              "title": "SeImpersonate de High para System",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-seimpersonate-from-high-to-system"
+            },
+            {
+              "slug": "win-m2-u2-kb-sedebug",
+              "kind": "theory",
+              "title": "SeDebug + SeImpersonate — copy token",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-sedebug-seimpersonate-copy-token"
+            },
+            {
+              "slug": "win-m2-u2-kb-pipes",
+              "kind": "theory",
+              "title": "De High Integrity para SYSTEM com name pipes",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-from-high-integrity-to-system-with-name-pipes"
+            },
+            {
+              "slug": "win-m2-u2-kb-pipeimp",
+              "kind": "theory",
+              "title": "Impersonação de cliente em named pipe",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-named-pipe-client-impersonation"
+            },
+            {
+              "slug": "win-m2-u2-kb-handle",
+              "kind": "theory",
+              "title": "Exploração de handles vazados",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-leaked-handle-exploitation"
+            },
+            {
+              "slug": "win-m2-u2-kb-triggers",
+              "kind": "theory",
+              "title": "Service triggers",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-service-triggers"
+            },
+            {
+              "slug": "win-m2-u2-kb-potato",
+              "kind": "theory",
+              "title": "RoguePotato, PrintSpoofer, GodPotato",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-roguepotato-and-printspoofer"
+            },
+            {
+              "slug": "win-m2-u2-kb-juicy",
+              "kind": "theory",
+              "title": "JuicyPotato",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-juicypotato"
+            },
+            {
+              "slug": "win-m2-u2-kb-semvol",
+              "kind": "theory",
+              "title": "SeManageVolumePrivilege",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-semanagevolume-perform-volume-maintenance-tasks"
+            },
+            {
+              "slug": "win-m2-u2-ex-impersonate",
+              "kind": "exercises",
+              "title": "Exercício: cadeia de impersonação",
+              "estimated_minutes": 75,
+              "body_md": "Num Windows de laboratório com `SeImpersonatePrivilege` disponível para um serviço,\nescreva a cadeia completa **antes** de executar:\n\n1. Qual primitivo de impersonação o privilégio concede?\n2. Quem precisa conectar, e por qual interface?\n3. Qual condição de corrida ou nome de pipe é explorada?\n4. O que muda se o serviço também tiver `SeDebugPrivilege`?\n\nSó depois execute a prova de conceito em ambiente próprio. Evidência obrigatória:\nprivilégios antes, saída de `whoami /priv` após, e explicação de cada elo."
+            }
+          ]
+        },
+        {
+          "slug": "misconfig",
+          "title": "Instaladores, tarefas e políticas",
+          "objective": "Cobrir as configurações clássicas que aparecem em auditoria.",
+          "competencies": [
+            "AlwaysInstallElevated",
+            "unattended",
+            "scheduled task ACL",
+            "UIAccess",
+            "RegPwn"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "win-m2-u3-kb-msi",
+              "kind": "theory",
+              "title": "Criando um MSI com custom action",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-create-msi-with-wix"
+            },
+            {
+              "slug": "win-m2-u3-kb-msiwrap",
+              "kind": "theory",
+              "title": "MSI Wrapper",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-msi-wrapper"
+            },
+            {
+              "slug": "win-m2-u3-kb-uiaccess",
+              "kind": "theory",
+              "title": "Bypasses via UIAccess",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-uiaccess-admin-protection-bypass"
+            },
+            {
+              "slug": "win-m2-u3-kb-secdesk",
+              "kind": "theory",
+              "title": "Secure Desktop Accessibility registry propagation",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-windows-hardening-windows-local-privilege-escalation-secure-desktop-accessibility-registry-propagati"
+            },
+            {
+              "slug": "win-m2-u3-kb-proto",
+              "kind": "theory",
+              "title": "Abuso de Windows Protocol Handler / ShellExecute",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-windows-hardening-protocol-handler-shell-execute-abuse"
+            },
+            {
+              "slug": "win-m2-u3-assess",
+              "kind": "assessment",
+              "title": "Avaliação: qual configuração explora o quê",
+              "estimated_minutes": 25,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Qual chave de registro habilita AlwaysInstallElevated? (nome da política)",
+                  "accepted": [
+                    "alwaysinstallelevated"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Um serviço roda `C:\\Program Files\\Meu App\\svc.exe` sem aspas e `C:\\Program.exe` é gravável. Qual classe de falha?",
+                  "accepted": [
+                    "unquoted service path",
+                    "unquoted",
+                    "caminho sem aspas",
+                    "sem aspas"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Qual privilégio é o pré-requisito clássico da família Potato?",
+                  "accepted": [
+                    "seimpersonateprivilege",
+                    "seimpersonate"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Duas cadeias de escalada comprovadas e avaliação ≥ 70%.",
+      "estimated_minutes": 540,
+      "requires_module": "enumeracao-windows"
+    },
+    {
+      "slug": "defesa-e-pos-exploracao",
+      "title": "PowerShell, defesa e pós-exploração",
+      "summary": "Ofensiva sem entendimento de detecção vira ruído; defesa sem teste vira software.",
+      "objective": "Operar com LOLBAS, entender detecção e conduzir pós-exploração com limpeza documentada.",
+      "competencies": [
+        "LOLBAS",
+        "AMSI",
+        "logging",
+        "AppLocker",
+        "persistência",
+        "limpeza"
+      ],
+      "units": [
+        {
+          "slug": "lolbas-e-powershell",
+          "title": "Living off the land",
+          "objective": "Usar binários assinados e entender o que a detecção enxerga.",
+          "competencies": [
+            "certutil",
+            "rundll32",
+            "mshta",
+            "AMSI",
+            "script block logging"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "win-m3-u1-own-lolbas",
+              "kind": "theory",
+              "title": "LOLBAS: binários nativos do Windows",
+              "estimated_minutes": 25,
+              "kb_slug": "own-lolbas-metodologia"
+            },
+            {
+              "slug": "win-m3-u1-kb-harden",
+              "kind": "theory",
+              "title": "Controles de segurança do Windows (parte 2)",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-authentication-credentials-uac-and-efs-2"
+            },
+            {
+              "slug": "win-m3-u1-kb-av",
+              "kind": "theory",
+              "title": "Contorno de AV",
+              "estimated_minutes": 90,
+              "kb_slug": "ht-windows-hardening-av-bypass"
+            },
+            {
+              "slug": "win-m3-u1-kb-c2",
+              "kind": "theory",
+              "title": "Cobalt Strike (visão geral)",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-cobalt-strike"
+            },
+            {
+              "slug": "win-m3-u1-ex-lolbas",
+              "kind": "exercises",
+              "title": "Exercício: função, detecção e política",
+              "estimated_minutes": 60,
+              "body_md": "Escolha **três** binários do LOLBAS com funções diferentes (Executar, Baixar,\nUAC Bypass). Para cada um entregue:\n\n1. A linha de comando exata e o efeito.\n2. O Event ID ou telemetria que registra o comportamento.\n3. Uma regra de detecção (nome + argumento anômalo).\n4. Se a política AppLocker/WDAC padrão de `C:\\Windows` bloqueia ou não — e por quê.\n\nO exercício é de defesa: a entrega principal é a regra de detecção."
+            }
+          ]
+        },
+        {
+          "slug": "pos-exploracao",
+          "title": "Pós-exploração e movimento",
+          "objective": "Manter acesso e mover lateralmente com rastro controlado.",
+          "competencies": [
+            "persistência",
+            "PsExec",
+            "WinRM",
+            "WMI",
+            "DCOM",
+            "limpeza"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "win-m3-u2-kb-lateral",
+              "kind": "theory",
+              "title": "Movimentação lateral (visão geral)",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-windows-hardening-lateral-movement"
+            },
+            {
+              "slug": "win-m3-u2-kb-psexec",
+              "kind": "theory",
+              "title": "Execução remota (PsExec, WinExec, SMBExec)",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-lateral-movement-psexec-and-winexec"
+            },
+            {
+              "slug": "win-m3-u2-kb-winrm",
+              "kind": "theory",
+              "title": "WinRM",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-lateral-movement-winrm"
+            },
+            {
+              "slug": "win-m3-u2-kb-wmi",
+              "kind": "theory",
+              "title": "WmiExec",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-windows-hardening-lateral-movement-wmiexec"
+            },
+            {
+              "slug": "win-m3-u2-kb-dcom",
+              "kind": "theory",
+              "title": "DCOM Exec",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-lateral-movement-dcomexec"
+            },
+            {
+              "slug": "win-m3-u2-kb-atexec",
+              "kind": "theory",
+              "title": "AtExec / SchtasksExec",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-windows-hardening-lateral-movement-atexec"
+            },
+            {
+              "slug": "win-m3-u2-kb-rdp",
+              "kind": "theory",
+              "title": "Abuso de sessões RDP",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-rdp-sessions-abuse"
+            },
+            {
+              "slug": "win-m3-u2-kb-vsix",
+              "kind": "theory",
+              "title": "Abuso de extensões VSIX e VSCode",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-windows-hardening-visual-studio-vsix-extension-abuse"
+            },
+            {
+              "slug": "win-m3-u2-project",
+              "kind": "project",
+              "title": "Relatório de privesc e detecção do capstone",
+              "estimated_minutes": 90,
+              "body_md": "Produza o relatório técnico do **capstone** desta trilha.\n\nEstrutura obrigatória:\n\n1. Identidade inicial: `whoami /all`, integridade e privilégios.\n2. Superfície: serviços, tarefas, caminhos graváveis, ACLs relevantes.\n3. Cadeia de escalada: cada elo com comando e saída.\n4. Persistência criada/removida e como a verificação comprova a remoção.\n5. Detecção: por achado, Event ID ou telemetria e a regra proposta.\n\nCritério de aceite: cada achado reproduzível e detectável a partir do relatório."
+            },
+            {
+              "slug": "win-m3-u2-ex-persist",
+              "kind": "exercises",
+              "title": "Exercício: persistência e remoção",
+              "estimated_minutes": 60,
+              "body_md": "Num Windows descartável, implemente **duas** persistências de usuário\n(por exemplo, chave `Run` em HKCU e tarefa agendada de usuário).\n\nPara cada uma: artefato, caminho/chave, verificação, remoção, e o evento\nque um analista usaria para encontrá-la (`Microsoft-Windows-Security-Auditing`,\nTaskScheduler/Operational, Sysmon).\n\nReverta tudo e comprove que a verificação falha depois da remoção."
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Exercícios de detecção e persistência entregues.",
+      "estimated_minutes": 180,
+      "requires_module": "escalada-windows"
+    }
+  ],
+  "capstone": {
+    "objective": "Comprometer uma máquina Windows multi-estágio e entregar relatório com detecção.",
+    "scope_md": "A máquina `machine-saas-admin-console` na origem loopback atribuída pelo gerenciador de labs.",
+    "resources_md": "REDVAULT, Windows/VM local para exercícios, WinPEAS, Sysinternals, LOLBAS. Sem recursos pagos.",
+    "steps_md": "1. Enumeração de identidade, serviços, tarefas e ACLs.\n2. Priorização em tabela com mecanismo e esforço.\n3. Escalada com evidência de cada passo.\n4. Pós-exploração: acesso mantido, rastro documentado e removido.\n5. Relatório com regra de detecção por achado.",
+    "success_criteria": [
+      "Privilégio elevado obtido na máquina",
+      "Cada elo da cadeia reproduzível com comando e saída",
+      "Regra de detecção proposta para cada achado",
+      "Artefatos de pós-exploração removidos e comprovados"
+    ],
+    "evidence": [
+      "Saída de `whoami /all`, `sc qc`, `schtasks`, `icacls`",
+      "Comando e saída de cada passo de escalada",
+      "Tabela de achados com detecção e correção"
+    ],
+    "expected_result": "Host Windows comprometido com cadeia documentada e plano de detecção.",
+    "grading_md": "Precisão técnica 35%, evidência 25%, detecção proposta 25%, remoção comprovada 15%.",
+    "challenge_slug": "machine-saas-admin-console"
+  }
+}

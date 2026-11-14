@@ -1,0 +1,745 @@
+{
+  "slug": "hardware-hacking",
+  "title": "Hardware Hacking",
+  "codename": "HW",
+  "domain": "hardware",
+  "summary": "Interfaces de depuração, análise de firmware, sinais e rádio — com separação explícita entre o que roda só em software e o que exige equipamento.",
+  "description": "A trilha é montada para ser feita sem assumir equipamento. Três dos cinco módulos são integralmente executáveis na máquina que você já tem: reconhecimento a partir de foto e datasheet, análise de firmware com Ghidra/qemu e decodificação com o driver demo do sigrok. Só quando o exercício exige um instrumento (multímetro, analisador lógico, receptor SDR, adaptador de depuração) ele está marcado como tal, com a alternativa em software e o custo mínimo declarados no próprio enunciado.",
+  "entry_level": "Linux e linha de comando; não exige experiência com eletrônica",
+  "exit_level": "capaz de analisar firmware, decodificar sinais e decidir com honestidade o que exige hardware",
+  "estimated_hours": 48,
+  "priority": 60,
+  "phase": 2,
+  "icon": "cpu",
+  "accent": "amber",
+  "prerequisites": [
+    "linux-security"
+  ],
+  "competencies": [
+    "Identificar componentes e pontos de teste a partir de documentação",
+    "Distinguir o que exige instrumento do que roda em software",
+    "Extrair e analisar firmware sem hardware",
+    "Ler binário de firmware com Ghidra",
+    "Decodificar barramentos e sinais sintetizados",
+    "Justificar quando explorar hardware não compensa"
+  ],
+  "tools": [
+    "Ghidra",
+    "radare2",
+    "binwalk",
+    "qemu-user",
+    "sigrok-cli/PulseView",
+    "OpenOCD",
+    "flashrom",
+    "CH341A",
+    "RTL-SDR",
+    "GNU Radio",
+    "simulador de circuitos"
+  ],
+  "equipment": "Nada é pressuposto. Os módulos 0 (parte), 2 e 3 (parte) rodam só com software. Atividades de medição, captura e SDR exigem equipamento e estão marcadas com a etiqueta EXIGE EQUIPAMENTO; cada uma diz o mínimo necessário e qual alternativa em software dá o mesmo aprendizado.",
+  "modules": [
+    {
+      "slug": "fundamentos-eletronicos",
+      "title": "Fundamentos eletrônicos para segurança de hardware",
+      "summary": "A metade da trilha que roda sem hardware é a metade que ensina o que medir.",
+      "objective": "Ler uma placa e medir sinais sem danificar o alvo — ou, sem equipamento, aprender a simular o circuito.",
+      "competencies": [
+        "tensão",
+        "terra",
+        "nível lógico",
+        "série",
+        "pull-up",
+        "osciloscópio",
+        "multímetro"
+      ],
+      "units": [
+        {
+          "slug": "eletrica-basica",
+          "title": "Eletricidade e níveis lógicos",
+          "objective": "Distinguir o que é seguro medir do que destrói o alvo.",
+          "competencies": [
+            "VCC/GND",
+            "3,3 V vs 5 V",
+            "conversor de nível",
+            "continuidade"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "hw-m0-u1-own-placa",
+              "kind": "theory",
+              "title": "Reconhecimento de placa: identificar componentes e pontos de teste",
+              "estimated_minutes": 50,
+              "kb_slug": "own-hardware-reconhecimento-placa",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m0-u1-own-componentes",
+              "kind": "theory",
+              "title": "Identificar componentes e ler datasheets sem inventar pinagem",
+              "estimated_minutes": 45,
+              "kb_slug": "own-hardware-identificar-componentes",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m0-u1-kb-intro",
+              "kind": "theory",
+              "title": "Hacking de hardware — visão geral",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-hardware-physical-access-hardware-hacking",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m0-u1-ex-calculo",
+              "kind": "exercises",
+              "title": "Exercício: dimensionar um divisor de tensão",
+              "estimated_minutes": 40,
+              "body_md": "**SOMENTE SOFTWARE.** Nenhum componente necessário.\n\nVocê vai ler um sinal de 5 V com um adaptador de depuração que aceita no máximo 3,3 V.\n\n1. Calcule o divisor resistivo que leva 5 V a ~3,0 V.\n2. Verifique a corrente de fuga sobre o resistor de pull-down e explique por que ela importa num barramento com pull-up fraco.\n3. Repita o cálculo para um sinal de 1,8 V lido por adaptador de 3,3 V e explique por que aqui não se usa resistor.\n4. Monte o circuito num simulador livre (por exemplo, adaptador online de simulação de circuitos); registre a tensão medida na simulação.\n\nEntregável: cálculos, o que a simulação confirmou, e a lista de componentes que você precisaria comprar para executar fisicamente.",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m0-u1-ex-sim",
+              "kind": "exercises",
+              "title": "Exercício: simular pull-up e I²C",
+              "estimated_minutes": 45,
+              "body_md": "**EQUIPAMENTO SIMULADO.** Roda em simulador de circuito, sem hardware.\n\n1. Monte um barramento I²C com dois pull-ups e simule a transmissão de um byte `0x48`.\n2. Reduza o pull-up a um valor muito alto e mostre o efeito na borda de subida.\n3. Repita com um dispositivo lento e explique o alongamento de clock.\n\nEntregável: capturas do simulador e a relação entre resistência de pull-up, capacitância e tempo de subida.\n\nSe você tiver osciloscópio, repita num módulo real e compare — mas o exercício é aceito apenas com a simulação.",
+              "equipment": "simulated"
+            }
+          ]
+        },
+        {
+          "slug": "medicao-real",
+          "title": "Medição real (requer instrumento)",
+          "objective": "Quando o equipamento existe, aqui está a sequência que não estraga o alvo.",
+          "competencies": [
+            "multímetro",
+            "osciloscópio",
+            "analisador lógico",
+            "terra de referência"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "hw-m0-u2-kb-jtag",
+              "kind": "theory",
+              "title": "JTAG — busca de pinos e configuração de hardware",
+              "estimated_minutes": 60,
+              "kb_slug": "ht-hardware-physical-access-hardware-hacking-jtag",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m0-u2-kb-uart",
+              "kind": "theory",
+              "title": "UART",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-hardware-physical-access-hardware-hacking-uart",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m0-u2-kb-spi",
+              "kind": "theory",
+              "title": "SPI",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-hardware-physical-access-hardware-hacking-spi",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m0-u2-kb-i2c",
+              "kind": "theory",
+              "title": "I²C",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-hardware-physical-access-hardware-hacking-i2c",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m0-u2-ex-multimetro",
+              "kind": "exercises",
+              "title": "Exercício: medir sem danificar",
+              "estimated_minutes": 50,
+              "body_md": "**EXIGE EQUIPAMENTO:** multímetro. Use uma placa descartável que você comprou ou um equipamento seu.\n\n1. Com a placa **desenergizada**, meça continuidade com o plano de terra e identifique os pads de GND.\n2. Energize e meça a tensão de alimentação em três pontos.\n3. Identifique o pino Vtref que o adaptador JTAG usaria.\n4. Registre cada medida com o ponto de referência usado.\n\nSe você **não** tem multímetro: este exercício fica bloqueado. Não marque como concluído — o equivalente em software é o exercício de simulação do módulo 0, que já conta para a trilha.\n\nEntregável: tabela de medidas + foto da placa.",
+              "equipment": "required"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Exercícios de cálculo, simulação e (se houver instrumento) de medição entregues.",
+      "estimated_minutes": 480,
+      "requires_module": ""
+    },
+    {
+      "slug": "interfaces-de-debug",
+      "title": "Interfaces de depuração e barramentos",
+      "summary": "JTAG, SWD, SPI e I²C são barramentos; quem não sabe o nível lógico queima o alvo.",
+      "objective": "Encontrar e usar UART, JTAG/SWD, SPI e I²C — sabendo o que cada um exige.",
+      "competencies": [
+        "UART",
+        "JTAG",
+        "SWD",
+        "OpenOCD",
+        "SPI flash",
+        "I²C",
+        "CoreSight"
+      ],
+      "units": [
+        {
+          "slug": "jtag-swd",
+          "title": "JTAG e SWD",
+          "objective": "Do padrão TAP à sessão de depuração real.",
+          "competencies": [
+            "TAP",
+            "boundary scan",
+            "SWDIO/SWCLK",
+            "OpenOCD",
+            "halting"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "hw-m1-u1-kb-tap",
+              "kind": "theory",
+              "title": "O Test Access Port e a cadeia JTAG",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-hardware-physical-access-hardware-hacking-jtag",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m1-u1-kb-coresight",
+              "kind": "theory",
+              "title": "Rastreamento de instruções ARM CoreSight",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-hardware-physical-access-hardware-hacking-arm-coresight-instruction-tracing",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m1-u1-ex-flashrom-plan",
+              "kind": "exercises",
+              "title": "Exercício: planejar a leitura de uma flash SPI",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.** Sem placa, sem gravador.\n\nDado um roteador de descarte com uma flash W25Q64 (SOIC-8), escreva o plano completo:\n\n1. Como identificar o pino 1 e por que inverter VCC/GND é o erro fatal.\n2. Decida entre leitura no lugar (in-circuit) e remoção do chip; justifique com o que aprendeu sobre o barramento estar compartilhado.\n3. Qual tensão o adaptador deve usar e como confirmar.\n4. Qual ferramenta livre lê a flash e qual comando de identificação você usaria primeiro.\n5. Depois de lida, qual é o próximo passo (analisar o firmware).\n\nEntregável: plano passo a passo com pontos de decisão. Marque quais exigem comprar um gravador (CH341A/clip) e quais não exigem nada.",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m1-u1-ex-openocd",
+              "kind": "exercises",
+              "title": "Exercício: sessão de depuração com OpenOCD",
+              "estimated_minutes": 70,
+              "body_md": "**EXIGE EQUIPAMENTO:** alvo ARM acessível por SWD (qualquer placa de desenvolvimento barata que você já tenha) e um adaptador (ST-Link ou FT2232H).\n\n1. Suba o OpenOCD com o arquivo de configuração do adaptador e do alvo.\n2. Interrompa o processador (halt) e leia os registradores.\n3. Leia um bloco de memória e salve.\n4. Retome a execução e comprove que o alvo continua funcionando.\n\nEntregável: log do OpenOCD e o que cada comando fez.\n\nSem adaptador: use o documento JTAG para entregar a análise do arquivo de configuração (quais pinos, qual transporte, qual velocidade) — isso é aceito com a marcação de que a sessão real ficou bloqueada.",
+              "equipment": "required"
+            }
+          ]
+        },
+        {
+          "slug": "spi-i2c-e-boot",
+          "title": "Flash, I²C e bootloader",
+          "objective": "Explorar armazenamento e inicialização como superfície.",
+          "competencies": [
+            "SPI flash",
+            "eMMC",
+            "bootloader",
+            "U-Boot",
+            "secure boot",
+            "UEFI"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "hw-m1-u2-kb-boot",
+              "kind": "theory",
+              "title": "Teste de bootloader",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-hardware-physical-access-firmware-analysis-bootloader-testing",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m1-u2-kb-integrity",
+              "kind": "theory",
+              "title": "Integridade de firmware",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-hardware-physical-access-firmware-analysis-firmware-integrity",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m1-u2-kb-uefi",
+              "kind": "theory",
+              "title": "UEFI IFR e NVRAM",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-hardware-physical-access-firmware-analysis-uefi-ifr-nvram-security-setting-patching",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m1-u2-kb-mediatek",
+              "kind": "theory",
+              "title": "MediaTek bl2_ext — bypass de Secure Boot",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-hardware-physical-access-firmware-analysis-android-mediatek-secure-boot-bl2-ext-bypass-el3",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m1-u2-kb-xflash",
+              "kind": "theory",
+              "title": "MediaTek XFlash Carbonara DA2",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-hardware-physical-access-firmware-analysis-mediatek-xflash-carbonara-da2-hash-bypass",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m1-u2-kb-synology",
+              "kind": "theory",
+              "title": "Decriptação de arquivos PAT/SPK",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-hardware-physical-access-firmware-analysis-synology-encrypted-archive-decryption",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Plano de leitura de flash entregue e (se houver adaptador) sessão de depuração.",
+      "estimated_minutes": 600,
+      "requires_module": "fundamentos-eletronicos"
+    },
+    {
+      "slug": "analise-de-firmware",
+      "title": "Análise de firmware (100% software)",
+      "summary": "A parte mais profunda da trilha não precisa de nenhum equipamento — só da imagem de firmware.",
+      "objective": "Do binário à vulnerabilidade sem tocar em hardware.",
+      "competencies": [
+        "binwalk",
+        "squashfs",
+        "Ghidra",
+        "binário ARM/MIPS",
+        "emulação",
+        "secrets"
+      ],
+      "units": [
+        {
+          "slug": "extracao",
+          "title": "Extração e sistema de arquivos",
+          "objective": "Reconhecer o formato, extrair e ler o sistema de arquivos.",
+          "competencies": [
+            "binwalk",
+            "squashfs",
+            "cramfs",
+            "entropia",
+            "credenciais embutidas"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "hw-m2-u1-kb-fw",
+              "kind": "theory",
+              "title": "Análise de firmware (documento completo)",
+              "estimated_minutes": 150,
+              "kb_slug": "ht-hardware-physical-access-firmware-analysis",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m2-u1-kb-linux",
+              "kind": "theory",
+              "title": "Linux e o que esperar de um sistema embarcado",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-linux-hardening",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m2-u1-own-ghidra",
+              "kind": "theory",
+              "title": "Análise de binário de firmware com Ghidra",
+              "estimated_minutes": 70,
+              "kb_slug": "own-hardware-firmware-ghidra",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m2-u1-ex-extract",
+              "kind": "exercises",
+              "title": "Exercício: extrair e inventariar um firmware",
+              "estimated_minutes": 90,
+              "body_md": "**SOMENTE SOFTWARE.** Escolha um firmware que você tenha o direito de analisar: uma imagem de atualização pública do fabricante, ou uma distribuição de firmware vulnerável para treino.\n\n1. Identifique o formato e as assinaturas (`binwalk`).\n2. Extraia o sistema de arquivos e confirme o tipo.\n3. Liste os binários com bit SETUID.\n4. Procure credenciais, chaves e URLs embutidas.\n5. Registre cada achado com caminho e trecho.\n\nEntregável: inventário com evidência. Nada de 'parece que tem senha'.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "binarios-e-emulacao",
+          "title": "Binários, símbolos e emulação",
+          "objective": "Ler código sem símbolos e confirmar comportamento fora do dispositivo.",
+          "competencies": [
+            "Ghidra",
+            "radare2",
+            "qemu-user",
+            "strings",
+            "NX/ASLR/canary"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "hw-m2-u2-ex-ghidra",
+              "kind": "exercises",
+              "title": "Exercício: mapa de funções de um daemon",
+              "estimated_minutes": 90,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nPegue o binário principal de um serviço do firmware extraído no exercício anterior.\n\n1. Importe no Ghidra com a arquitetura correta e **o endereço base** do binário.\n2. Identifique a função que trata a entrada de rede/arquivo.\n3. Meça os buffers: onde há `strcpy` ou `memcpy` com tamanho fixo?\n4. Verifique presença de canary, NX e PIE.\n5. Para cada candidato, escreva **por que** é explorável ou não, citando o trecho.\n\nEntregável: mapa de funções + análise. \"Parece vulnerável\" não é entregável.",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m2-u2-ex-emulacao",
+              "kind": "exercises",
+              "title": "Exercício: emulação com qemu-user",
+              "estimated_minutes": 75,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nRode um binário do firmware extraído no seu host com `qemu-user` (e as bibliotecas do próprio sistema de arquivos extraído).\n\n1. Resolva a arquitetura (o binário é ARM/MIPS?).\n2. Forneça as bibliotecas necessárias (use o `LD_LIBRARY_PATH` do rootfs extraído).\n3. Faça o binário responder a uma entrada de teste.\n4. Registre o que falhou por depender de hardware (I/O, NVRAM) e o que funcionou.\n\nEntregável: linha de comando completa + saída, e a lista de dependências que impediram a emulação.",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m2-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: firmware sem decoreba",
+              "estimated_minutes": 25,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Por que carregar um binário de firmware no endereço errado estraga a análise?",
+                  "accepted": [
+                    "ponteiros",
+                    "endereco base",
+                    "endereço base",
+                    "base address",
+                    "desalinha",
+                    "image base"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Qual ferramenta de código aberto da NSA descompila binários de firmware?",
+                  "accepted": [
+                    "ghidra"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "O que verificar num binário antes de afirmar que um overflow é explorável? (3 nomes)",
+                  "accepted": [
+                    "nx",
+                    "aslr",
+                    "pie",
+                    "canary",
+                    "stack canary"
+                  ]
+                }
+              ],
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Firmware inventariado, binário analisado, avaliação ≥ 70%.",
+      "estimated_minutes": 660,
+      "requires_module": "interfaces-de-debug"
+    },
+    {
+      "slug": "sinais-e-rf",
+      "title": "Sinais, analisador lógico e rádio",
+      "summary": "Decodificar é software; capturar é hardware. A trilha separa as duas coisas.",
+      "objective": "Capturar e decodificar comunicação — e fazer metade disso sem aparelho.",
+      "competencies": [
+        "sigrok",
+        "PulseView",
+        "decodificador",
+        "SDR",
+        "I/Q",
+        "OOK",
+        "FSK",
+        "BLE"
+      ],
+      "units": [
+        {
+          "slug": "analisador-logico",
+          "title": "Analisador lógico",
+          "objective": "Do sinal bruto à mensagem decodificada.",
+          "competencies": [
+            "samplerate",
+            "trigger",
+            "protocol decoder",
+            "stacked decoders",
+            "export"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "hw-m3-u1-own-sigrok",
+              "kind": "theory",
+              "title": "Analisador lógico com sigrok",
+              "estimated_minutes": 70,
+              "kb_slug": "own-hardware-analisador-logico-sigrok",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m3-u1-ex-demo",
+              "kind": "exercises",
+              "title": "Exercício: decodificar com o driver demo",
+              "estimated_minutes": 60,
+              "body_md": "**SOMENTE SOFTWARE.** O sigrok-cli inclui um driver `demo`, um dispositivo virtual com canais lógicos e analógicos.\n\n1. Rode `sigrok-cli --scan` e confirme o demo.\n2. Escolha um decodificador (UART, SPI, I²C) e uma taxa de amostragem adequada.\n3. Capture com o demo e decodifique com `-P`.\n4. Repita empilhando um segundo decodificador (ex.: `spi` → `spiflash`).\n5. Exporte a saída para CSV.\n\nEntregável: as linhas de comando completas e a interpretação da saída. Prove que a taxa de amostragem mudou o resultado, capturando duas vezes com taxas diferentes.",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m3-u1-ex-captura-real",
+              "kind": "exercises",
+              "title": "Exercício: capturar UART de um dispositivo",
+              "estimated_minutes": 70,
+              "body_md": "**EXIGE EQUIPAMENTO:** analisador lógico barato (fx2lafw/CH341A em modo lógico) ou osciloscópio com decodificação, e um dispositivo que você pode abrir legitimamente.\n\n1. Identifique TX/RX/GND com multímetro.\n2. Capture na inicialização.\n3. Encontre o baud rate correto.\n4. Salve o log de boot e extraia o que o aparelho informa sobre si.\n\nEntregável: captura `.sr` + parâmetros + transcrição.\n\nSe não tem analisador: o exercício fica bloqueado. Não invente uma captura.",
+              "equipment": "required"
+            }
+          ]
+        },
+        {
+          "slug": "sdr",
+          "title": "SDR e rádio",
+          "objective": "Entender I/Q e modulação, e praticar com sinal sintetizado.",
+          "competencies": [
+            "I/Q",
+            "Goertzel",
+            "OOK",
+            "FSK",
+            "GNU Radio",
+            "RTL-SDR"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "hw-m3-u2-own-sdr",
+              "kind": "theory",
+              "title": "SDR: fundamentos e prática sem transmissor",
+              "estimated_minutes": 70,
+              "kb_slug": "own-hardware-sdr-fundamentos",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m3-u2-kb-radio",
+              "kind": "theory",
+              "title": "Rádio — análise de IQ com SigDigger",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-hardware-physical-access-hardware-hacking-radio",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m3-u2-kb-fissure",
+              "kind": "theory",
+              "title": "FISSURE — framework de RF",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-fissure-the-rf-framework",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m3-u2-kb-vsat",
+              "kind": "theory",
+              "title": "Injeção em forward link VSAT",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-vsat-forward-link-injection",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m3-u2-ex-goertzel",
+              "kind": "exercises",
+              "title": "Exercício: implementar detecção de tom",
+              "estimated_minutes": 75,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Gere 1 s de amostras I/Q de um tom em 1 kHz, taxa 48 kHz.\n2. Implemente o algoritmo de Goertzel (sem FFT) e detecte o tom.\n3. Confirme que um tom em 3 kHz **não** é detectado pelo mesmo bin.\n4. Gere um sinal OOK `1010...` e recupere os bits por envelope.\n5. Quebre o item 4 usando um `T` (duração de símbolo) errado, e explique por que o resultado parece 'funcionar'.\n\nEntregável: código + gráficos + a lição do item 5.",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m3-u2-ex-rtl",
+              "kind": "exercises",
+              "title": "Exercício: captura real com RTL-SDR",
+              "estimated_minutes": 60,
+              "body_md": "**EXIGE EQUIPAMENTO:** receptor SDR (RTL-SDR é o mais barato).\n\n1. `rtl_test` para confirmar o dispositivo.\n2. `rtl_power -f 433M:435M:100k -i 10 sweep.csv` e identifique picos.\n3. `rtl_sdr -f <freq> -s 2048000 -n 2048000 cap.iq` e abra numa ferramenta de análise IQ.\n4. Explique o spike no centro do espectro e como corrigi-lo.\n\nEntregável: captura + explicação.\n\nSem receptor: use o exercício de sinal sintetizado, que cobre o mesmo conceito. Este fica bloqueado.",
+              "equipment": "required"
+            },
+            {
+              "slug": "hw-m3-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: rádio e amostragem",
+              "estimated_minutes": 20,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Por que um rádio SDR precisa de dois canais (I e Q)?",
+                  "accepted": [
+                    "amplitude e fase",
+                    "fase",
+                    "distinguir frequencias",
+                    "distinguir frequências",
+                    "complexo"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Quantas amostras por símbolo no mínimo se recomenda em protocolo síncrono?",
+                  "accepted": [
+                    "2",
+                    "4",
+                    "2x",
+                    "4x"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "O que o Goertzel calcula?",
+                  "accepted": [
+                    "energia",
+                    "potencia",
+                    "potência",
+                    "tom",
+                    "frequencia especifica",
+                    "frequência específica"
+                  ]
+                }
+              ],
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Exercícios de decodificação e de sinal sintetizado entregues; avaliação ≥ 70%.",
+      "estimated_minutes": 600,
+      "requires_module": "analise-de-firmware"
+    },
+    {
+      "slug": "exploracao-fisica",
+      "title": "Exploração física e injeção de falhas",
+      "summary": "A parte mais cara da trilha é a que mais exige decidir o que não vale fazer.",
+      "objective": "Avaliar o que só se prova no hardware — e saber quando o custo não justifica.",
+      "competencies": [
+        "side-channel",
+        "fault injection",
+        "glitch",
+        "Cold Boot",
+        "DMA",
+        "BadUSB",
+        "UEFI"
+      ],
+      "units": [
+        {
+          "slug": "canais-laterais",
+          "title": "Canais laterais e injeção de falhas",
+          "objective": "Entender a primitiva antes de comprar um equipamento de mil dólares.",
+          "competencies": [
+            "DPA",
+            "CPA",
+            "glitch de clock",
+            "glitch de tensão",
+            "ChipWhisperer"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "hw-m4-u1-kb-sca",
+              "kind": "theory",
+              "title": "Análise de canal lateral",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-hardware-physical-access-hardware-hacking-side-channel-analysis",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m4-u1-kb-fi",
+              "kind": "theory",
+              "title": "Injeção de falhas",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-hardware-physical-access-hardware-hacking-fault-injection-attacks",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m4-u1-ex-plano",
+              "kind": "exercises",
+              "title": "Exercício: decidir se vale o esforço",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nUm fabricante diz que a chave AES é segura porque está em hardware. Escreva a análise em três partes:\n\n1. Quais hipóteses de ataque existem (canal lateral, glitch, leitura direta de fusível, extração de memória).\n2. Para cada uma: equipamento mínimo, custo aproximado, tempo, e que tipo de acesso físico é necessário.\n3. Qual hipótese um atacante racional escolheria e por quê.\n\nEntregável: tabela. O ponto é **descartar** as hipóteses que não se sustentam.",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m4-u1-ex-simula",
+              "kind": "exercises",
+              "title": "Exercício: canal lateral por software",
+              "estimated_minutes": 60,
+              "body_md": "**SOMENTE SOFTWARE.** Simule o vazamento sem medir nenhum sinal elétrico:\n\n1. Escreva um detector que consome tempo proporcional ao primeiro bit da chave.\n2. Meça o tempo real de cada tentativa (por exemplo, 10 000 amostras).\n3. Mostre estatisticamente qual bit é 0 e qual é 1.\n4. Explique a diferença entre este modelo didático e um ataque real (ruído, alinhamento, consumo elétrico).\n\nEntregável: código + gráfico + a comparação com o caso real.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "fisico-hostil",
+          "title": "Acesso físico ao host",
+          "objective": "Avaliar o que o acesso físico entrega, com escopo escrito.",
+          "competencies": [
+            "BadUSB",
+            "Cold Boot",
+            "Thunderbolt DMA",
+            "BitLocker",
+            "UEFI",
+            "kiosk"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "hw-m4-u2-kb-phys",
+              "kind": "theory",
+              "title": "Ataques físicos",
+              "estimated_minutes": 90,
+              "kb_slug": "ht-hardware-physical-access-physical-attacks",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m4-u2-kb-kiosk",
+              "kind": "theory",
+              "title": "Escapando de KIOSK",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-hardware-physical-access-escaping-from-gui-applications",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m4-u2-project",
+              "kind": "project",
+              "title": "Relatório de hardware (capstone)",
+              "estimated_minutes": 120,
+              "body_md": "Entregue o relatório do **capstone** desta trilha, sobre um dispositivo que é **seu** (ou uma imagem de firmware pública). O relatório deve ser honesto sobre o que você conseguiu e o que ficou bloqueado por falta de equipamento.\n\nEstrutura obrigatória:\n\n1. **Inventário**: placa, chips, interface de serviço encontrada.\n2. **Acesso obtido**: UART, JTAG, SPI, ou apenas firmware extraído.\n3. **Análise de firmware**: sistema de arquivos, binários, segredos.\n4. **Vulnerabilidades**: cada uma com mecanismo e evidência (ou hipótese, se não confirmada).\n5. **Matriz de equipamento**: por atividade da trilha, software-only, opcional, simulado ou exigia equipamento — e o que ficou bloqueado.\n6. **Recomendações** ao fabricante/dono.\n\nCritério de aceite: nenhuma afirmação sem evidência **ou** marcação explícita de hipótese.",
+              "equipment": "software"
+            },
+            {
+              "slug": "hw-m4-u2-ex-fisico",
+              "kind": "exercises",
+              "title": "Exercício: análise de acesso físico",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nEscolha um cenário (notebook corporativo com BitLocker, workstation com BIOS travada, kiosk):\n\n1. Liste as vias de acesso físico possíveis.\n2. Para cada uma, o que o atacante ganha e o que fica registrado.\n3. Qual controle reduz o **impacto** e qual reduz a **probabilidade**.\n4. O que muda se a chave de recuperação estiver no AD vs. no TPM apenas.\n\nEntregável: análise com escopo e limites.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Relatório do capstone entregue e análises de custo/hipótese entregues.",
+      "estimated_minutes": 540,
+      "requires_module": "sinais-e-rf"
+    }
+  ],
+  "capstone": {
+    "objective": "Analisar um dispositivo próprio (ou firmware público) e entregar relatório com matriz honesta de equipamento.",
+    "scope_md": "Um dispositivo que é seu, comprado para descarte, ou uma imagem de firmware pública que você tem o direito de analisar. Nada de terceiros.",
+    "resources_md": "Obrigatório: Ghidra, binwalk, qemu-user, sigrok-cli (com demo) — todos livres. Opcional: multímetro, analisador lógico, RTL-SDR, adaptador SWD. O relatório pode ser entregue sem nenhum item opcional.",
+    "steps_md": "1. Inventariar a placa ou a imagem de firmware.\n2. Extrair o sistema de arquivos e inventariar binários e segredos.\n3. Analisar o principal binário e verificar mitigações.\n4. Decodificar qualquer sinal que você tenha conseguido capturar.\n5. Preencher a matriz de equipamento.\n6. Escrever recomendações.",
+    "success_criteria": [
+      "Inventário de firmware com evidência (caminho e trecho)",
+      "Pelo menos uma análise de binário com justificativa de explorabilidade",
+      "Matriz de equipamento preenchida para todas as atividades da trilha",
+      "Toda afirmação com evidência ou marcada como hipótese",
+      "Recomendações acionáveis"
+    ],
+    "evidence": [
+      "Saída de binwalk e árvore do sistema de arquivos",
+      "Relatório do Ghidra com funções e buffers",
+      "Captura de sinal, quando houver equipamento",
+      "Matriz software/equipamento"
+    ],
+    "expected_result": "Relatório de análise de hardware com limites declarados e sem suposição de equipamento.",
+    "grading_md": "Análise de firmware 35%, evidência 25%, honestidade sobre equipamento 25%, recomendações 15%.",
+    "challenge_slug": ""
+  }
+}

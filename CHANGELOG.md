@@ -2,6 +2,65 @@
 
 All notable changes to REDVAULT are documented here. The project follows a pragmatic version sequence; it is pre-1.0 and the content catalog is incomplete.
 
+## [1.7.0] — 2026-11-13
+
+### Added
+
+- **Trilhas 09–18 no Learning Paths: Análise de Malware, Forense Digital, Cloud e Containers, Segurança Mobile, Exploit Development, Engenharia Reversa, Criptografia Aplicada, OSINT, Red Team e IoT e Embarcados.** A Fase 3 acrescenta **40 módulos, 74 disciplinas e 322 atividades** (total do programa: **18 trilhas, 78 módulos, 151 disciplinas, 788 atividades**). Cada trilha tem avaliação, capstone obrigatório com critérios e pré-requisitos verificados contra o banco real.
+- **14 documentos próprios (pt-BR)** para as lacunas apontadas pelo audit, com 40 referências primárias verificadas por HTTP na data da escrita: YARA, execução fileless, cadeia de custódia/linha do tempo, memória com Volatility, IAM, serverless, Ghidra, anti-depuração, proteções de binário, HMAC/integridade, PKI, e três de OSINT (metodologia, superfície externa, pessoas e organizações). Total de documentos próprios: **24**.
+- **25 categorias de KB novas** para as áreas da Fase 3 (`malware-analysis`, `forensics-memory`, `crypto-pki`, `osint-infra`, `red-team-infra`, `iot-protocols`, …), em grupos próprios.
+- **`DOMAIN_LABELS`** em `app/lp_web.py`: os filtros de domínio da página de trilhas passam a exibir rótulo pt-BR em vez da chave interna (`binexp` → `EXPLOIT DEV`).
+- **Novos testes de idioma e de escopo**: `test_curriculum_text_is_portuguese`, `test_ui_labels_are_portuguese`, `test_no_internal_keys_leak_into_the_ui`, `test_recommendation_kinds_are_labelled`, mais cinco da Fase 3 (escopo, pré-requisitos, ausência de lab inventado, equipamento declarado e caminho em software para exercício bloqueado).
+
+### Fixed
+
+- **Rótulos internos vazando para a tela.** A página de trilhas e a de recomendações imprimiam a chave crua da recomendação (`NEXT ACTIVITY`); a distribuição por tipo imprimia `THEORY`/`EXERCISES` nos cartões e no painel lateral da trilha. Agora usam `RECOMMENDATION_LABELS` e `KIND_LABELS`.
+- **Página `kb_index.html`**: bloco `{% if q %}`/`{% else %}` desbalanceado derrubava a renderização com filtro de busca.
+- **Contador "DISPONÍVEIS"** na página de trilhas contava trilhas com pré-requisito atendido, o que sugeria "trilhas existentes". Renomeado para **LIBERADAS**.
+
+### Tests
+
+- `tests/test_learning_paths.py` passou de 33 para **38 testes**. Suíte completa: **9/9 módulos, 188 testes**.
+
+## [1.6.0] — 2026-11-13
+
+### Added
+
+- **Trilhas 05–08 no Learning Paths: Active Directory, Network, Wireless e Hardware.** A Fase 2 acrescenta **16 módulos, 34 disciplinas e 218 atividades** (total do programa: **8 trilhas, 38 módulos, 77 disciplinas, 466 atividades**). AD ancora nos 50 documentos `active-directory-methodology`; Network nos 209 de serviços de rede e na metodologia de rede; Wireless nos 31 documentos de Wi-Fi e nos de RFID/BLE/sub-GHz; Hardware nos 35 de hardware/acesso físico e de firmware.
+- **Campo `lp_activities.equipment`.** Toda atividade da Fase 2 declara o que precisa fisicamente: `software`, `simulated`, `optional` ou `required`, validado no schema (`VALID_EQUIPMENT`) e exibido como badge na trilha. Atende ao requisito de não pressupor equipamento: a trilha Hardware tem 40 atividades só-software, 1 simulada e 4 que exigem aparelho — e cada uma destas diz no texto que fica bloqueada sem ele e qual exercício em software cobre o conceito.
+- **Cinco documentos próprios (pt-BR) de hardware**, com fonte primária e 5 referências verificadas cada: reconhecimento de placa, identificação de componentes/datasheet, fluxo sigrok/PulseView, análise de firmware com Ghidra e fundamentos de SDR com prática sem transmissor.
+- **Cinco categorias de KB** (`hardware`, `hardware-recon`, `hardware-signals`, `hardware-firmware`, `hardware-rf`) em grupo próprio.
+- **`default_equipment()`** em `scripts/lp_builders.py`: preenche a classe de equipamento das atividades que não declararam uma, para que um campo vazio nunca signifique "não se sabe".
+
+### Fixed
+
+- Slugs de KB com ~100 caracteres são truncados de forma inconsistente na importação; o currículo agora usa o valor exato do banco em vez de concatenar prefixo.
+- `estimated_hours` da trilha Network (31 h) não batia com a soma das atividades (38 h).
+- Descrição da trilha Hardware continha marcação Markdown num campo renderizado como texto puro.
+
+### Tests
+
+- `tests/test_learning_paths.py` passou de 24 para **29 testes**: escopo da Fase 2, pré-requisitos existentes, equipamento declarado em toda atividade, separação software/equipamento na trilha Hardware, e renderização do badge. A checagem de ordem passou a comparar conjuntos e exigir prioridades distintas. Suíte: **9/9 módulos, 179 testes**.
+
+## [1.5.0] — 2026-11-13
+
+### Added
+
+- **Integração completa do HackTricks (edição PT-BR) na biblioteca.** O HackTricks mantém a tradução em uma **branch separada** (`pt`), não no `main`. `scripts/import_kb.py --source hacktricks --path <clone-pt>` importa essa edição para o `/kb`: **1.144 documentos** em **20 categorias** (Pentest Web, Serviços de Rede, Hardening Linux/macOS/Windows, Cloud, Blockchain, Mobile, Binário, Reversão, IA, …), **1.239 payloads** extraídos e **762 imagens** localizadas. A árvore de navegação espelha o `SUMMARY.md`; os títulos usam o H1 do próprio documento (que é traduzido), porque o `SUMMARY.md` do upstream segue em inglês.
+- **Detecção de idioma pela branch.** `BRANCH_LANGUAGES` mapeia `pt`/`pt-br` → `pt-BR` e `main`/`master` → `en`. Documentos importados da branch `pt` entram como `language = 'pt-BR'` e `translation_status = 'translated'`, com bloco de atribuição em português.
+- **Importador dedicado `app/kb_hacktricks.py`.** Limpa as diretivas `{{#include}}` (o banner de treinamento/patrocínio não é conteúdo), reescreve links relativos `.md` para `/kb/d/<slug>`, converte imagens relativas para `/static/hacktricks/...` (a CSP do app só permite imagens mesma-origem) e registra commit, path e URL de origem por documento.
+- **Créditos e licença NC visíveis.** Cada documento importado recebe um bloco de atribuição a **Carlos Polop e contribuidores** com link para a CC BY-NC 4.0, e o leitor mostra um aviso "Uso não comercial". A página de fontes distingue licenças permissivas de licenças NC.
+- **Coluna `kb_sources.noncommercial_reuse`.** Separa "redistribuível" (MIT) de "reutilizável só para uso não comercial com atribuição" (CC BY-NC). O gate permissivo continua recusando tudo que não é nem uma coisa nem outra.
+
+### Fixed
+
+- A licença do HackTricks não é mais "(sem licença declarada)": é **CC BY-NC 4.0**. `register_sources()` agora atualiza metadados (antes só inseria), e roda no boot, então instalações antigas também são corrigidas.
+- Migração aditiva para SQLite: colunas novas em tabelas existentes são criadas com `ALTER TABLE` no `init_db()`, já que `create_all` não altera tabelas existentes.
+
+### Tests
+
+- Novo módulo `tests/test_kb_hacktricks.py` (8 testes): parsing do SUMMARY, registro da licença NC, skip de `todo/` e `LICENSE.md`, atribuição + remoção do banner, detecção de idioma pela branch (PT-BR/translated), reescrita de links, localização de imagens, idempotência preservando corpos revisados, e o aviso NC no leitor e na página de fontes. Suite: 8/8 módulos verdes.
+
 ## [1.4.0] — 2026-11-13
 
 ### Added

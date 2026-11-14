@@ -1,0 +1,509 @@
+{
+  "slug": "reverse-engineering",
+  "title": "Engenharia Reversa",
+  "codename": "REV",
+  "domain": "reversing",
+  "summary": "De assembly a angr: entender como o binário foi construído, localizar lógica por referência cruzada e converter análise em conclusão que se sustenta.",
+  "description": "A trilha ensina reversing como método e não como coleção de atalhos: como o compilador transforma código, como confirmar no assembly o que o decompilador sugere, quando automatizar com execução simbólica e quando evitar, como lidar com anti-depuração sem confundir com defeito, e como aplicar o mesmo método a macro, bytecode e esteganografia. A prática usa binário que o operador compila.",
+  "entry_level": "C ou Python confortável; conceitos de memória",
+  "exit_level": "capaz de analisar um binário desconhecido e registrar conclusões com evidência",
+  "estimated_hours": 36,
+  "priority": 80,
+  "phase": 3,
+  "icon": "crosshair",
+  "accent": "violet",
+  "prerequisites": [
+    "linux-security"
+  ],
+  "competencies": [
+    "Explicar o efeito da otimização na decompilação",
+    "Localizar lógica por string e referência cruzada",
+    "Confirmar conclusão em assembly em vez de pseudocódigo",
+    "Decidir quando execução simbólica ajuda e quando falha",
+    "Distinguir ofuscação de anti-análise de defeito",
+    "Analisar macro e bytecode sem executá-los",
+    "Reconhecer dado escondido em mídia e provar por hash"
+  ],
+  "tools": [
+    "Ghidra",
+    "radare2/rizin",
+    "gdb",
+    "angr",
+    "Z3",
+    "Detect It Easy",
+    "capa",
+    "exiftool",
+    "binwalk",
+    "oletools"
+  ],
+  "equipment": "Somente software: ferramentas livres na máquina do operador; binários são compilados ou locais.",
+  "modules": [
+    {
+      "slug": "como-o-binario-e-construido",
+      "title": "Como o binário é construído",
+      "summary": "Compilador, assembly e o que a otimização apaga. Sem isso, decompilação engana.",
+      "objective": "Entender tradução de código para instrução e o vocabulário mínimo de assembly.",
+      "competencies": [
+        "compilação",
+        "assembly",
+        "registrador",
+        "convenção de chamada",
+        "otimização"
+      ],
+      "units": [
+        {
+          "slug": "do-codigo-ao-binario",
+          "title": "Do código-fonte à instrução",
+          "objective": "Reconhecer estruturas de alto nível decompiladas.",
+          "competencies": [
+            "if/else",
+            "laço",
+            "switch",
+            "inlining"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rev-m0-u1-kb-tools",
+              "kind": "theory",
+              "title": "Ferramentas de reversing e métodos básicos",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-reversing-reversing-tools-basic-methods",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m0-u1-ex-assembly",
+              "kind": "exercises",
+              "title": "Exercício: compilar a mesma função com três níveis de otimização",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nEscreva uma função com condição e laço. Compile três vezes: `-O0`, `-O2` e `-Os`.\n\n1. Desassemble as três versões.\n2. Localize o laço e a condição em cada uma.\n3. Responda: em qual versão o código é mais parecido com a fonte? Em qual há menos instruções?\n\nO ponto: a decompilação de binário otimizado **não** é a função original. É uma reconstrução possível.",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m0-u1-ex-structs",
+              "kind": "exercises",
+              "title": "Exercício: recuperar estrutura de dados a partir do acesso a memória",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nCompile um programa com uma estrutura de três campos (inteiro, ponteiro, array pequeno).\n\n1. Sem ver o código, desassemble uma função que acessa a estrutura.\n2. Deduza o **layout**: ordem dos campos e tamanhos aparentes.\n3. Recrie a estrutura e compare com a original.\n\nEntregue a dedução e a comparação. Recuperar tipo a partir de acesso é a habilidade central do reversing — mais do que ler o nome da função.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Função desassembleada em três níveis e estrutura recuperada.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "ferramentas",
+      "title": "Ferramentas de análise estática",
+      "summary": "Ghidra, segundo desassemblador e verificação cruzada.",
+      "objective": "Escolher o analisador pela pergunta e cruzar resultado entre ferramentas.",
+      "competencies": [
+        "Ghidra",
+        "radare2/rizin",
+        "referências cruzadas",
+        "símbolos"
+      ],
+      "units": [
+        {
+          "slug": "desassemblador",
+          "title": "Desassemblador e decompilador",
+          "objective": "Navegar por string e referência cruzada, confirmando no assembly.",
+          "competencies": [
+            "importação",
+            "análise automática",
+            "xref",
+            "renomear",
+            "tipos"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rev-m1-u1-own-ghidra",
+              "kind": "theory",
+              "title": "Ghidra: importar, achar a lógica e registrar o que se provou",
+              "estimated_minutes": 60,
+              "kb_slug": "own-ghidra-metodologia-reversing",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m1-u1-ex-ghidra",
+              "kind": "exercises",
+              "title": "Exercício: encontrar a rotina de validação a partir da mensagem de erro",
+              "estimated_minutes": 60,
+              "body_md": "**SOMENTE SOFTWARE.** Use um binário seu ou compilado para o exercício.\n\n1. Compile um programa que pede senha e imprime mensagem de erro quando errada.\n2. No Ghidra, localize a string da mensagem.\n3. Siga as referências cruzadas até a função que decide a resposta.\n4. Confirme a comparação **no assembly**, não no pseudocódigo.\n\nEntregue: endereço da função, a instrução da comparação e uma frase dizendo o que ela realmente compara.",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m1-u1-ex-radare",
+              "kind": "exercises",
+              "title": "Exercício: verificação cruzada com um segundo desassemblador",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nUse um segundo desassemblador (radare2, rizin ou equivalente) no mesmo binário do exercício anterior.\n\n1. Encontre a mesma função.\n2. Compare o fluxo de controle que cada ferramenta reconhece.\n3. Identifique qualquer diferença e explique-a.\n\nDois desassembladores concordando é o padrão mínimo de confiança. Discrepância significa que pelo menos um perdeu referência — e o assembly resolve.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "como-o-binario-e-construido",
+      "completion": "Rotina de validação localizada com confirmação em assembly.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "analise-automatica-e-dinamica",
+      "title": "Análise automática e dinâmica",
+      "summary": "angr, Z3, trace e anti-depuração. Automatizar o repetitivo e contornar com registro.",
+      "objective": "Automatizar o que é repetitivo e observar o que a análise estática não mostra.",
+      "competencies": [
+        "angr",
+        "Z3",
+        "depurador",
+        "trace",
+        "anti-debug"
+      ],
+      "units": [
+        {
+          "slug": "execucao-simbolica",
+          "title": "Execução simbólica e solvers",
+          "objective": "Resolver caminho de entrada com ferramenta, entendendo o limite delas.",
+          "competencies": [
+            "angr",
+            "Z3",
+            "restrição",
+            "explosão de caminhos"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rev-m2-u1-kb-angr",
+              "kind": "theory",
+              "title": "Angr",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-reversing-reversing-tools-basic-methods-angr",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m2-u1-kb-angr-ex",
+              "kind": "theory",
+              "title": "Angr — exemplos",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-reversing-reversing-tools-basic-methods-angr-angr-examples",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m2-u1-kb-z3",
+              "kind": "theory",
+              "title": "SMT e Z3",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-reversing-reversing-tools-basic-methods-satisfiability-modulo-theories-smt-z3",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m2-u1-ex-angr",
+              "kind": "exercises",
+              "title": "Exercício: resolver uma verificação simples com angr",
+              "estimated_minutes": 60,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Compile um programa que compara a entrada com um valor calculado (não uma string fixa).\n2. Use angr para encontrar um caminho até a mensagem de sucesso, sem resolver manualmente.\n3. Confirme a entrada encontrada executando o binário.\n\nResponda: por que execução simbólica funciona bem aqui e falha em binário com criptografia por bloco? O que muda na sua estratégia?",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "depurador-e-anti-analise",
+          "title": "Depurador e anti-análise",
+          "objective": "Comparar comportamento com e sem depurador e contornar de forma registrada.",
+          "competencies": [
+            "trace",
+            "ponto de parada",
+            "exceção",
+            "detecção de ambiente"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rev-m2-u2-own-antidebug",
+              "kind": "theory",
+              "title": "Anti-depuração e anti-análise: reconhecer antes de contornar",
+              "estimated_minutes": 55,
+              "kb_slug": "own-reversing-anti-depuracao",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m2-u2-kb-exc",
+              "kind": "theory",
+              "title": "Fluxo de controle baseado em exceções e anti-debug",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-reversing-windows-exception-driven-control-flow",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m2-u2-kb-windbg",
+              "kind": "theory",
+              "title": "Automação do WinDbg para instrumentação direcionada",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-reversing-reversing-tools-basic-methods-windbg-automation",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m2-u2-kb-blobrunner",
+              "kind": "theory",
+              "title": "Blobrunner",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-reversing-reversing-tools-basic-methods-blobrunner",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m2-u2-kb-api",
+              "kind": "theory",
+              "title": "APIs comuns usadas em malware",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-reversing-common-api-used-in-malware",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m2-u2-ex-comparar",
+              "kind": "exercises",
+              "title": "Exercício: comparar comportamento com e sem depurador",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nCompile um programa que mede o tempo entre duas chamadas e imprime mensagem diferente se o intervalo for grande.\n\n1. Rode sem depurador e registre a saída.\n2. Rode no depurador, pause entre as chamadas e registre a saída.\n3. Identifique o endereço da checagem e contorne com ponto de parada único.\n\nRegistre o contorno: onde, o que foi alterado e o efeito. Contorno sem registro produz conclusão irreproduzível.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "ferramentas",
+      "completion": "Entrada resolvida por angr e contorno de anti-análise registrado.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "formatos-especificos",
+      "title": "Formatos específicos",
+      "summary": "Macro, bytecode, esteganografia e a confissão de erro do capstone.",
+      "objective": "Aplicar o método a código não nativo: script, documento, bytecode e esteganografia.",
+      "competencies": [
+        "macro",
+        "VBS",
+        "bytecode",
+        "esteganografia"
+      ],
+      "units": [
+        {
+          "slug": "código-interpretado",
+          "title": "Código interpretado",
+          "objective": "Ler script ofuscado e bytecode sem cair em armadilha.",
+          "competencies": [
+            "macro VBA",
+            "VBS",
+            "JavaScript/V8",
+            "ofuscação"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rev-m3-u1-kb-word",
+              "kind": "theory",
+              "title": "Macros do Word",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-reversing-word-macros",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u1-kb-office",
+              "kind": "theory",
+              "title": "Análise de arquivos do Office",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-specific-software-file-type-tricks-of",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u1-kb-node",
+              "kind": "theory",
+              "title": "Desofuscação estática de bytecode em cache do Node.js/V8",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-reversing-reversing-tools-basic-methods-nodejs-v8-cached-bytecode",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u1-kb-cheat",
+              "kind": "theory",
+              "title": "Cheat Engine",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-reversing-reversing-tools-basic-methods-cheat-engine",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u1-ex-macro",
+              "kind": "exercises",
+              "title": "Exercício: analisar uma macro passo a passo",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.** Use um documento seu com macro simples, criado por você — nunca documento recebido de terceiro.\n\n1. Extraia a macro do documento.\n2. Identifique a primeira operação: leitura, escrita, download, execução.\n3. Descreva o que ela faz sem executá-la.\n4. Simplifique a ofuscação manualmente e reescreva a versão legível.\n\nEntregue a versão simplificada e a lista de chamadas perigosas. Executar macro alheia é a forma mais comum de se infectar durante análise.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "esteganografia",
+          "title": "Esteganografia",
+          "objective": "Encontrar dado escondido em mídia e declarar o método.",
+          "competencies": [
+            "imagem",
+            "áudio",
+            "documento",
+            "texto"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rev-m3-u2-kb-stego",
+              "kind": "theory",
+              "title": "Stego",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-stego",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u2-kb-stego-img",
+              "kind": "theory",
+              "title": "Esteganografia em imagens",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-stego-images",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u2-kb-stego-aud",
+              "kind": "theory",
+              "title": "Esteganografia de áudio",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-stego-audio",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u2-kb-stego-doc",
+              "kind": "theory",
+              "title": "Esteganografia em documentos",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-stego-documents",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u2-kb-stego-txt",
+              "kind": "theory",
+              "title": "Esteganografia de texto",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-stego-text",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u2-kb-stego-wf",
+              "kind": "theory",
+              "title": "Fluxo de Stego",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-stego-workflow",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u2-kb-ctf",
+              "kind": "theory",
+              "title": "Fluxo de trabalho de Crypto CTF",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-crypto-ctf-workflow",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u2-ex-stego",
+              "kind": "exercises",
+              "title": "Exercício: esconder e recuperar dado numa imagem",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Esconda uma mensagem numa imagem com uma técnica (LSB ou equivalente).\n2. Calcule o hash antes e depois.\n3. Recupere a mensagem com outra ferramenta.\n4. Responda: qual mudança visual a imagem sofreu?\n\nEntregue a mensagem, os hashes e a resposta. O ponto de forense é que a imagem 'parece normal' — o que sustenta o achado é o hash diferente, não o olho.",
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: engenharia reversa",
+              "estimated_minutes": 35,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Por que o pseudocódigo do decompilador não é a fonte original?",
+                  "accepted": [
+                    "a otimização altera a estrutura",
+                    "é uma reconstrução possível"
+                  ],
+                  "explanation": "O compilador transforma a lógica; o decompilador reconstrói uma versão possível, não a original."
+                },
+                {
+                  "id": "q2",
+                  "prompt": "O que a instrução de comparação no assembly confirma que o pseudocódigo não?",
+                  "accepted": [
+                    "o valor exato comparado e o registro usado"
+                  ],
+                  "explanation": "O assembly mostra operandos e registrador exatos; o pseudocódigo é aproximação."
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Quando a execução simbólica falha?",
+                  "accepted": [
+                    "com criptografia por bloco",
+                    "explosão de caminhos",
+                    "quando há muitas restrições"
+                  ],
+                  "explanation": "Caminhos que passam por criptografia por bloco geram restrições intratáveis para o solver."
+                },
+                {
+                  "id": "q4",
+                  "prompt": "Por que dois desassembladores concordando é padrão mínimo de confiança?",
+                  "accepted": [
+                    "discrepância indica falha de análise",
+                    "reduz erro de uma só ferramenta"
+                  ],
+                  "explanation": "Erro de uma ferramenta aparece como discrepância; a confirmação em assembly resolve."
+                }
+              ],
+              "equipment": "software"
+            },
+            {
+              "slug": "rev-m3-u2-project",
+              "kind": "project",
+              "title": "Capstone: análise completa de um binário compilado por você",
+              "estimated_minutes": 170,
+              "body_md": "**SOMENTE SOFTWARE.** Entrega do capstone.\n\n1. Escreva um binário com lógica não trivial (validação, decodificação, ou protocolo simples) e compile com `-O2`.\n2. Entregue o binário **sem** o código-fonte a uma segunda análise (a sua, do zero):\n\n   - funções principais e ponto de entrada;\n   - estrutura de dados recuperada;\n   - rotina de validação localizada por referência cruzada;\n   - alguma restrição resolvida por angr ou descrita;\n   - um contorno de anti-análise, se você adicionou um.\n\n3. Compare a reconstrução com o código original e liste o que você errou ou não conseguiu.\n4. Escreva as limitações.\n\nO item 3 é o coração: analista que nunca confere a própria análise não sabe qual é a taxa de erro dela.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "analise-automatica-e-dinamica",
+      "completion": "Macro analisada sem execução, esteganografia demonstrada e avaliação aprovada.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    }
+  ],
+  "capstone": {
+    "objective": "Analisar um binário sem o código-fonte e confrontar a reconstrução com a fonte original, medindo os próprios erros.",
+    "scope_md": "Binário compilado pelo próprio operador, analisado sem acesso à fonte até a reconstrução estar registrada.",
+    "resources_md": "Ghidra, segundo desassemblador, gdb, angr (opcional), compilador. Todo o software é livre.",
+    "steps_md": "1. Compilar o alvo com lógica não trivial e otimização.\n2. Registrar a reconstrução: funções, estruturas, validação e restrições.\n3. Resolver ou descrever ao menos uma restrição com ferramenta de análise.\n4. Contornar e registrar uma proteção anti-análise, se houver.\n5. Comparar com a fonte original e listar erros.\n6. Declarar limitações e taxa de acerto.",
+    "success_criteria": [
+      "Reconstrução registrada antes de consultar a fonte",
+      "Validação localizada com confirmação em assembly",
+      "Estrutura de dados recuperada e comparada",
+      "Pelo menos uma restrição resolvida ou explicada",
+      "Confronto com a fonte com erros listados honestamente",
+      "Limitações explícitas"
+    ],
+    "evidence": [
+      "Binário e comando de compilação",
+      "Notas de reconstrução",
+      "Lista de erros do confronto",
+      "Relatório final"
+    ],
+    "expected_result": "Reconstrução de binário com medição de erro conferida contra a fonte.",
+    "grading_md": "Método 30%, fidelidade das conclusões 30%, confronto honesto 25%, limitações 15%.",
+    "challenge_slug": ""
+  }
+}

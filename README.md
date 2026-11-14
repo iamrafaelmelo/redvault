@@ -80,8 +80,8 @@ Recon & Discovery, Authentication, Access Control, SQL Injection, XSS, Server-Si
 - **Objective-gated flags** for stateful exploits. The lab must record a real callback before the platform accepts the flag.
 - **Progressive hints** with XP penalties, locked until requested, and a full walkthrough that requires all hints (or a completed target).
 - **Progress, XP, levels, achievements, notes, heartbeat time tracking, activity feed and JSON export.**
-- **Learning paths** built from real catalog slugs.
-- **Biblioteca técnica (`/kb`)**, a searchable knowledge base next to the Academy: 135 imported documents, 477 contextualised payloads, FTS5 full-text search, licence/commit provenance per document and 291 links to platform labs. See [Library](#library-academy-20).
+- **Learning paths** built from real catalog slugs: 18 structured tracks in three phases — Phase 1 (Web, API, Linux, Windows), Phase 2 (Active Directory, Network, Wireless, Hardware) and Phase 3 (Análise de Malware, Forense Digital, Cloud e Containers, Segurança Mobile, Exploit Development, Engenharia Reversa, Criptografia Aplicada, OSINT, Red Team, IoT e Embarcados) — with modules, gated units, theory, labs, graded assessments, capstones and internal certificates: **78 modules, 151 units, 788 activities**. Every Phase-2 and Phase-3 activity declares what it physically needs (`SOMENTE SOFTWARE`, `EQUIPAMENTO SIMULADO`, `EQUIPAMENTO OPCIONAL`, `EXIGE EQUIPAMENTO`), so nothing assumes you own a scope, a probe, a radio or a Windows domain — and a blocked exercise always accepts a software-only delivery. See [Learning paths](#learning-paths).
+- **Biblioteca técnica (`/kb`)**, a searchable knowledge base next to the Academy: 1.279 imported documents (incl. the full HackTricks wiki, PT-BR edition), contextualised payloads, FTS5 full-text search, licence/commit provenance per document and links to platform labs. See [Library](#library-academy-20).
 - **Academy** with 17 articles and 94 lab references from OWASP, PortSwigger, CWE, RFC, MDN, MITRE ATT&CK, NIST, HackTricks and other primary sources.
 - **Real browser victim** for XSS/postMessage/upload labs through a loopback-only Selenium/Chromium bot.
 - **Server-side validation, CSRF protection, CSP and security headers.**
@@ -139,6 +139,7 @@ redvault/
 │   ├── content.py         Manifest discovery, validation and seeding
 │   ├── kb_models.py       Library schema (sources, categories, docs, payloads, links)
 │   ├── kb_import.py       Offline importer with licence gate and provenance
+│   ├── kb_hacktricks.py   HackTricks importer (CC BY-NC): SUMMARY tree, links, images
 │   ├── kb_seed.py         Canonical category tree, payload extraction, lab links
 │   ├── kb_search.py       FTS5 index and query builder
 │   ├── kb_sync.py         Upstream change handling that preserves reviewed work
@@ -165,6 +166,7 @@ redvault/
 │   ├── conftest.py        Lab process fixture
 │   ├── test_labs.py       Exploit tests for all 61 labs
 │   ├── test_kb.py         Library: import, licence gate, search, sync, UI
+│   ├── test_kb_hacktricks.py  HackTricks import: NC licence, attribution, links, images
 │   └── test_platform.py   Auth, CSRF, flags, lifecycle, UI
 ├── data/                  Runtime database, secret, lab state (gitignored)
 ├── docs/                  Supplementary notes
@@ -205,6 +207,45 @@ Read [ARCHITECTURE.md](ARCHITECTURE.md) for the full design and [SECURITY.md](SE
 
 ---
 
+## Learning paths
+
+`/learning-paths` turns the catalog into structured programmes. A path is a sequence of **modules** (stages with a gate), each holding **units** (disciplines) and **activities** (theory, exercises, labs, graded assessments, project milestones). Curricula are JSON files under `content/learning_paths/`, validated strictly on every start: a slug that does not exist in the platform aborts the seed instead of silently producing a dead link.
+
+| Track | Focus | Platform labs | Practice requires |
+| --- | --- | --- | --- |
+| Web Application Pentesting | The full web catalog | 61 | software only |
+| API Security | BOLA/BFLA, JWT, OIDC, GraphQL | 26 | software only |
+| Linux Security | privilege escalation, GTFOBins | 1 | software only |
+| Windows Security | tokens, ACLs, DLL hijacking, LOLBAS | 0 | your own Windows VM |
+| Active Directory | Kerberos, ACLs, AD CS, domain persistence | 0 | your own domain lab |
+| Network Pentesting | services, pivoting, segmentation | 0 | software + own VMs for SMB/pivoting |
+| Wireless Security | 802.11, PSK, 802.1X, RFID/BLE/sub-GHz | 0 | a Wi-Fi adapter with monitor/injection |
+| Hardware Hacking | debug interfaces, firmware, signals, SDR | 0 | software (75%+); devices only where marked |
+| Análise de Malware | triage, static, dynamic, YARA/Sigma report | 0 | software only (own binaries or samples you supply) |
+| Forense Digital | custody, artifacts, memory, network, timeline | 0 | software only (your own host/images) |
+| Cloud e Containers | IAM, RBAC, containers, serverless posture | 0 | software only (no cloud account needed) |
+| Segurança Mobile | manifest, decompilation, Frida, components | 0 | software; dynamic steps need an AVD/device |
+| Exploit Development | stack, canary, heap, arbitrary write | 0 | software only (you compile the target) |
+| Engenharia Reversa | Ghidra, angr, anti-debug, macros, stego | 0 | software only |
+| Criptografia Aplicada | hash/MAC/KDF, RSA, PKI, JWT | 1 | software only |
+| OSINT | scope, certificates, DNS, exposure, identity | 0 | software only (passive sources) |
+| Red Team | rules of engagement, infra, C2, phishing | 0 | software; operations in your own lab VMs |
+| IoT e Embarcados | Modbus, MQTT, OPC UA, firmware, BLE | 0 | software; BLE/radio need your own adapter |
+
+Where the platform has no target for a track, the curriculum says so in the exercise text instead of pretending. The **Hardware** track is the clearest case: it is built so that most of it runs on a normal machine — board reconnaissance from photos and datasheets, firmware extraction and Ghidra analysis, protocol decoding with the sigrok `demo` device — and the four activities that need an instrument are tagged `EXIGE EQUIPAMENTO` with the minimum device, the cost, and the software exercise that covers the same concept. The same rule holds in **IoT**: the single activity that needs the board's UART accepts the written procedure as a valid delivery.
+
+Every Phase-2 and Phase-3 track states in its own description what the platform does **not** provide — no malware lab, no forensic image, no cloud account, no device, no C2 infrastructure — and the exercises are built from binaries you compile, hosts you own, images you create and passive public sources. Phase 3 added **14 own KB documents** covering the gaps the audit found (YARA, fileless execution, chain of custody, Volatility, IAM, serverless, Ghidra, anti-debugging, binary protections, HMAC, PKI and three OSINT articles), each citing primary sources verified by HTTP.
+
+Progress is persisted per activity (`not_started`, `in_progress`, `completed`, `review`) with notes, difficulties, results, favourites and revisit flags. Completion requires every required activity, not page visits; the capstone is a tracked `project` activity. Certificates issued at the end are **private study records**, not professional certifications, and say so on the document.
+
+Commands:
+
+```bash
+python3 scripts/check_learning_paths.py        # validate every curriculum, report coverage
+python3 scripts/build_path_<name>.py           # regenerate one curriculum from its script
+python3 scripts/lp_phase3.py                   # shared emitter for the Phase-3 generators
+```
+
 ## Library (Academy 2.0)
 
 `/kb` is the technical library: a hierarchical catalog of techniques, a document reader, a payload library, and a provenance page. The original `/academy` (17 articles) is still there; the library is the part that scales.
@@ -219,15 +260,17 @@ Read [ARCHITECTURE.md](ARCHITECTURE.md) for the full design and [SECURITY.md](SE
 
 ### Where the content comes from
 
-Only projects whose licence allows redistribution are imported. Anything else is cited, never copied.
+Only projects whose licence allows reuse are imported, and the reuse terms are honoured exactly. Anything else is cited, never copied.
 
 | Source | Licence | Handling |
 | --- | --- | --- |
 | PayloadsAllTheThings | MIT | imported verbatim (English), with commit, path and author |
-| HackTricks | none declared | reference only: links + our own PT-BR synthesis |
+| HackTricks (edição PT-BR, branch `pt`) | CC BY-NC 4.0 | imported verbatim (Portuguese) for **non-commercial use with attribution**: credits to Carlos Polop and the licence on every document |
 | OWASP WSTG | CC BY-SA 4.0 | reference only |
 
-This is enforced in code, not by convention: `kb_sources.redistributable` is `False` for HackTricks and WSTG, and the importer raises `ImportRefused` for them. The upstream `LICENSE` is copied to `content/kb_licenses/` at import time so attribution survives even if the clone is deleted.
+This is enforced in code, not by convention. `kb_sources` carries two flags: `redistributable` (permissive licences such as MIT) and `noncommercial_reuse` (CC BY-NC, i.e. reuse allowed only non-commercially with attribution). The permissive importer still raises `ImportRefused` for anything that is neither, and the HackTricks importer (`app/kb_hacktricks.py`) only runs for a source flagged `noncommercial_reuse`. The upstream `LICENSE` is copied to `content/kb_licenses/` at import time so attribution survives even if the clone is deleted.
+
+> **HackTricks is CC BY-NC 4.0.** It may not be used in a commercial or paid product and must keep attribution to Carlos Polop. REDVAULT imports the **Brazilian-Portuguese edition**, which the wiki keeps on the `pt` branch (`git clone --depth 1 --branch pt …`); the importer detects the language from the checked-out branch. Each document shows an "Uso não comercial" notice and the source commit. Imported images are localised under `app/static/hacktricks/` (git-ignored, recreated by the importer) because the app's CSP only allows same-origin images.
 
 Every imported document stores `origin`, `source_path`, `source_url` (pinned to the commit SHA), `source_commit`, `content_hash` and `imported_at`.
 

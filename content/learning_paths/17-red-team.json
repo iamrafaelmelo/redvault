@@ -1,0 +1,498 @@
+{
+  "slug": "red-team",
+  "title": "Red Team",
+  "codename": "RT",
+  "domain": "redteam",
+  "summary": "Escopo, infraestrutura, C2, execução com binário legítimo e phishing — medindo o que a defesa conseguiu detectar.",
+  "description": "A trilha trata Red Team como operação com regras, não como coleção de ataques. Cobre regras de engajamento, infraestrutura em camadas, C2 e o que ele deixa visível, execução com binário legítimo, persistência e phishing — sempre com o lado de detecção correspondente. O produto final é a tabela de cobertura: o que a defesa viu e o que não viu. Toda operação acontece em laboratório do próprio operador.",
+  "entry_level": "Linux e Windows, rede e exploração intermediária",
+  "exit_level": "capaz de conduzir uma operação de laboratório e medir a cobertura de detecção",
+  "estimated_hours": 36,
+  "priority": 86,
+  "phase": 3,
+  "icon": "flame",
+  "accent": "red",
+  "prerequisites": [
+    "active-directory-pentesting",
+    "network-pentesting"
+  ],
+  "competencies": [
+    "Escrever regras de engajamento com escopo interno e externo",
+    "Desenhar infraestrutura de operação em camadas",
+    "Explicar o que um agente de C2 deixa visível",
+    "Catalogar capacidade de binário assinado e sua detecção",
+    "Mapear mecanismo de persistência ao evento que o denuncia",
+    "Conduzir campanha simulada com indicadores e bloqueio",
+    "Emitir relatório de cobertura de detecção"
+  ],
+  "tools": [
+    "Sliver/Havoc/AdaptixC2 (opcional)",
+    "Cobalt Strike (referência)",
+    "Empire/PowerShell",
+    "curl",
+    "gophish (opcional)",
+    "Sigma",
+    "YARA"
+  ],
+  "equipment": "Somente software, com ressalva: infraestrutura de C2 e campanha de phishing exigem máquina própria ou VPS do operador. Nada disso é fornecido pela plataforma e nenhum exercício requer alvo externo.",
+  "modules": [
+    {
+      "slug": "escopo-e-regras",
+      "title": "Escopo, regras de engajamento e ética",
+      "summary": "Autorização, janela e ponto de parada. Sem isso, a técnica é crime.",
+      "objective": "Estabelecer o que pode ser feito, contra quem, e o que acontece se sair do combinado.",
+      "competencies": [
+        "autorização",
+        "regras de engajamento",
+        "escopo",
+        "registro"
+      ],
+      "units": [
+        {
+          "slug": "autorizacao",
+          "title": "Autorização e escopo",
+          "objective": "Nenhuma operação começa sem documento.",
+          "competencies": [
+            "autorização escrita",
+            "janela",
+            "alvo declarado",
+            "ponto de contato"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rt-m0-u1-ex-ro",
+              "kind": "exercises",
+              "title": "Exercício: escrever regras de engajamento",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.** Nenhuma ação técnica.\n\nEscreva um documento de regras para um exercício de Red Team contra **um laboratório seu** (suas VMs):\n\n1. Alvos dentro do escopo e explicitamente fora.\n2. Janela de execução.\n3. Técnicas permitidas e proibidas.\n4. Ponto de contato e procedimento de interrupção.\n5. Como o resultado é protegido.\n\nRegra do exercício: se você colocar 'rede doméstica' no escopo, o documento está errado — a LAN compartilhada fica fora.",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m0-u1-ex-fronteira",
+              "kind": "exercises",
+              "title": "Exercício: reconhecer quando a operação saiu do escopo",
+              "estimated_minutes": 40,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nListe cinco situações em que continuar a operação seria uma violação, mesmo que o alvo esteja no escopo:\n\n1. Descoberta de dado de terceiro.\n2. Serviço de outra organização compartilhando a infraestrutura.\n3. Credencial de usuário real fora do escopo.\n4. Efeito colateral em serviço em produção.\n5. Qualquer uma que **você** acrescente.\n\nPara cada uma, escreva a ação correta: parar, notificar ou registrar.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Regras de engajamento escritas com alvos internos e externos explícitos.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "infraestrutura-e-c2",
+      "title": "Infraestrutura de operação e C2",
+      "summary": "Infraestrutura em camadas, C2 e o que ele deixa visível para a defesa.",
+      "objective": "Montar ambiente que separe a operação da rede pessoal e entender o que um C2 expõe.",
+      "competencies": [
+        "infraestrutura",
+        "redirecionador",
+        "C2",
+        "atribuição"
+      ],
+      "units": [
+        {
+          "slug": "infra",
+          "title": "Infraestrutura",
+          "objective": "Separar identidade e rede do operador.",
+          "competencies": [
+            "VPS dedicado",
+            "redirector",
+            "domínio",
+            "atribuição"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rt-m1-u1-kb-infra",
+              "kind": "theory",
+              "title": "Infraestrutura ofensiva e evasão de atribuição",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-privacy-offensive-infrastructure-and-attribution-evasion",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m1-u1-kb-cb",
+              "kind": "theory",
+              "title": "Cobalt Strike",
+              "estimated_minutes": 45,
+              "kb_slug": "patt-methodology-and-resources-cobalt-strike-cheatsheet",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m1-u1-ex-infra",
+              "kind": "exercises",
+              "title": "Exercício: desenhar infraestrutura em três camadas",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.** Documento, sem provisionar.\n\n1. Desenhe: domínio público, ponto de entrada (redirector) e servidor de controle, para uma operação contra laboratório.\n2. Para cada camada, diga o que ela protege.\n3. Explique por que o servidor de controle **não** deve ser o mesmo endereço usado pelo cliente final.\n4. Diga como você apaga a infraestrutura ao final.\n\nEntregue o diagrama e as respostas. A camada que se esquece de apagar é a que fica registrada para sempre.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "c2",
+          "title": "C2",
+          "objective": "Entender o que o agente expõe e como a defesa o detecta.",
+          "competencies": [
+            "beacon",
+            "perfil",
+            "confiança de TLS",
+            "canal alternativo"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rt-m1-u2-kb-cbh",
+              "kind": "theory",
+              "title": "Cobalt Strike — visão de hardening",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-windows-hardening-cobalt-strike",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m1-u2-kb-c2g",
+              "kind": "theory",
+              "title": "GitHub Issues e arquivos de repositório como canal C2",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-github-issues-and-repository-files-c2",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m1-u2-kb-adaptix",
+              "kind": "theory",
+              "title": "Extração de configuração e TTPs do AdaptixC2",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-adaptixc2-config-extraction-and-ttps",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m1-u2-ex-detect",
+              "kind": "exercises",
+              "title": "Exercício: olhar o C2 pelo lado azul",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nPara um agente de C2 que você **não** vai executar, liste os indicadores que a rede deixaria:\n\n1. Beacons em intervalo fixo — o que muda no tráfego?\n2. Perfil de HTTP que imita navegador — que inconsistência aparece?\n3. Certificado autoassinado ou de domínio recém-registrado.\n4. Qualquer um que você considere mais forte que os três.\n\nEntregue a lista com a consulta de detecção correspondente. Red Team sem lado azul é exercício de imaginação.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "escopo-e-regras",
+      "completion": "Diagrama de infraestrutura e lista de detecção de C2.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "execucao-e-persistencia",
+      "title": "Execução e persistência",
+      "summary": "LOLBAS, persistência, credencial e o rastro de cada técnica.",
+      "objective": "Usar o sistema como ele é — binário legítimo, persistência nativa — e medir deteção.",
+      "competencies": [
+        "living off the land",
+        "persistência",
+        "credencial",
+        "evasão"
+      ],
+      "units": [
+        {
+          "slug": "execucao",
+          "title": "Execução no sistema",
+          "objective": "Reconhecer o uso de binário assinado como primeiro estágio.",
+          "competencies": [
+            "LOLBAS",
+            "PowerShell",
+            "WMI",
+            "fileless"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rt-m2-u1-own-lolbas",
+              "kind": "theory",
+              "title": "Living off the land: metodologia",
+              "estimated_minutes": 50,
+              "kb_slug": "own-lolbas-metodologia",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m2-u1-kb-lin-evasion",
+              "kind": "theory",
+              "title": "Linux — Evasion",
+              "estimated_minutes": 40,
+              "kb_slug": "patt-methodology-and-resources-linux-evasion",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m2-u1-kb-ids",
+              "kind": "theory",
+              "title": "Técnicas de evasão de IDS/IPS",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-network-ids-evasion",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m2-u1-ex-lolbas",
+              "kind": "exercises",
+              "title": "Exercício: catalogar capacidade de binário assinado no seu host",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.** Inventário, sem execução maliciosa.\n\n1. Para cinco binários do sistema, descreva uma capacidade que eles têm além do propósito (ex.: baixar, executar, escrever arquivo).\n2. Para cada uma, escreva a consulta que detectaria o uso anômalo.\n3. Escolha uma que pareça indetectável e explique por que não é.\n\nEntregue a tabela. O valor está na coluna de detecção, não na de capacidade.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "persistencia-e-cred",
+          "title": "Persistência e credencial",
+          "objective": "Conhecer os mecanismos e o rastro que cada um deixa.",
+          "competencies": [
+            "registro",
+            "serviço",
+            "cron",
+            "LSASS",
+            "Mimikatz"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rt-m2-u2-kb-winp",
+              "kind": "theory",
+              "title": "Persistência no Windows",
+              "estimated_minutes": 45,
+              "kb_slug": "patt-methodology-and-resources-windows-persistence",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m2-u2-kb-linp",
+              "kind": "theory",
+              "title": "Persistência no Linux",
+              "estimated_minutes": 45,
+              "kb_slug": "patt-methodology-and-resources-linux-persistence",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m2-u2-kb-mimi",
+              "kind": "theory",
+              "title": "Mimikatz",
+              "estimated_minutes": 40,
+              "kb_slug": "patt-methodology-and-resources-windows-mimikatz",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m2-u2-kb-mimih",
+              "kind": "theory",
+              "title": "Mimikatz — visão de hardening",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-windows-hardening-stealing-credentials-credentials-mimikatz",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m2-u2-ex-rastro",
+              "kind": "exercises",
+              "title": "Exercício: para cada persistência, o evento que a denuncia",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nPreencha a tabela:\n\n| Mecanismo | O que cria | Evento que denuncia | Fonte |\n| --- | --- | --- | --- |\n\nCubra: chave de registro de execução, serviço, tarefa agendada, cron e perfil de shell.\n\nEntregue a tabela preenchida. Persistência sem evento de detecção correspondente é técnica incompleta para exercício.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "infraestrutura-e-c2",
+      "completion": "Tabela de capacidade + detecção e tabela de persistência + evento.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "phishing-e-relatorio",
+      "title": "Phishing e relatório",
+      "summary": "Phishing, relatório e a medida que importa: o que a defesa viu.",
+      "objective": "Avaliar engenharia social como risco de processo e entregar relatório que a organização usa.",
+      "competencies": [
+        "phishing",
+        "homógrafo",
+        "clone",
+        "detecção",
+        "relatório"
+      ],
+      "units": [
+        {
+          "slug": "phishing",
+          "title": "Phishing",
+          "objective": "Entender o que faz um e-mail passar — e o que a defesa faz para detectar.",
+          "competencies": [
+            "clone",
+            "homógrafo",
+            "pastejacking",
+            "notificação"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rt-m3-u1-kb-phish",
+              "kind": "theory",
+              "title": "Metodologia de phishing",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-generic-methodologies-and-resources-phishing-methodology",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m3-u1-kb-clone",
+              "kind": "theory",
+              "title": "Clonando um website",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-phishing-methodology-clone-a-website",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m3-u1-kb-homo",
+              "kind": "theory",
+              "title": "Homograph e homoglyph em phishing",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-phishing-methodology-homograph-attacks",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m3-u1-kb-clip",
+              "kind": "theory",
+              "title": "Clipboard hijacking",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-generic-methodologies-and-resources-phishing-methodology-clipboard-hijacking",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m3-u1-kb-detect",
+              "kind": "theory",
+              "title": "Detectando phishing",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-phishing-methodology-detecting-phising",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m3-u1-ex-phish",
+              "kind": "exercises",
+              "title": "Exercício: campanha simulada dentro do próprio laboratório",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.** Destinatário: uma conta que você mesmo criou.\n\n1. Monte uma mensagem simulada, com URL apontando para página local.\n2. Liste os indicadores que permitem detectá-la (domínio novo, homógrafo, urgência, botão com URL diferente).\n3. Escreva a regra de e-mail ou de proxy que bloquearia a campanha.\n4. Explique como você treinaria a pessoa a reconhecê-la.\n\nEntregue os quatro itens. Campanha sem item 3 e 4 é apenas ataque.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "relatorio",
+          "title": "Relatório",
+          "objective": "Descrever a operação, os achados e o que a organização deve corrigir.",
+          "competencies": [
+            "narrativa",
+            "cobertura",
+            "detecção",
+            "correção"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "rt-m3-u2-kb-yara",
+              "kind": "theory",
+              "title": "Escrever regra de detecção que não gera falso positivo",
+              "estimated_minutes": 45,
+              "kb_slug": "own-yara-regras-deteccao",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m3-u2-ex-ro",
+              "kind": "exercises",
+              "title": "Exercício: relatório com cobertura e detecção",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nProduza o relatório da operação de laboratório com:\n\n1. Regras de engajamento aplicadas.\n2. Linha do tempo da operação.\n3. Técnicas usadas, com identificador de ATT&CK.\n4. **O que a organização detectou** e o que não detectou.\n5. Correções priorizadas.\n\nO item 4 é o que distingue Red Team de pentest: o valor é o buraco de detecção, não a lista de falhas exploradas.",
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m3-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: Red Team",
+              "estimated_minutes": 35,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "O que deve existir antes de qualquer execução técnica?",
+                  "accepted": [
+                    "autorização escrita",
+                    "regras de engajamento"
+                  ],
+                  "explanation": "Sem autorização escrita e escopo, a operação é acesso não autorizado."
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Por que o servidor de C2 não deve ser o mesmo endereço que o cliente vê?",
+                  "accepted": [
+                    "protege a infraestrutura de controle",
+                    "o redirecionador absorve a detecção"
+                  ],
+                  "explanation": "O ponto de entrada absorve detecção e bloqueio; o controle fica protegido atrás dele."
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Qual é o produto mais valioso de um exercício de Red Team?",
+                  "accepted": [
+                    "o que a organização não detectou",
+                    "a lacuna de detecção"
+                  ],
+                  "explanation": "O valor está na medição da capacidade de detecção e resposta, não na lista de falhas."
+                },
+                {
+                  "id": "q4",
+                  "prompt": "O que fazer se encontrar dado de pessoa fora do escopo?",
+                  "accepted": [
+                    "parar e notificar",
+                    "registrar e não usar"
+                  ],
+                  "explanation": "Dado fora do escopo não se coleta nem se usa; documenta-se e notifica-se."
+                }
+              ],
+              "equipment": "software"
+            },
+            {
+              "slug": "rt-m3-u2-project",
+              "kind": "project",
+              "title": "Capstone: operação de laboratório com medição de detecção",
+              "estimated_minutes": 180,
+              "body_md": "**SOMENTE SOFTWARE.** Entrega do capstone.\n\nAlvo: seu laboratório (VMs ou a própria plataforma RedVault). Nenhuma rede ou sistema de terceiro.\n\nEntregue:\n\n1. Regras de engajamento assinadas por você.\n2. Diagrama de infraestrutura em camadas.\n3. Linha do tempo da operação com técnicas e horários.\n4. Regra de detecção escrita para pelo menos uma técnica.\n5. Tabela de cobertura: o que foi detectado e o que não foi.\n6. Correções priorizadas.\n7. Limitações.\n\nRecusa: operação sem regras, alvo fora do laboratório, ou relatório sem a coluna de detecção.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "execucao-e-persistencia",
+      "completion": "Campanha simulada, relatório com cobertura e avaliação aprovada.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    }
+  ],
+  "capstone": {
+    "objective": "Executar uma operação de Red Team em laboratório próprio e medir a cobertura de detecção, entregando relatório com correções.",
+    "scope_md": "Laboratório do próprio operador: VMs, a instância local da plataforma. Nenhum sistema ou rede de terceiro.",
+    "resources_md": "Laboratório local, ferramentas de C2 (se quiser), host com telemetria (auditd/Sysmon), regras Sigma/YARA. Infraestrutura de VPS é opcional e de custo próprio.",
+    "steps_md": "1. Escrever e assinar regras de engajamento.\n2. Desenhar infraestrutura em camadas.\n3. Executar as técnicas planejadas, registrando horário.\n4. Escrever regra de detecção para ao menos uma técnica.\n5. Medir o que foi detectado e o que não foi.\n6. Priorizar correções.",
+    "success_criteria": [
+      "Regras de engajamento com escopo e ponto de parada",
+      "Diagrama de infraestrutura com o que cada camada protege",
+      "Linha do tempo com técnica e horário",
+      "Regra de detecção escrita e validada",
+      "Tabela de cobertura com detectado e não detectado",
+      "Correções priorizadas"
+    ],
+    "evidence": [
+      "Regras de engajamento",
+      "Diagrama de infraestrutura",
+      "Linha do tempo da operação",
+      "Regra de detecção",
+      "Tabela de cobertura",
+      "Relatório final"
+    ],
+    "expected_result": "Relatório de operação de laboratório com medição de detecção.",
+    "grading_md": "Escopo 20%, execução e registro 30%, medição de detecção 30%, correções 20%.",
+    "challenge_slug": ""
+  }
+}

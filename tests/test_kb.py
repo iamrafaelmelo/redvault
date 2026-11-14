@@ -134,10 +134,11 @@ def test_import_records_provenance_and_commit(imported, repo):
 def test_licence_gate_refuses_non_redistributable_source(repo):
     with SessionLocal() as db:
         hacktricks = db.query(KB_Source).filter(KB_Source.slug == "hacktricks").one()
+        # CC BY-NC 4.0: reusable only non-commercially with attribution, never
+        # under the permissive redistribution gate.
         assert hacktricks.redistributable is False
-        # The importer is PATT-specific, but the registry must never mark a
-        # no-licence project as redistributable.
-        assert "direitos reservados" in hacktricks.notes.lower() or "sem licença" in hacktricks.notes.lower()
+        assert hacktricks.noncommercial_reuse is True
+        assert "BY-NC" in hacktricks.license_name
 
 
 def test_search_finds_words_inside_documents(imported):
@@ -228,11 +229,20 @@ def test_category_hierarchy_has_groups_and_parents(client):
 
 
 def test_empty_category_is_not_listed_but_group_page_explains_it(client):
-    # "api" has canonical categories but no documents in this fixture.
+    # "api" now contains our own BOLA/OIDC documents, so it must be listed and
+    # its page must show the categories instead of the empty-state copy.
     page = client.get("/kb?group=api").text
-    assert "Nenhum documento neste grupo ainda" in page
+    assert "Nenhum documento neste grupo ainda" not in page
+    assert "API Security" in page
+    assert 'href="/kb/c/api-security"' in page
     home = client.get("/kb").text
-    assert "/kb?group=api" not in home
+    assert "/kb?group=api" in home
+
+    # A group without any document still collapses to an explanation instead of
+    # a blank column (this is what the original bug produced for every filter).
+    empty = client.get("/kb?group=nao-existe").text
+    assert "Nenhum documento neste grupo ainda" in empty
+    assert 'href="/kb?group=nao-existe"' not in home
 
 
 def test_imported_section_gets_its_real_group(imported):

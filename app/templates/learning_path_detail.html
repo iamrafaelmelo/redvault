@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+{% import "macros.html" as m %}
+{% block title %}{{ path.title }} · Learning Paths{% endblock %}
+{% block crumb %}LEARNING PATHS / {{ path.codename or path.domain|upper }}{% endblock %}
+{% block page_title %}{{ path.title }}{% endblock %}
+
+{% block content %}
+<a class="detail-back" href="/learning-paths">{{ m.icon("arrow-right", 12, "rot180") }} TODAS AS TRILHAS</a>
+
+<div class="lp-detail-hero lp-accent-{{ path.accent }}">
+  <div class="lp-detail-main">
+    <div class="meta-row" style="margin-bottom:9px">
+      <span class="tag">{{ path.entry_level|upper }}</span>
+      <span class="tag">SAÍDA: {{ path.exit_level|upper }}</span>
+      <span class="tag">~{{ path.estimated_hours }}H</span>
+      {% if path.is_custom %}<span class="tag red">PERSONALIZADA</span>{% endif %}
+    </div>
+    <span class="eyebrow">{{ path.domain|upper }} · PROGRAMA DE FORMAÇÃO</span>
+    <h2>{{ path.title }}</h2>
+    <p>{{ path.description or path.summary }}</p>
+    {% if path.equipment %}
+    <p class="lp-equipment">{{ m.icon("alert", 12) }} {{ path.equipment }}</p>
+    {% endif %}
+    {% if prereqs %}
+    <div class="path-prereqs">
+      <span class="mono-label" style="margin-right:5px">PRÉ-REQUISITOS</span>
+      {% for pre in prereqs %}
+      <a class="tag {% if pre.met %}lp-prereq-ok{% else %}red{% endif %}" href="/learning-paths/{{ pre.path.slug }}">
+        {% if pre.met %}{{ m.icon("check", 10) }}{% else %}{{ m.icon("lock", 10) }}{% endif %}
+        {{ pre.path.title }} · {{ pre.pp.percent }}%
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+  <div class="lp-detail-stats">
+    <div><strong>{{ pp.completed }}/{{ pp.total }}</strong><span>ATIVIDADES</span></div>
+    <div><strong>{{ pp.percent }}%</strong><span>PROGRESSO</span></div>
+    <div><strong>{{ "%.1f"|format(pp.minutes_done / 60) }}h</strong><span>REGISTRADAS</span></div>
+  </div>
+</div>
+
+{% if not unlocked %}
+<div class="lp-warning">{{ m.icon("lock", 14) }}
+  <div>
+    <strong>Trilha bloqueada por pré-requisito.</strong>
+    A ordem existe para que o próximo módulo faça sentido. Você ainda pode abrir o conteúdo,
+    mas as recomendações não vão sugerir estas atividades antes das anteriores.
+  </div>
+</div>
+{% endif %}
+
+<div class="lp-detail-bar">
+  <div class="bar {% if pp.percent == 100 %}bar-green{% endif %}"><span style="width: {{ pp.percent }}%"></span></div>
+  <div class="lp-detail-bar-meta">
+    <span>{{ pp.completed }} concluídas · {{ pp.in_progress }} em andamento · {{ pp.review }} para revisão</span>
+    <span>{{ pp.required_done }}/{{ pp.required_total }} obrigatórias</span>
+  </div>
+</div>
+
+<div class="lp-layout">
+  <div class="lp-modules">
+
+    {% if path.competencies %}
+    <section class="lp-block">
+      <div class="lp-block-head">{{ m.icon("award", 13) }} COMPETÊNCIAS DESENVOLVIDAS</div>
+      <div class="lp-skill-list">
+        {% for skill in path.competencies %}<span>{{ m.icon("check", 11) }} {{ skill }}</span>{% endfor %}
+      </div>
+      {% if path.tools %}
+      <div class="lp-tools">
+        <span class="mono-label">FERRAMENTAS</span>
+        {% for tool in path.tools %}<span class="tag">{{ tool }}</span>{% endfor %}
+      </div>
+      {% endif %}
+    </section>
+    {% endif %}
+
+    {% for block in modules %}
+    {% set module = block.module %}
+    {% set mstate = block.state %}
+    <section class="lp-module {% if mstate.complete %}is-done{% elif not block.gate %}is-locked{% endif %}" id="mod-{{ module.slug }}">
+      <header class="lp-module-head">
+        <div class="lp-module-num">{{ "%02d"|format(loop.index) }}</div>
+        <div class="lp-module-title">
+          <h3>{{ module.title }}</h3>
+          <p>{{ module.objective }}</p>
+        </div>
+        <div class="lp-module-meta">
+          <span class="lp-module-pct">{{ mstate.completed }}/{{ mstate.total }} · {{ mstate.percent }}%</span>
+          {% if not block.gate %}
+          <span class="lp-tag locked">{{ m.icon("lock", 10) }} PRÉ-REQUISITO</span>
+          {% elif mstate.complete %}
+          <span class="lp-tag done">{{ m.icon("check", 10) }} CONCLUÍDO</span>
+          {% elif mstate.completed or mstate.review %}
+          <span class="lp-tag current">EM CURSO</span>
+          {% else %}
+          <span class="lp-tag">NÃO INICIADO</span>
+          {% endif %}
+        </div>
+      </header>
+
+      <div class="lp-module-body">
+        <div class="lp-module-grid">
+          {% if module.competencies %}
+          <div><span class="mono-label">COMPETÊNCIAS ESPERADAS</span>
+            <ul class="lp-bullets">{% for c in module.competencies %}<li>{{ c }}</li>{% endfor %}</ul>
+          </div>
+          {% endif %}
+          {% if module.prerequisites %}
+          <div><span class="mono-label">PRÉ-REQUISITOS</span><p class="lp-small">{{ module.prerequisites }}</p></div>
+          {% endif %}
+          {% if module.completion %}
+          <div><span class="mono-label">CRITÉRIOS DE CONCLUSÃO</span><p class="lp-small">{{ module.completion }}</p></div>
+          {% endif %}
+          <div><span class="mono-label">CARGA ESTIMADA</span><p class="lp-small">{{ (module.estimated_minutes / 60)|round(1) }}h · {{ module.units|length }} disciplina(s)</p></div>
+        </div>
+
+        {% if module.summary %}<p class="lp-module-summary">{{ module.summary }}</p>{% endif %}
+        {% if module.gap %}
+        <div class="lp-gap">{{ m.icon("alert", 12) }} <strong>Lacuna curricular:</strong> {{ module.gap }}</div>
+        {% endif %}
+
+        {% for unit_block in block.units %}
+        {% set unit = unit_block.unit %}
+        <div class="lp-unit" id="unit-{{ module.slug }}-{{ unit.slug }}">
+          <div class="lp-unit-head">
+            <div>
+              <span class="mono-label">DISCIPLINA {{ "%02d"|format(loop.index) }}</span>
+              <h4>{{ unit.title }}</h4>
+              {% if unit.objective %}<p>{{ unit.objective }}</p>{% endif %}
+            </div>
+            <div class="lp-unit-done">{{ unit_block.done }}/{{ unit_block.total }}</div>
+          </div>
+
+          <div class="lp-acts">
+            {% for item in unit_block.acts %}
+            {% set act = item.act %}
+            {% set st = item.state %}
+            <div class="lp-act state-{{ st }} kind-{{ act.kind }}" id="act-{{ act.id }}">
+              <form method="post" action="/learning-paths/activity/{{ act.id }}/state" class="lp-act-check">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <input type="hidden" name="state" value="{% if st == 'completed' %}not_started{% elif st == 'in_progress' %}completed{% else %}in_progress{% endif %}">
+                <button type="submit" class="lp-check" title="{% if st == 'completed' %}Reabrir{% elif st == 'in_progress' %}Marcar concluída{% else %}Iniciar{% endif %}">
+                  {% if st == "completed" %}{{ m.icon("check", 12) }}{% elif st == "in_progress" %}{{ m.icon("play", 11) }}{% endif %}
+                </button>
+              </form>
+
+              <div class="lp-act-main">
+                <div class="lp-act-top">
+                  <span class="lp-act-kind">{{ kind_labels.get(act.kind, act.kind)|upper }}</span>
+                  <span class="lp-act-title">{{ act.title }}</span>
+                  {% if act.equipment %}<span class="lp-equip lp-equip-{{ act.equipment }}">{{ equipment_labels.get(act.equipment, act.equipment)|upper }}</span>{% endif %}
+                  <span class="lp-act-state">{{ state_labels.get(st, st) }}</span>
+                </div>
+                <div class="lp-act-meta">
+                  <span>{{ act.estimated_minutes }} MIN</span>
+                  {% if item.target %}
+                  <a href="{{ item.target.url }}" target="_blank" rel="noopener">{{ m.icon("external", 10) }} {{ item.target.label }}</a>
+                  {% endif %}
+                  {% if act.row and act.row.score is not none %}<span class="lp-score">{{ act.row.score }}%</span>{% endif %}
+                  {% if act.row and act.row.favorite %}<span class="lp-flag">{{ m.icon("bookmark", 9) }} FAVORITO</span>{% endif %}
+                  {% if act.row and act.row.revisit %}<span class="lp-flag">{{ m.icon("refresh", 9) }} REVISITAR</span>{% endif %}
+                  {% if act.gap %}<span class="lp-flag warn">LACUNA</span>{% endif %}
+                </div>
+
+                {% if act.body_md %}
+                <div class="lp-act-body">{{ md(act.body_md) }}</div>
+                {% endif %}
+                {% if act.gap %}
+                <div class="lp-gap small">{{ m.icon("alert", 11) }} {{ act.gap }}</div>
+                {% endif %}
+
+                {% if act.kind == "assessment" and (act.answer_key or {}).get("questions") %}
+                <div class="lp-assess">
+                  <form method="post" action="/learning-paths/activity/{{ act.id }}/grade" class="lp-assess-form">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    {% for q in act.answer_key.questions %}
+                    <label class="field">
+                      <span>{{ loop.index }}. {{ q.prompt }}</span>
+                      <input type="text" name="q_{{ q.id }}" autocomplete="off" placeholder="Sua resposta">
+                    </label>
+                    {% endfor %}
+                    <div class="btn-row"><button class="btn btn-primary btn-sm" type="submit">{{ m.icon("shield", 12) }} CORRIGIR</button>
+                      <span class="lp-small">Aprovação a partir de 70%.</span></div>
+                  </form>
+                </div>
+                {% endif %}
+
+                <div class="lp-act-tools">
+                  <button type="button" class="lp-linkbtn" data-toggle="notes-{{ act.id }}">
+                    {{ m.icon("bookmark", 11) }} ANOTAÇÕES
+                  </button>
+                  <form method="post" action="/learning-paths/activity/{{ act.id }}/toggle" class="inline-form">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <input type="hidden" name="field" value="favorite">
+                    <button type="submit" class="lp-linkbtn {% if act.row and act.row.favorite %}on{% endif %}">{{ m.icon("bookmark", 11) }} FAVORITO</button>
+                  </form>
+                  <form method="post" action="/learning-paths/activity/{{ act.id }}/toggle" class="inline-form">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <input type="hidden" name="field" value="revisit">
+                    <button type="submit" class="lp-linkbtn {% if act.row and act.row.revisit %}on{% endif %}">{{ m.icon("refresh", 11) }} REVISITAR</button>
+                  </form>
+                  {% if st != "review" %}
+                  <form method="post" action="/learning-paths/activity/{{ act.id }}/state" class="inline-form">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <input type="hidden" name="state" value="review">
+                    <button type="submit" class="lp-linkbtn">{{ m.icon("alert", 11) }} MARCAR REVISÃO</button>
+                  </form>
+                  {% endif %}
+                </div>
+
+                <div class="lp-notes" id="notes-{{ act.id }}" hidden>
+                  <form method="post" action="/learning-paths/activity/{{ act.id }}/notes" class="form-stack">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <label class="field"><span>OBSERVAÇÕES PESSOAIS</span>
+                      <textarea name="notes" rows="3" placeholder="O que você entendeu, decisões tomadas, comandos que funcionaram.">{{ act.row.notes if act.row else "" }}</textarea>
+                    </label>
+                    <label class="field"><span>DIFICULDADES</span>
+                      <textarea name="difficulties" rows="2" placeholder="Onde travou e o que tentou.">{{ act.row.difficulties if act.row else "" }}</textarea>
+                    </label>
+                    <label class="field"><span>RESULTADOS</span>
+                      <textarea name="result" rows="2" placeholder="Flags, achados, evidências, links.">{{ act.row.result if act.row else "" }}</textarea>
+                    </label>
+                    <div class="btn-row"><button class="btn btn-sm btn-primary" type="submit">SALVAR</button></div>
+                  </form>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+    {% endfor %}
+
+    {% if path.capstone %}
+    {% set cap = path.capstone %}
+    <section class="lp-capstone" id="capstone">
+      <header class="lp-capstone-head">
+        <div class="lp-capstone-icon">{{ m.icon("trophy", 22) }}</div>
+        <div>
+          <span class="eyebrow">PROJETO FINAL / CAPSTONE</span>
+          <h3>{{ cap.objective }}</h3>
+        </div>
+      </header>
+      <div class="lp-capstone-grid">
+        <div><span class="mono-label">ESCOPO</span><div class="lp-md">{{ md(cap.scope_md) }}</div></div>
+        <div><span class="mono-label">RECURSOS NECESSÁRIOS</span><div class="lp-md">{{ md(cap.resources_md) }}</div></div>
+        <div><span class="mono-label">ETAPAS</span><div class="lp-md">{{ md(cap.steps_md) }}</div></div>
+        <div><span class="mono-label">RESULTADO ESPERADO</span><div class="lp-md">{{ md(cap.expected_result) }}</div></div>
+      </div>
+      <div class="lp-capstone-grid">
+        <div><span class="mono-label">CRITÉRIOS DE SUCESSO</span>
+          <ul class="lp-bullets">{% for c in cap.success_criteria %}<li>{{ c }}</li>{% endfor %}</ul>
+        </div>
+        <div><span class="mono-label">EVIDÊNCIAS EXIGIDAS</span>
+          <ul class="lp-bullets">{% for c in cap.evidence %}<li>{{ c }}</li>{% endfor %}</ul>
+        </div>
+        <div style="grid-column: 1 / -1"><span class="mono-label">AVALIAÇÃO TÉCNICA</span><div class="lp-md">{{ md(cap.grading_md) }}</div></div>
+      </div>
+      {% if cap.challenge_slug %}
+      <a class="btn" href="/machines/{{ cap.challenge_slug }}">{{ m.icon("target", 13) }} ABRIR MÁQUINA DO CAPSTONE</a>
+      {% endif %}
+      <form method="post" action="/learning-paths/{{ path.slug }}/capstone" class="lp-capstone-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label class="field"><span>REGISTRO DE ENTREGA</span>
+          <textarea name="evidence" rows="3" placeholder="Descreva as evidências entregues: flags obtidas (sem o valor), relatório, onde ele está salvo."></textarea>
+          <small>O capstone só conta como concluído com este registro preenchido.</small>
+        </label>
+        <button class="btn btn-primary btn-sm" type="submit">{{ m.icon("check", 12) }} MARCAR CAPSTONE COMO ENTREGUE</button>
+      </form>
+    </section>
+    {% endif %}
+  </div>
+
+  <aside class="lp-side">
+    <div class="lp-side-block">
+      <div class="lp-side-head">CERTIFICADO INTERNO</div>
+      <div class="lp-side-body">
+        {% if cert %}
+        <div class="lp-cert-ok">{{ m.icon("award", 26) }}</div>
+        <strong class="lp-cert-serial">{{ cert.serial }}</strong>
+        <p class="lp-small">Emitido em {{ cert.issued_at.strftime("%Y-%m-%d") }} · {{ cert.activities_completed }} atividades · ~{{ cert.hours_logged }}h.</p>
+        <a class="btn btn-sm btn-block" href="/learning-paths/{{ path.slug }}/certificate">VER REGISTRO</a>
+        {% elif can_certify %}
+        <p class="lp-small">Todas as atividades obrigatórias foram concluídas.</p>
+        <form method="post" action="/learning-paths/{{ path.slug }}/certificate">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button class="btn btn-primary btn-sm btn-block" type="submit">{{ m.icon("award", 12) }} EMITIR REGISTRO</button>
+        </form>
+        {% else %}
+        <p class="lp-small">Faltam {{ pp.required_total - pp.required_done }} atividade(s) obrigatória(s) e o capstone entregue.</p>
+        <div class="bar bar-thin"><span style="width: {{ (pp.required_done / pp.required_total * 100)|round if pp.required_total else 0 }}%"></span></div>
+        <p class="lp-tiny">Registro privado de estudos. Não é certificação profissional reconhecida.</p>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="lp-side-block">
+      <div class="lp-side-head">MÓDULOS</div>
+      <nav class="lp-side-nav">
+        {% for block in modules %}
+        {% set mstate = block.state %}
+        <a href="#mod-{{ block.module.slug }}" class="lp-side-link {% if mstate.complete %}done{% endif %}">
+          <span class="lp-side-num">{{ "%02d"|format(loop.index) }}</span>
+          <span class="lp-side-title">{{ block.module.title }}</span>
+          <span class="lp-side-pct">{{ mstate.percent }}%</span>
+        </a>
+        {% endfor %}
+        <a href="#capstone" class="lp-side-link cap">
+          <span class="lp-side-num">{{ m.icon("trophy", 12) }}</span>
+          <span class="lp-side-title">Capstone</span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="lp-side-block">
+      <div class="lp-side-head">DISTRIBUIÇÃO</div>
+      <div class="lp-side-body lp-kind-list">
+        {% for kind, count in pp.by_kind.items() %}
+        <div class="lp-kind-row">
+          <span class="lp-kind lp-kind-{{ kind }}">{{ kind_labels.get(kind, kind) }}</span>
+          <span class="lp-kind-count">{{ count.done }}/{{ count.total }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if path.is_custom %}
+    <div class="lp-side-block">
+      <div class="lp-side-head">TRILHA PERSONALIZADA</div>
+      <div class="lp-side-body">
+        <p class="lp-tiny">Para adicionar ou reorganizar atividades, edite o arquivo em <code>content/learning_paths/</code> ou duplique outra trilha.</p>
+        <form method="post" action="/learning-paths/{{ path.slug }}/archive">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <button class="btn btn-sm btn-danger btn-block" type="submit">ARQUIVAR TRILHA</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </aside>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('[data-toggle]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var el = document.getElementById(btn.getAttribute('data-toggle'));
+      if (el) el.hidden = !el.hidden;
+    });
+  });
+  if (location.hash && location.hash.indexOf('#act-') === 0) {
+    var el = document.querySelector(location.hash);
+    if (el) { el.classList.add('is-focused'); el.scrollIntoView({behavior: 'smooth', block: 'center'}); }
+  }
+</script>
+{% endblock %}

@@ -8,6 +8,7 @@
   {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
   <title>{% block title %}REDVAULT{% endblock %} · REDVAULT</title>
   <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="/static/css/learning_paths.css">
   <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
   {% block head %}{% endblock %}
 </head>
@@ -42,6 +43,9 @@
         </a>
 
         <div class="nav-label">PROGRESSÃO</div>
+        <a class="nav-item {% if active == 'learning_paths' or request.url.path.startswith('/learning-paths') %}active{% endif %}" href="/learning-paths">
+          {{ m.icon("graduation", 17) }}<span>Learning Paths</span>
+        </a>
         <a class="nav-item {% if active == 'paths' %}active{% endif %}" href="/paths">
           {{ m.icon("route", 17) }}<span>Trilhas de aprendizado</span>
         </a>

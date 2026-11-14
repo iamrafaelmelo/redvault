@@ -40,8 +40,34 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False
 def init_db() -> None:
     from . import models  # noqa: F401  (register mappers)
     from . import kb_models  # noqa: F401  (register knowledge-base mappers)
+    from . import lp_models  # noqa: F401  (register learning-path mappers)
 
     Base.metadata.create_all(engine)
+    _migrate_columns()
+
+
+def _migrate_columns() -> None:
+    """Additive column migrations for SQLite DBs created before a field existed.
+
+    ``create_all`` never alters an existing table, so a new column on an old
+    install would otherwise fail every query. Each entry is (table, column, DDL).
+    """
+    if not DB_URL.startswith("sqlite"):
+        return
+    from sqlalchemy import inspect, text
+
+    wanted = [
+        ("kb_sources", "noncommercial_reuse", "BOOLEAN DEFAULT 0"),
+        ("lp_activities", "equipment", "VARCHAR(40) DEFAULT ''"),
+    ]
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table, column, ddl in wanted:
+            if not inspector.has_table(table):
+                continue
+            existing = {col["name"] for col in inspector.get_columns(table)}
+            if column not in existing:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
 
 
 @contextmanager

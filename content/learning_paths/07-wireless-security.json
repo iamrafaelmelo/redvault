@@ -1,0 +1,715 @@
+{
+  "slug": "wireless-security",
+  "title": "Wireless Security",
+  "codename": "WL",
+  "domain": "rf",
+  "summary": "802.11, PSK, 802.1X, evil twin e os rádios do dia a dia: RFID, BLE, sub-GHz e IoT.",
+  "description": "A trilha cobre a base de 802.11, os ataques a redes pessoais e a diferença entre 'quebrar WPA2' e 'quebrar senha fraca', a análise de redes empresariais pelo lado do suplicante, e os dispositivos que não falam IP: RFID/NFC, BLE, sub-GHz e provisionamento de IoT. A plataforma não possui laboratório sem fio; todo exercício prático é declarado como exigindo adaptador próprio e escopo na sua rede.",
+  "entry_level": "Linux básico e noções de PCI/802.11",
+  "exit_level": "capaz de avaliar uma rede sem fio e um dispositivo IoT e dizer o que é explorável com o hardware disponível",
+  "estimated_hours": 38,
+  "priority": 55,
+  "phase": 2,
+  "icon": "route",
+  "accent": "green",
+  "prerequisites": [
+    "network-pentesting"
+  ],
+  "competencies": [
+    "Classificar quadros 802.11 e explicar PMF",
+    "Determinar a capacidade do hardware antes de prometer um teste",
+    "Diferenciar ataque de dicionário de falha criptográfica",
+    "Avaliar a configuração de um suplicante 802.1X",
+    "Comparar RFID, BLE e sub-GHz por modelo de ameaça"
+  ],
+  "tools": [
+    "aircrack-ng",
+    "hcxdumptool/hcxtools",
+    "hashcat",
+    "iw/iwconfig",
+    "Kismet",
+    "Wireshark",
+    "Proxmark 3",
+    "Flipper Zero",
+    "bettercap",
+    "Nuand/rtl-sdr"
+  ],
+  "equipment": "Somente software: leitura, análise documentada e exercícios de matriz/plano. Prática real exige adaptador Wi-Fi com modo monitor e injeção, e — para RFID/BLE/sub-GHz — hardware próprio. Nada disso é fornecido pela plataforma.",
+  "modules": [
+    {
+      "slug": "fundamentos-wifi",
+      "title": "Fundamentos de Wi-Fi",
+      "summary": "Rádio é física: o adaptador limita o que qualquer ferramenta consegue fazer.",
+      "objective": "Entender 802.11 no nível de quadro: associação, autenticação, criptografia e o que cada camada protege.",
+      "competencies": [
+        "802.11",
+        "associação",
+        "beacon",
+        "WPA2",
+        "WPA3",
+        "SAE",
+        "PMF",
+        "CSMA/CA"
+      ],
+      "units": [
+        {
+          "slug": "quadros-e-associacao",
+          "title": "Quadros, associação e criptografia",
+          "objective": "Explicar por que gerenciamento e dados têm modelos de ameaça distintos.",
+          "competencies": [
+            "beacon",
+            "probe",
+            "association",
+            "deauthentication",
+            "PSK",
+            "SAE"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "wl-m0-u1-kb-fund",
+              "kind": "theory",
+              "title": "Fundamentos de Wi-Fi",
+              "estimated_minutes": 60,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-fundamentals",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m0-u1-kb-intro",
+              "kind": "theory",
+              "title": "Pentest de Wi-Fi — visão geral",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m0-u1-kb-open",
+              "kind": "theory",
+              "title": "Redes abertas (OPN)",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-open-wifi-opn",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m0-u1-kb-owe",
+              "kind": "theory",
+              "title": "OWE — Wi-Fi Enhanced Open",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-owe",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m0-u1-kb-pmf",
+              "kind": "theory",
+              "title": "Protection Management Frames (PMF)",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-protected-management-frames-pmf",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m0-u1-ex-quadros",
+              "kind": "exercises",
+              "title": "Exercício: classificar quadros 802.11",
+              "estimated_minutes": 50,
+              "body_md": "Escopo obrigatório: apenas rede e equipamentos **seus**. Monte um AP próprio (roteador reserva, AP em modo de teste ou hotspot isolado) e trabalhe nele. A plataforma REDVAULT não possui laboratório sem fio: este exercício não é um lab da plataforma e exige hardware de rádio.\n\nCom um adaptador em modo monitor na sua própria rede:\n\n1. Capture 30 s de tráfego e classifique os quadros por tipo e subtipo (gerenciamento, controle, dados).\n2. Identifique os beacons e o intervalo entre eles.\n3. Prove que um quadro de desautenticação é **não autenticado** olhando o campo correspondente na captura.\n4. Repita com PMF habilitado no seu AP e explique o que mudou.\n\nEntregável: tabela de subtipos observados e a comparação com e sem PMF.",
+              "equipment": "required"
+            }
+          ]
+        },
+        {
+          "slug": "hardware-e-ambiente",
+          "title": "Hardware, drivers e reconhecimento",
+          "objective": "Saber o que o adaptador que você tem consegue fazer antes de prometer um teste.",
+          "competencies": [
+            "monitor mode",
+            "injection",
+            "chipset",
+            "regdomain",
+            "wardriving"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "wl-m0-u2-kb-hw",
+              "kind": "theory",
+              "title": "Hardware, drivers e Linux",
+              "estimated_minutes": 60,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-hardware-drivers-and-linux",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m0-u2-kb-recon",
+              "kind": "theory",
+              "title": "Reconhecimento e wardriving",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-reconnaissance-and-wardriving",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m0-u2-kb-setup",
+              "kind": "theory",
+              "title": "Montagem do ambiente de reconhecimento",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-reconnaissance-setups",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m0-u2-kb-tools",
+              "kind": "theory",
+              "title": "Referência de ferramentas de Wi-Fi",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-tools-reference",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m0-u2-ex-capacidade",
+              "kind": "exercises",
+              "title": "Exercício: ficha de capacidade do adaptador",
+              "estimated_minutes": 45,
+              "body_md": "Para o adaptador que você **já tem** (sem comprar nada):\n\n1. Identifique o chipset (`lsusb`/`lspci` e o driver carregado).\n2. Verifique se aceita modo monitor e se permite injeção.\n3. Registre as bandas suportadas e o limite regulatório aplicado (`iw reg get`).\n4. Monte uma tabela: tarefa da trilha → suportado → não suportado.\n\nSe o adaptador não fizer injeção, escreva quais exercícios desta trilha ficam bloqueados para você — e não os marque como concluídos.",
+              "equipment": "required"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Classificação de quadros e ficha de capacidade entregues.",
+      "estimated_minutes": 420,
+      "requires_module": ""
+    },
+    {
+      "slug": "ataques-psk",
+      "title": "Ataques a redes pessoais (PSK)",
+      "summary": "WPA2-PSK não 'quebra': a senha fraca quebra. Essa diferença é o relatório inteiro.",
+      "objective": "Entender por que WPA2-PSK resiste a captura passiva e onde ele realmente quebra.",
+      "competencies": [
+        "WPA2-PSK",
+        "4-way handshake",
+        "PMKID",
+        "WPA3-SAE",
+        "WPS",
+        "WEP",
+        "historic"
+      ],
+      "units": [
+        {
+          "slug": "wpa2-e-wpa3",
+          "title": "WPA2, WPA3 e as variantes antigas",
+          "objective": "Distinguir ataque de dicionário sobre handshake de falha criptográfica do protocolo.",
+          "competencies": [
+            "dicionário",
+            "PMKID",
+            "SAE",
+            "downgrade",
+            "WPS PIN"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "wl-m1-u1-kb-wpa2",
+              "kind": "theory",
+              "title": "WPA2-Personal (PSK)",
+              "estimated_minutes": 60,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wpa2-personal-psk",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m1-u1-kb-wpa3",
+              "kind": "theory",
+              "title": "WPA3-Personal (SAE)",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wpa3-personal-sae",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m1-u1-kb-wps",
+              "kind": "theory",
+              "title": "WPS",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wps",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m1-u1-kb-tkip",
+              "kind": "theory",
+              "title": "WPA-TKIP",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wpa-tkip",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m1-u1-kb-wep",
+              "kind": "theory",
+              "title": "WEP",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wep",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m1-u1-ex-crack",
+              "kind": "exercises",
+              "title": "Exercício: quebra de PSK na sua rede",
+              "estimated_minutes": 70,
+              "body_md": "Escopo obrigatório: apenas rede e equipamentos **seus**. Monte um AP próprio (roteador reserva, AP em modo de teste ou hotspot isolado) e trabalhe nele. A plataforma REDVAULT não possui laboratório sem fio: este exercício não é um lab da plataforma e exige hardware de rádio.\n\nNa **sua** rede WPA2-PSK, com senha de teste que você conhece:\n\n1. Capture um handshake de 4 vias (ou um PMKID) e salve.\n2. Converta para o formato do hashcat e quebre contra uma wordlist própria.\n3. Registre tempo, taxa e tamanho da wordlist.\n4. Repita com senha longa e aleatória e explique o resultado em termos de entropia, não de 'ferramenta falhou'.\n\nConclusão obrigatória: por que trocar de ferramenta não resolve senha fraca, e por que WPA3-SAE muda a equação.",
+              "equipment": "required"
+            }
+          ]
+        },
+        {
+          "slug": "redes-empresariais-lado-cliente",
+          "title": "Redes empresariais: o lado do cliente",
+          "objective": "Avaliar suplicantes (supplicants) e o que um dispositivo de usuário expõe na rede corporativa.",
+          "competencies": [
+            "supplicant",
+            "evil twin",
+            "certificado",
+            "EAP-TLS",
+            "perfil salvo"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "wl-m1-u2-kb-client",
+              "kind": "theory",
+              "title": "Avaliação de cliente e suplicante",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-client-and-supplicant-assessment",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m1-u2-kb-evil",
+              "kind": "theory",
+              "title": "Evil twin e associação de cliente",
+              "estimated_minutes": 70,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-evil-twin-rogue-ap-and-client-association-attack",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m1-u2-kb-post",
+              "kind": "theory",
+              "title": "Pós-associação e isolamento de cliente",
+              "estimated_minutes": 80,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-post-association-and-client-isolation-attac",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m1-u2-kb-frag",
+              "kind": "theory",
+              "title": "FragAttacks",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-fragattacks",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m1-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: PSK e cliente",
+              "estimated_minutes": 20,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Que material de captura permite ataque de dicionário em WPA2-PSK? (nome)",
+                  "accepted": [
+                    "handshake",
+                    "4-way handshake",
+                    "four-way handshake",
+                    "eapol",
+                    "pmkid"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Por que um ataque de dicionário não se aplica da mesma forma a WPA3-SAE?",
+                  "accepted": [
+                    "offline",
+                    "nao offline",
+                    "não offline",
+                    "verificacao online",
+                    "demonstração de conhecimento igual",
+                    "sae e resistente"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Qual configuração de cliente torna evil twin de EAP-TLS ineficaz?",
+                  "accepted": [
+                    "validacao de certificado",
+                    "validação de certificado",
+                    "certificado do servidor",
+                    "server certificate validation",
+                    "verificar certificado"
+                  ]
+                }
+              ],
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Exercício de quebra entregue e avaliação ≥ 70%.",
+      "estimated_minutes": 600,
+      "requires_module": "fundamentos-wifi"
+    },
+    {
+      "slug": "8021x-e-evil-twin",
+      "title": "802.1X, EAP e pontos de acesso falsos",
+      "summary": "Em 802.1X, quem decide o risco é a configuração do cliente, não a do controlador.",
+      "objective": "Analisar autenticação empresarial e por que clientes mal configurados entregam credencial.",
+      "competencies": [
+        "802.1X",
+        "EAP",
+        "PEAP",
+        "EAP-TLS",
+        "evil twin",
+        "captive portal",
+        "rogue AP"
+      ],
+      "units": [
+        {
+          "slug": "eap-e-certificados",
+          "title": "EAP, métodos e certificados",
+          "objective": "Prever o resultado de um ataque pela configuração do suplicante.",
+          "competencies": [
+            "PEAP-MSCHAPv2",
+            "EAP-TLS",
+            "EAP-TTLS",
+            "relay de certificado",
+            "RADIUS"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "wl-m2-u1-kb-8021x",
+              "kind": "theory",
+              "title": "WPA-Enterprise (802.1X)",
+              "estimated_minutes": 70,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wpa-enterprise-8021x",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m2-u1-kb-eap",
+              "kind": "theory",
+              "title": "Métodos EAP",
+              "estimated_minutes": 70,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-eap-methods",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m2-u1-kb-eviltls",
+              "kind": "theory",
+              "title": "Evil twin com EAP-TLS",
+              "estimated_minutes": 70,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-evil-twin-eap-tls",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m2-u1-kb-passpoint",
+              "kind": "theory",
+              "title": "Passpoint / Hotspot 2.0 e OpenRoaming",
+              "estimated_minutes": 55,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-passpoint-hotspot-2-0-and-openroaming",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m2-u1-ex-eap",
+              "kind": "exercises",
+              "title": "Exercício: matriz de risco do suplicante",
+              "estimated_minutes": 60,
+              "body_md": "Só com software (leitura e análise), monte a matriz:\n\n| Método EAP | Cliente valida certificado? | Resultado de evil twin | Correção |\n|---|---|---|---|\n\nCubra PEAP-MSCHAPv2, EAP-TTLS e EAP-TLS. Para o caso em que o cliente **não** valida o certificado do servidor, explique exatamente qual material criptográfico é capturado e por que ele tem valor fora da sessão.\n\nDepois, escreva a política de configuração de suplicante em 5 linhas.\n\nEntregável: matriz + política.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "portais-e-ap-falso",
+          "title": "Portais cativos e pontos de acesso falsos",
+          "objective": "Entender o que o usuário entrega antes de existir sessão.",
+          "competencies": [
+            "captive portal",
+            "DNS spoofing",
+            "rogue AP",
+            "credential capture"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "wl-m2-u2-kb-captive",
+              "kind": "theory",
+              "title": "Portais cativos",
+              "estimated_minutes": 70,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-captive-portals",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m2-u2-kb-dos",
+              "kind": "theory",
+              "title": "DoS e ataques de quadro de gerenciamento",
+              "estimated_minutes": 80,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-dos-and-management-frame-attacks",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m2-u2-kb-defense",
+              "kind": "theory",
+              "title": "Defesa, monitoramento e WIDS",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-defense-monitoring-and-wids",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m2-u2-kb-modern",
+              "kind": "theory",
+              "title": "Roaming moderno, 6 GHz e MLO",
+              "estimated_minutes": 60,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-modern-wifi-roaming-6ghz-and-mlo",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m2-u2-kb-mesh",
+              "kind": "theory",
+              "title": "Mesh e EasyMesh",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-mesh-and-easymesh",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m2-u2-kb-privacy",
+              "kind": "theory",
+              "title": "Privacidade, rastreamento e canais laterais",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-privacy-tracking-and-side-channels",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m2-u2-kb-android",
+              "kind": "theory",
+              "title": "Monitor e injeção no Android (Nexmon)",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-enable-nexmon-monitor-and-injection-on-android",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Matriz de risco do suplicante entregue.",
+      "estimated_minutes": 600,
+      "requires_module": "ataques-psk"
+    },
+    {
+      "slug": "iot-e-rfid",
+      "title": "IoT, RFID/NFC, BLE e sub-GHz",
+      "summary": "Fora do IP, o risco está no protocolo: 125 kHz continua clonável hoje.",
+      "objective": "Aplicar o modelo a dispositivos que não falam IP: etiquetas, chaves, fones e sensores.",
+      "competencies": [
+        "RFID",
+        "NFC",
+        "iButton",
+        "BLE",
+        "sub-GHz",
+        "LoRa",
+        "infravermelho",
+        "provisionamento"
+      ],
+      "units": [
+        {
+          "slug": "rfid-e-nfc",
+          "title": "RFID, NFC e iButton",
+          "objective": "Distinguir clonagem de etiqueta de ataque a sistema de controle.",
+          "competencies": [
+            "125 kHz",
+            "13,56 MHz",
+            "MIFARE",
+            "Proxmark",
+            "emulação",
+            "Wiegand"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "wl-m3-u1-kb-rfid",
+              "kind": "theory",
+              "title": "Pentest de RFID",
+              "estimated_minutes": 60,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-pentesting-rfid",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u1-kb-proxmark",
+              "kind": "theory",
+              "title": "Proxmark 3",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-proxmark-3",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u1-kb-ibutton",
+              "kind": "theory",
+              "title": "iButton",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-ibutton",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u1-kb-lf",
+              "kind": "theory",
+              "title": "Flipper — RFID de 125 kHz",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-flipper-zero-fz-125khz-rfid",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u1-kb-nfc",
+              "kind": "theory",
+              "title": "Flipper — NFC",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-flipper-zero-fz-nfc",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u1-kb-cloner",
+              "kind": "theory",
+              "title": "Clonador portátil (MaxiProx)",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-maxiprox-mobile-cloner",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u1-kb-access-control",
+              "kind": "theory",
+              "title": "Uso de RFID no controle de acesso físico",
+              "estimated_minutes": 15,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-flipper-zero",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "ble-subghz-e-iot",
+          "title": "BLE, sub-GHz e provisionamento IoT",
+          "objective": "Cobrir os protocolos de rádio que aparecem em sensores, fechaduras e dispositivos domésticos.",
+          "competencies": [
+            "BLE",
+            "GATT",
+            "Sniffing",
+            "OOK",
+            "FSK",
+            "LoRa",
+            "WPA3 DPP",
+            "Wi-Fi Direct"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "wl-m3-u2-kb-ble",
+              "kind": "theory",
+              "title": "Pentest de BLE",
+              "estimated_minutes": 70,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-pentesting-ble-bluetooth-low-energy",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u2-kb-subghz",
+              "kind": "theory",
+              "title": "RF Sub-GHz",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-sub-ghz-rf",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u2-kb-fzsub",
+              "kind": "theory",
+              "title": "Flipper — Sub-GHz",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-flipper-zero-fz-sub-ghz",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u2-kb-lpwan",
+              "kind": "theory",
+              "title": "Redes de baixo consumo e longa distância",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-low-power-wide-area-network",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u2-kb-dpp",
+              "kind": "theory",
+              "title": "Wi-Fi Easy Connect (DPP)",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-easy-connect-dpp",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u2-kb-direct",
+              "kind": "theory",
+              "title": "Wi-Fi Direct e provisionamento IoT",
+              "estimated_minutes": 55,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-direct-and-iot-provisioning",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u2-kb-ir",
+              "kind": "theory",
+              "title": "Infravermelho",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-infrared",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u2-kb-own-sdr",
+              "kind": "theory",
+              "title": "SDR na prática: fundamentos e prática sem transmissor",
+              "estimated_minutes": 60,
+              "kb_slug": "own-hardware-sdr-fundamentos",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u2-project",
+              "kind": "project",
+              "title": "Relatório de segurança sem fio (capstone)",
+              "estimated_minutes": 120,
+              "body_md": "Entregue o relatório do **capstone** desta trilha. O escopo é a sua rede e os seus dispositivos — a plataforma não tem laboratório sem fio.\n\nEstrutura obrigatória:\n\n1. **Inventário de rádio**: SSIDs, bandas, criptografia, WPS, PMF, e dispositivos BLE/RFID conhecidos.\n2. **Configuração avaliada**: por item, o que está exposto e por quê.\n3. **Ataque demonstrado** (ou análise documentada, se o hardware não suportar): material capturado, método, tempo.\n4. **Risco por dispositivo**: qual classe de ataque funciona e qual não funciona.\n5. **Plano de correção** priorizado: o que trocar hoje, o que trocar no próximo ciclo.\n\nCritério de aceite: nenhuma afirmação de 'vulnerável' sem o mecanismo nomeado.",
+              "equipment": "software"
+            },
+            {
+              "slug": "wl-m3-u2-ex-hardware-gap",
+              "kind": "exercises",
+              "title": "Exercício: o que você faria com hardware emprestado",
+              "estimated_minutes": 45,
+              "body_md": "Sem comprar nada, escreva o plano de teste para três cenários que **exigem** equipamento que você não tem:\n\n1. Um WIDS da rede corporativa que precisa ser avaliado — qual adaptador faz injeção e por quê.\n2. Uma etiqueta MIFARE Classic — qual ferramenta lê e qual só escreve.\n3. Um sensor sub-GHz de portão — qual receptor basta para gravar e qual é preciso para transmitir.\n\nPara cada um: requisito mínimo, o que dá para adiantar só com software, e o que fica bloqueado até ter o equipamento.\n\nEntregável: plano + lista honesta do que está bloqueado.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Relatório do capstone e plano de hardware entregues.",
+      "estimated_minutes": 660,
+      "requires_module": "8021x-e-evil-twin"
+    }
+  ],
+  "capstone": {
+    "objective": "Avaliar a segurança da própria rede sem fio e dos próprios dispositivos de rádio, e entregar plano de correção.",
+    "scope_md": "Rede sem fio do operador (AP próprio, AP de teste ou hotspot isolado) e dispositivos próprios. Nenhum alvo de terceiros.",
+    "resources_md": "Adaptador Wi-Fi com monitor/injeção (se tiver), hashcat, aircrack-ng/hcxtools, Wireshark, e — opcionalmente — Proxmark/Flipper. O relatório pode ser entregue sem hardware, marcando o que ficou bloqueado.",
+    "steps_md": "1. Inventariar SSIDs, bandas, criptografia, WPS e PMF.\n2. Registrar a capacidade real do adaptador disponível.\n3. Tentar o ataque demonstrado no módulo 1 ou analisar por documentação.\n4. Avaliar dispositivos BLE/RFID/sub-GHz do escopo.\n5. Produzir plano de correção priorizado.",
+    "success_criteria": [
+      "Inventário completo com configuração de cada SSID",
+      "Capacidade do hardware declarada e respeitada",
+      "Cada risco com mecanismo nomeado",
+      "O que está bloqueado por falta de equipamento, dito explicitamente",
+      "Plano de correção priorizado"
+    ],
+    "evidence": [
+      "Tabela de inventário de rádio",
+      "Lista de quadros capturados ou referência documental",
+      "Saída do hashcat/aircrack-ng, se aplicável",
+      "Plano com prazos"
+    ],
+    "expected_result": "Relatório de segurança sem fio da rede própria, com plano acionável e limitações declaradas.",
+    "grading_md": "Precisão técnica 35%, evidência 25%, honestidade sobre limitações 20%, plano 20%.",
+    "challenge_slug": ""
+  }
+}

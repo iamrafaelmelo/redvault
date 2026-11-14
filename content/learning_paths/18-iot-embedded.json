@@ -1,0 +1,520 @@
+{
+  "slug": "iot-embedded",
+  "title": "IoT e Embarcados",
+  "codename": "IOT",
+  "domain": "iot",
+  "summary": "Protocolos de dispositivo, firmware, rádio e detecção: avaliar um dispositivo ou apenas a imagem de firmware, com o que exige aparelho declarado.",
+  "description": "A trilha cobre o que a base tem de mais forte em dispositivo: Modbus, MQTT, RTSP, SNMP, OPC UA, BACnet, DNP3, PROFINET, EtherNet/IP, IEC 60870-5-104, IEC 61850, BLE e provisionamento Wi-Fi. Firmware é analisável inteiramente por software. Cada atividade declara o que exige: nada pressupõe que você tenha qualquer aparelho, e onde um teste exige dispositivo físico o exercício aceita o plano como entrega legítima.",
+  "entry_level": "Redes e Linux; leitura de binário ajudam",
+  "exit_level": "capaz de avaliar protocolo, firmware e detecção de um dispositivo próprio, declarando o que ficou bloqueado",
+  "estimated_hours": 30,
+  "priority": 88,
+  "phase": 3,
+  "icon": "cpu",
+  "accent": "green",
+  "prerequisites": [
+    "network-pentesting",
+    "hardware-hacking"
+  ],
+  "competencies": [
+    "Distinguir risco de OT de risco de servidor tradicional",
+    "Reconhecer protocolo por porta e o que ele expõe",
+    "Extrair e analisar firmware sem o aparelho",
+    "Avaliar BLE e provisionamento declarando o que exige adaptador",
+    "Detectar comportamento anômalo por tráfego",
+    "Entregar avaliação com plano explícito para o que está bloqueado"
+  ],
+  "tools": [
+    "nmap scripts (mqtt, modbus)",
+    "mosquitto",
+    "binwalk",
+    "Ghidra",
+    "tshark",
+    "Wireshark",
+    "bettercap",
+    "rtl-sdr",
+    "nRF Connect"
+  ],
+  "equipment": "Somente software é suficiente para a maior parte da trilha: protocolo, broker local, extração de firmware e análise de pcap. Para BLE e rádio é necessário adaptador próprio, que a plataforma não fornece — e o exercício correspondente aceita o plano como entrega.",
+  "modules": [
+    {
+      "slug": "contexto-e-escopo",
+      "title": "Contexto e escopo",
+      "summary": "Recursos limitados, disponibilidade e ciclo de vida: por que OT não é servidor.",
+      "objective": "Entender o ambiente de dispositivo e o que muda em relação a um sistema tradicional.",
+      "competencies": [
+        "dispositivo restrito",
+        "ciclo de vida",
+        "protocolo industrial",
+        "escopo"
+      ],
+      "units": [
+        {
+          "slug": "o-que-muda",
+          "title": "O que muda em IoT e OT",
+          "objective": "Reconhecer as restrições que tornam um teste diferente.",
+          "competencies": [
+            "recursos limitados",
+            "ausência de agente",
+            "disponibilidade",
+            "ciclo de vida longo"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "iot-m0-u1-kb-ics",
+              "kind": "theory",
+              "title": "Hacking de sistemas de controle industrial",
+              "estimated_minutes": 55,
+              "kb_slug": "ht-industrial-control-systems",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m0-u1-ex-diferenca",
+              "kind": "exercises",
+              "title": "Exercício: tabela de diferenças entre alvo tradicional e dispositivo",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.** Sem dispositivo.\n\nPreencha a tabela comparando um servidor Linux com um controlador industrial ou câmera IP:\n\n| Aspecto | Servidor | Dispositivo | Consequência para o teste |\n| --- | --- | --- | --- |\n| Acesso a terminal | sim | | |\n| Instalação de agente | sim | | |\n| Reinício seguro | sim | | |\n| Janela de atualização | ampla | | |\n\nResponda: por que **negação de serviço não intencional** é risco maior aqui do que num servidor comum?",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m0-u1-ex-escopo",
+              "kind": "exercises",
+              "title": "Exercício: escrever escopo de teste com dispositivo de produção",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nDescreva o que se faz — e o que não se faz — ao testar um dispositivo que está **em operação**:\n\n1. Testes passivos permitidos sem risco.\n2. Testes que exigem janela de manutenção.\n3. Testes que só se fazem em réplica de laboratório.\n4. Procedimento de parada imediata.\n\nEntregue as quatro listas. Dispositivo de produção não é alvo de teste exploratório sem réplica.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Tabela de diferenças e escopo de teste com dispositivo em produção.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "protocolos-de-dispositivo",
+      "title": "Protocolos de dispositivo",
+      "summary": "Protocolo por porta e comportamento. O que a ausência de autenticação realmente expõe.",
+      "objective": "Reconhecer protocolo por porta e comportamento, e entender o que a ausência de autenticação significa.",
+      "competencies": [
+        "Modbus",
+        "MQTT",
+        "RTSP",
+        "SNMP",
+        "UPnP",
+        "TFTP"
+      ],
+      "units": [
+        {
+          "slug": "protocolos-simples",
+          "title": "Protocolos simples e sem autenticação",
+          "objective": "Ler protocolo de campo e descrever o que expõe.",
+          "competencies": [
+            "registrador Modbus",
+            "tópico MQTT",
+            "stream RTSP",
+            "SNMP community"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "iot-m1-u1-kb-modbus",
+              "kind": "theory",
+              "title": "502/tcp — Modbus",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-network-services-pentesting-pentesting-modbus",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u1-kb-mqtt",
+              "kind": "theory",
+              "title": "1883 — MQTT (Mosquitto)",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-network-services-pentesting-1883-pentesting-mqtt-mosquitto",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u1-kb-rtsp",
+              "kind": "theory",
+              "title": "554, 8554 — RTSP",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-network-services-pentesting-554-8554-pentesting-rtsp",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u1-kb-snmp",
+              "kind": "theory",
+              "title": "161/udp — SNMP",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-network-services-pentesting-pentesting-snmp",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u1-kb-snmp-rce",
+              "kind": "theory",
+              "title": "SNMP RCE",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-network-services-pentesting-pentesting-snmp-snmp-rce",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u1-kb-tftp",
+              "kind": "theory",
+              "title": "69/udp — TFTP",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-network-services-pentesting-69-udp-tftp",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u1-kb-upnp",
+              "kind": "theory",
+              "title": "Spoofing de dispositivos SSDP e UPnP",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-network-spoofing-ssdp-and-upnp-devices",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u1-ex-mqtt",
+              "kind": "exercises",
+              "title": "Exercício: subir broker MQTT local e documentar o que vaza",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.** Broker local na sua máquina (Mosquitto ou equivalente que você instale). Sem dispositivo.\n\n1. Suba o broker sem autenticação.\n2. Publique mensagens em dois tópicos.\n3. Assine o curinga `#` e mostre tudo que é recebido.\n4. Registre o que um interlocutor na rede veria.\n\nResponda: por que broker sem autenticação em rede de dispositivo é **insight direto** sobre operação — sensores, comandos e estado?\n\nLimite: broker escutando só em `127.0.0.1`; não exponha na LAN.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "protocolos-industriais",
+          "title": "Protocolos industriais",
+          "objective": "Reconhecer os protocolos de OT e o que cada um controla.",
+          "competencies": [
+            "OPC UA",
+            "BACnet",
+            "DNP3",
+            "PROFINET",
+            "EtherNet/IP",
+            "IEC 60870-5-104",
+            "IEC 61850"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "iot-m1-u2-kb-opcua",
+              "kind": "theory",
+              "title": "4840 — OPC UA",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-network-services-pentesting-4840-pentesting-opc-ua",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u2-kb-bacnet",
+              "kind": "theory",
+              "title": "47808/udp — BACnet",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-network-services-pentesting-47808-udp-bacnet",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u2-kb-dnp3",
+              "kind": "theory",
+              "title": "20000 — DNP3",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-network-services-pentesting-20000-pentesting-dnp3",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u2-kb-profinet",
+              "kind": "theory",
+              "title": "PROFINET",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-network-services-pentesting-pentesting-profinet",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u2-kb-enip",
+              "kind": "theory",
+              "title": "44818 — EtherNet/IP (CIP)",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-network-services-pentesting-44818-ethernetip",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u2-kb-iec104",
+              "kind": "theory",
+              "title": "2404 — IEC 60870-5-104",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-network-services-pentesting-2404-pentesting-iec-60870-5-104",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u2-kb-iec61850",
+              "kind": "theory",
+              "title": "102 — IEC 61850 MMS",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-network-services-pentesting-102-pentesting-iec-61850-mms",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m1-u2-ex-matriz",
+              "kind": "exercises",
+              "title": "Exercício: matriz de protocolo, porta, transporte e o que controla",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.** Leitura dos documentos da unidade.\n\nPreencha:\n\n| Protocolo | Porta/transporte | Autenticação nativa | O que controla |\n| --- | --- | --- | --- |\n\nPara os oito protocolos da unidade.\n\nDepois responda: em quais deles a ausência de autenticação é **por desenho** e não configuração errada? Por que isso muda a recomendação de correção?",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "contexto-e-escopo",
+      "completion": "Broker MQTT documentado e matriz de protocolos preenchida.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "firmware",
+      "title": "Firmware",
+      "summary": "Firmware por software, integridade e o que exige aparelho.",
+      "objective": "Analisar firmware por software e distinguir o que exige o aparelho.",
+      "competencies": [
+        "extração",
+        "integridade",
+        "bootloader",
+        "Ghidra"
+      ],
+      "units": [
+        {
+          "slug": "analise-de-firmware",
+          "title": "Análise de firmware",
+          "objective": "Extrair, verificar e ler firmware quando o arquivo já existe.",
+          "competencies": [
+            "imagem",
+            "integridade",
+            "bootloader",
+            "binário ARM/MIPS"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "iot-m2-u1-kb-fw",
+              "kind": "theory",
+              "title": "Análise de firmware",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-hardware-physical-access-firmware-analysis",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m2-u1-kb-int",
+              "kind": "theory",
+              "title": "Integridade do firmware",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-hardware-physical-access-firmware-analysis-firmware-integrity",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m2-u1-kb-boot",
+              "kind": "theory",
+              "title": "Teste do bootloader (leitura)",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-hardware-physical-access-firmware-analysis-bootloader-testing",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m2-u1-own-fw",
+              "kind": "theory",
+              "title": "Análise de binário de firmware com Ghidra",
+              "estimated_minutes": 55,
+              "kb_slug": "own-hardware-firmware-ghidra",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m2-u1-ex-binwalk",
+              "kind": "exercises",
+              "title": "Exercício: extrair sistema de arquivos de uma imagem de firmware",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.** Precisa de uma imagem de firmware que você já tenha (update publicado por fabricante é material público).\n\n1. Identifique o formato (`file`, `binwalk`).\n2. Extraia os sistemas de arquivos embutidos.\n3. Procure: servidor web, scripts de inicialização, credencial padrão.\n4. Registre o hash da imagem original.\n\nEntregue a estrutura extraída e os achados com caminho dentro da imagem. Se não tiver imagem nenhuma, declare o bloqueio — não invente saída.",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m2-u1-ex-bootloader",
+              "kind": "exercises",
+              "title": "Exercício: descrever o que exige o aparelho para ler o bootloader",
+              "estimated_minutes": 45,
+              "body_md": "**EXIGE EQUIPAMENTO.** Intervenção física com acesso a UART ou a pontos de teste na placa.\n\nAlternativa só com software: escreva o procedimento **e** a lista do que é necessário para executá-lo, sem executar.\n\n1. Passos para identificar a interface de depuração.\n2. Riscos de tornar a placa inutilizável.\n3. Como documentar antes de mexer.\n\nEntregue o procedimento. O exercício mede se você sabe **o que falta** para executar — e isso é legítimo sem equipamento.",
+              "equipment": "required"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "protocolos-de-dispositivo",
+      "completion": "Firmware extraído com achados, ou bloqueio declarado com o que falta.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "radio-e-deteccao",
+      "title": "Rádio, detecção e relatório",
+      "summary": "BLE, provisionamento, pcap e o relatório com plano para o que ficou bloqueado.",
+      "objective": "Cobrir o que não é IP, medir detecção e entregar avaliação honesta.",
+      "competencies": [
+        "BLE",
+        "provisionamento Wi-Fi",
+        "pcap",
+        "deteccao",
+        "relatorio"
+      ],
+      "units": [
+        {
+          "slug": "radio",
+          "title": "Rádio",
+          "objective": "Reconhecer BLE e provisionamento e o que exige adaptador.",
+          "competencies": [
+            "GATT",
+            "BLE",
+            "Wi-Fi Direct",
+            "provisionamento"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "iot-m3-u1-kb-ble",
+              "kind": "theory",
+              "title": "Pentesting BLE — Bluetooth Low Energy",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-hardware-physical-access-radio-hacking-pentesting-ble-bluetooth-low-energy",
+              "equipment": "optional"
+            },
+            {
+              "slug": "iot-m3-u1-kb-wifi",
+              "kind": "theory",
+              "title": "Wi-Fi Direct, Aware, AWDL e provisionamento de IoT",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-pentesting-wifi-wifi-direct-and-iot-provisioning",
+              "equipment": "optional"
+            },
+            {
+              "slug": "iot-m3-u1-ex-ble",
+              "kind": "exercises",
+              "title": "Exercício: planejar enumeração BLE sem adaptador",
+              "estimated_minutes": 45,
+              "body_md": "**EQUIPAMENTO OPCIONAL.** Com adaptador BLE: enumere serviço e característica de um dispositivo seu.\n\n**Somente software:** escreva o plano completo de enumeração — adaptador necessário, ferramenta, o que coletar (endereço, serviço, característica, propriedade de escrita), e como registrar.\n\nEntre uma das duas entregas. O plano vale tanto quanto a execução quando o objetivo é aprender o método.",
+              "equipment": "optional"
+            }
+          ]
+        },
+        {
+          "slug": "deteccao-e-relatorio",
+          "title": "Detecção e relatório",
+          "objective": "Medir o que o ambiente detectaria e entregar avaliação com limites.",
+          "competencies": [
+            "pcap",
+            "detecção",
+            "priorização",
+            "limitações"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "iot-m3-u2-kb-pcap",
+              "kind": "theory",
+              "title": "Inspeção de pcap",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-pcap-inspection",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m3-u2-ex-pcap",
+              "kind": "exercises",
+              "title": "Exercício: detectar dispositivo por tráfego",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.** Com um pcap que você gere ou já tenha.\n\n1. Liste os protocolos de dispositivo visíveis na captura.\n2. Monte um filtro que isole um deles.\n3. Escreva a regra de detecção que alertaria para dispositivo falando fora do padrão.\n\nEntregue filtros e regra. Detecção sem filtro documentado é anedota.",
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m3-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: IoT e embarcados",
+              "estimated_minutes": 35,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Por que uma varredura agressiva em rede industrial é risco?",
+                  "accepted": [
+                    "o dispositivo pode parar de operar",
+                    "disponibilidade é crítica"
+                  ],
+                  "explanation": "Controladores antigos podem travar com pacote inesperado; disponibilidade vem antes da coleta."
+                },
+                {
+                  "id": "q2",
+                  "prompt": "O que um broker MQTT sem autenticação permite?",
+                  "accepted": [
+                    "assinar todos os tópicos",
+                    "ler mensagens de sensores e comandos"
+                  ],
+                  "explanation": "O curinga `#` permite ler o que passa por ali, incluindo estado e comando."
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Qual é a diferença entre 'exige equipamento' e 'não faço ideia de como fazer'?",
+                  "accepted": [
+                    "o primeiro tem plano e o aparelho falta",
+                    "exige equipamento tem procedimento definido"
+                  ],
+                  "explanation": "Exigir equipamento significa que o método existe e só falta o aparelho; o segundo é lacuna de competência."
+                },
+                {
+                  "id": "q4",
+                  "prompt": "Por que firmware é analisável sem o aparelho?",
+                  "accepted": [
+                    "a imagem é arquivo",
+                    "pode ser extraída e lida com ferramentas"
+                  ],
+                  "explanation": "A imagem é um arquivo; extração, sistema de arquivos e binário podem ser analisados por software."
+                }
+              ],
+              "equipment": "software"
+            },
+            {
+              "slug": "iot-m3-u2-project",
+              "kind": "project",
+              "title": "Capstone: avaliação de um dispositivo ou de sua imagem",
+              "estimated_minutes": 170,
+              "body_md": "**EQUIPAMENTO OPCIONAL.** Entrega do capstone.\n\nEscolha um **dispositivo seu** (roteador, câmera, placa) ou apenas sua **imagem de firmware**.\n\nEntregue:\n\n1. Inventário: protocolo, porta, transporte, autenticação.\n2. Para cada exposição, o que ela revela ou permite.\n3. Análise de firmware, se houver imagem.\n4. O que exige aparelho e ficou bloqueado, com o plano.\n5. Detecção: como o ambiente identificaria uso anômalo.\n6. Correção priorizada e limitações.\n\nRecusa: inventário sem plano para item bloqueado, ou relatório que afirma ter testado protocolo sem ter tido como testá-lo.",
+              "equipment": "optional"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "firmware",
+      "completion": "Plano de BLE, detecção em pcap e avaliação aprovada.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    }
+  ],
+  "capstone": {
+    "objective": "Avaliar um dispositivo próprio ou a imagem de firmware dele, com inventário de protocolo, análise de firmware, detecção e plano para o que ficou bloqueado.",
+    "scope_md": "Dispositivo de propriedade do operador, ou imagem de firmware publicada pelo fabricante. Nenhum dispositivo em produção de terceiro.",
+    "resources_md": "nmap, tshark/Wireshark, binwalk, Ghidra, broker local (opcional). Adaptador BLE apenas se o operador já tiver.",
+    "steps_md": "1. Inventariar protocolos, portas e autenticação.\n2. Descrever o que cada exposição revela ou permite.\n3. Extrair e analisar a imagem de firmware, se houver.\n4. Registrar o que exige aparelho e o plano para isso.\n5. Escrever regra de detecção.\n6. Priorizar correções e declarar limitações.",
+    "success_criteria": [
+      "Inventário de protocolo, porta e autenticação",
+      "Impacto declarado por exposição",
+      "Análise de firmware com hash e caminho interno dos achados",
+      "Itens bloqueados com plano e equipamento necessário",
+      "Regra ou filtro de detecção documentado",
+      "Correção priorizada e limitações"
+    ],
+    "evidence": [
+      "Inventário de protocolo",
+      "Saída de extração de firmware",
+      "Registro de item bloqueado com plano",
+      "Filtro de detecção",
+      "Relatório final"
+    ],
+    "expected_result": "Avaliação de dispositivo ou firmware com limites declarados e plano para o bloqueado.",
+    "grading_md": "Inventário e impacto 30%, análise de firmware 30%, detecção 20%, honestidade de limites 20%.",
+    "challenge_slug": ""
+  }
+}

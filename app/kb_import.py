@@ -245,12 +245,14 @@ def register_sources(db: Session) -> None:
             slug="hacktricks",
             name="HackTricks",
             repo_url="https://github.com/HackTricks-wiki/hacktricks",
-            license_name="(sem licença declarada)",
-            license_url="https://github.com/HackTricks-wiki/hacktricks",
+            license_name="CC BY-NC 4.0",
+            license_url="https://creativecommons.org/licenses/by-nc/4.0/",
             author="Carlos Polop e contribuidores",
             redistributable=False,
-            notes="Sem arquivo de licença: todos os direitos reservados. Integrado apenas como "
-                  "referência externa (links), nunca como texto importado.",
+            noncommercial_reuse=True,
+            notes="CC BY-NC 4.0: atribuição obrigatória e uso NÃO comercial. Importado "
+                  "verbatim para uso pessoal/educacional, com créditos ao autor em cada "
+                  "documento. Não pode ser usado em produto comercial sem autorização.",
         ),
         dict(
             slug="owasp-wstg",
@@ -264,7 +266,13 @@ def register_sources(db: Session) -> None:
         ),
     ]
     for data in known:
-        if db.scalar(select(KB_Source).where(KB_Source.slug == data["slug"])):
+        existing = db.scalar(select(KB_Source).where(KB_Source.slug == data["slug"]))
+        if existing:
+            # Refresh licence metadata so an older install picks up corrections
+            # (e.g. HackTricks moved from "sem licença" to CC BY-NC 4.0).
+            for key, value in data.items():
+                if key != "slug":
+                    setattr(existing, key, value)
             continue
         db.add(KB_Source(**data))
     db.flush()

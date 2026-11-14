@@ -1,0 +1,864 @@
+{
+  "slug": "active-directory-pentesting",
+  "title": "Active Directory Pentesting",
+  "codename": "AD",
+  "domain": "windows",
+  "summary": "Objetos, Kerberos, ACLs e PKI: como um domínio Windows decide confiança e como isso é abusado até Domain Admin.",
+  "description": "A trilha parte da estrutura do domínio e de Kerberos, passa pela enumeração que transforma consultas em grafo de privilégio, e chega aos dois caminhos que dominam domínio real: descritores de segurança mal escritos e templates de certificado. O último módulo trata persistência, fronteiras de floresta e o que cada técnica deixa de rastro. Todo trabalho prático é feito em laboratório próprio: a plataforma não tem alvos de domínio Windows, e isso está declarado em cada exercício.",
+  "entry_level": "confortável com Windows e PowerShell; trilha Windows Security concluída",
+  "exit_level": "capaz de enumerar, escalar, persistir e documentar um domínio com visão de detecção",
+  "estimated_hours": 38,
+  "priority": 45,
+  "phase": 2,
+  "icon": "route",
+  "accent": "blue",
+  "prerequisites": [
+    "windows-security"
+  ],
+  "competencies": [
+    "Explicar TGT, TGS, PAC e delegação",
+    "Enumerar um domínio e ordenar caminhos até Domain Admin",
+    "Classificar templates de certificado e ACLs por risco",
+    "Executar e remover persistência de domínio",
+    "Propor detecção para cada técnica usada"
+  ],
+  "tools": [
+    "PowerView",
+    "BloodHound/SharpHound",
+    "Certipy",
+    "Rubeus",
+    "Impacket",
+    "hashcat",
+    "LDAP queries",
+    "RSAT"
+  ],
+  "equipment": "Somente software na leitura e nos exercícios de análise; os exercícios de laboratório exigem VM própria de Windows Server (controlador de domínio) e uma estação ingressada. A plataforma REDVAULT não fornece alvo de domínio.",
+  "modules": [
+    {
+      "slug": "fundamentos-ad",
+      "title": "Fundamentos de Active Directory",
+      "summary": "AD não é uma lista de usuários: é um grafo de objetos com ACLs e um protocolo de tickets.",
+      "objective": "Entender objetos, autenticação Kerberos e o modelo de permissão do AD antes de abusar dele.",
+      "competencies": [
+        "domínio",
+        "floresta",
+        "LDAP",
+        "Kerberos",
+        "SID",
+        "descritores de segurança",
+        "GPO"
+      ],
+      "units": [
+        {
+          "slug": "estrutura",
+          "title": "Estrutura, objetos e resolução de nomes",
+          "objective": "Ler um domínio como um conjunto de objetos com permissões, não como uma lista de usuários.",
+          "competencies": [
+            "forest",
+            "domain",
+            "OU",
+            "DN",
+            "GPO",
+            "DNS"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "ad-m0-u1-kb-methodology",
+              "kind": "theory",
+              "title": "Metodologia de Active Directory (documento completo)",
+              "estimated_minutes": 150,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m0-u1-kb-dns",
+              "kind": "theory",
+              "title": "Registros DNS do AD",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-ad-dns-records",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m0-u1-kb-sd",
+              "kind": "theory",
+              "title": "Descritores de segurança",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-security-descriptors",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m0-u1-kb-ldap",
+              "kind": "theory",
+              "title": "LDAP — consulta a diretório",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-network-services-pentesting-pentesting-ldap",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m0-u1-ex-objetos",
+              "kind": "exercises",
+              "title": "Exercício: modelar o domínio",
+              "estimated_minutes": 45,
+              "body_md": "A plataforma REDVAULT não possui alvo de domínio Windows. Este exercício exige um laboratório próprio (mínimo: um controlador de domínio em VM e uma estação ingressada), ou pode ser entregue como análise sobre a documentação e sobre a saída de exemplo. Nunca execute contra domínio de terceiros.\n\nNo seu domínio de laboratório, produza um mapa com:\n\n1. Nome do domínio, nome NetBIOS e floresta; domínios filhos.\n2. As três OUs principais e quantos objetos cada uma contém.\n3. O DN do domínio no formato `DC=...,DC=...` e uma consulta LDAP que liste usuários com `pwdLastSet` antigo.\n4. Os registros DNS `_ldap._tcp.dc._msdcs` e `_kerberos._tcp` e o que cada um localiza.\n5. As GPOs aplicadas a uma OU e como confirmar a precedência.\n\nEntregável: mapa em texto com os comandos usados.",
+              "equipment": "required"
+            }
+          ]
+        },
+        {
+          "slug": "kerberos",
+          "title": "Kerberos e o que cada ticket permite",
+          "objective": "Explicar TGT, TGS, PAC e delegação com precisão suficiente para prever o efeito de um abuso.",
+          "competencies": [
+            "TGT",
+            "TGS",
+            "PAC",
+            "krbtgt",
+            "SPN",
+            "AS-REQ",
+            "delegação"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "ad-m0-u1-kb-kerb",
+              "kind": "theory",
+              "title": "Autenticação Kerberos",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-kerberos-authentication",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m0-u1-kb-groups",
+              "kind": "theory",
+              "title": "Grupos privilegiados e privilégios de token",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-privileged-groups-and-token-privileges",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m0-u1-kb-laps",
+              "kind": "theory",
+              "title": "LAPS — senhas locais gerenciadas",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-laps",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m0-u1-kb-ldap-sign",
+              "kind": "theory",
+              "title": "LDAP signing e channel binding",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-ldap-signing-and-channel-binding",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m0-u1-assess",
+              "kind": "assessment",
+              "title": "Avaliação: Kerberos sem decoreba",
+              "estimated_minutes": 25,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Qual ticket é obtido na fase de autenticação e permite pedir outros tickets? (sigla)",
+                  "accepted": [
+                    "tgt",
+                    "ticket granting ticket"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Qual conta protege o hash que forja Golden Tickets?",
+                  "accepted": [
+                    "krbtgt"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Que campo do ticket indica o grupo do usuário e pode ser falsificado num Silver Ticket?",
+                  "accepted": [
+                    "pac",
+                    "privilege attribute certificate"
+                  ]
+                },
+                {
+                  "id": "q4",
+                  "prompt": "Sem qual atributo a conta fica vulnerável a Kerberoasting? (sigla)",
+                  "accepted": [
+                    "spn",
+                    "serviceprincipalname"
+                  ]
+                }
+              ],
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Mapa do domínio entregue e avaliação ≥ 70%.",
+      "estimated_minutes": 420,
+      "requires_module": ""
+    },
+    {
+      "slug": "enumeracao-ad",
+      "title": "Enumeração do domínio",
+      "summary": "Enumeração só vale quando vira caminho ordenado com evidência de ACL.",
+      "objective": "Coletar caminhos de ataque com evidência, sem se afogar em ruído.",
+      "competencies": [
+        "PowerView",
+        "BloodHound",
+        "ADWS",
+        "kerberoast",
+        "AS-REP",
+        "password spraying"
+      ],
+      "units": [
+        {
+          "slug": "coleta",
+          "title": "Coleta e correlação",
+          "objective": "Transformar consultas de diretório em um grafo de privilégio.",
+          "competencies": [
+            "LDAP",
+            "ADWS",
+            "BloodHound",
+            "SharpHound",
+            "ACL"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "ad-m1-u1-kb-enum",
+              "kind": "theory",
+              "title": "Enumeração via ADWS",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-adws-enumeration",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u1-kb-bloodhound",
+              "kind": "theory",
+              "title": "BloodHound",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-bloodhound",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u1-kb-printers",
+              "kind": "theory",
+              "title": "Informações do AD em impressoras",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-ad-information-in-printers",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u1-kb-spray",
+              "kind": "theory",
+              "title": "Password spraying",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-password-spraying",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u1-kb-kerb",
+              "kind": "theory",
+              "title": "Kerberoasting",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-kerberoast",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u1-kb-asrep",
+              "kind": "theory",
+              "title": "AS-REP Roasting",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-asreproast",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u1-ex-grafo",
+              "kind": "exercises",
+              "title": "Exercício: do inventário ao grafo",
+              "estimated_minutes": 75,
+              "body_md": "A plataforma REDVAULT não possui alvo de domínio Windows. Este exercício exige um laboratório próprio (mínimo: um controlador de domínio em VM e uma estação ingressada), ou pode ser entregue como análise sobre a documentação e sobre a saída de exemplo. Nunca execute contra domínio de terceiros.\n\n1. Colete usuários, computadores, grupos e ACLs relevantes com PowerView (equivalente ao que está no documento de enumeração).\n2. Importe os dados no BloodHound e liste **cinco** caminhos até Domain Admin, ordenados por número de saltos.\n3. Para cada caminho, cite o mecanismo exato (GenericAll, WriteDACL, ForceChangePassword, AddMember...).\n4. Marque quais caminhos dependem de uma ACL que um usuário comum consiga escrever.\n\nEntregável: lista de caminhos com evidência da ACL de origem.",
+              "equipment": "required"
+            }
+          ]
+        },
+        {
+          "slug": "credenciais-por-ticket",
+          "title": "De credencial fraca a ticket utilizável",
+          "objective": "Sair de um usuário comum e chegar a material utilizável de outro.",
+          "competencies": [
+            "kerberoast",
+            "AS-REP",
+            "hashcat",
+            "ticket",
+            "delegação"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "ad-m1-u2-kb-unconstrained",
+              "kind": "theory",
+              "title": "Delegação irrestrita",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-unconstrained-delegation",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u2-kb-constrained",
+              "kind": "theory",
+              "title": "Delegação restrita",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-constrained-delegation",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u2-kb-rbcd",
+              "kind": "theory",
+              "title": "Resource-Based Constrained Delegation",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-resource-based-constrained-delegation",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u2-kb-pth",
+              "kind": "theory",
+              "title": "Pass the Hash e Pass the Key",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-over-pass-the-hash-pass-the-key",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u2-kb-ptt",
+              "kind": "theory",
+              "title": "Pass the Ticket",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-pass-the-ticket",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u2-kb-saw",
+              "kind": "theory",
+              "title": "Roubo de credenciais NTLM",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-ntlm-places-to-steal-ntlm-creds",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u2-kb-ntlm",
+              "kind": "theory",
+              "title": "Autenticação NTLM (modelo)",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-ntlm",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m1-u2-ex-kerberoast",
+              "kind": "exercises",
+              "title": "Exercício: quebrar um TGS",
+              "estimated_minutes": 60,
+              "body_md": "A plataforma REDVAULT não possui alvo de domínio Windows. Este exercício exige um laboratório próprio (mínimo: um controlador de domínio em VM e uma estação ingressada), ou pode ser entregue como análise sobre a documentação e sobre a saída de exemplo. Nunca execute contra domínio de terceiros.\n\n1. Peça um TGS para uma conta com SPN e salve a saída.\n2. Converta para o formato aceito pelo hashcat e explique o modo escolhido (o tipo do hash depende da versão do RC4/AES do domínio).\n3. Quebre com wordlist própria e registre tempo e taxa.\n4. Explique por que senha de serviço longa e aleatória muda o resultado, e o que recomendaria ao dono do domínio.\n\nEntregável: passo a passo com os comandos e o tempo de quebra.",
+              "equipment": "required"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Cinco caminhos documentados e exercício de quebra entregue.",
+      "estimated_minutes": 600,
+      "requires_module": "fundamentos-ad"
+    },
+    {
+      "slug": "escalada-ad",
+      "title": "ACLs, AES e servidores",
+      "summary": "Em domínio real, a escalada quase sempre passa por uma ACL mal escrita ou por um template de certificado.",
+      "objective": "Abusar do que o AD considera permissão: descritores, fila de certificados e serviços internos.",
+      "competencies": [
+        "ACL abuse",
+        "Shadow Credentials",
+        "AD CS",
+        "ESC",
+        "MSSQL",
+        "spooler",
+        "Lansweeper"
+      ],
+      "units": [
+        {
+          "slug": "acl-e-certificados",
+          "title": "Descritores e AD CS",
+          "objective": "Explorar permissões escritas e a PKI do domínio, que é o caminho de escalada mais comum em domínio real.",
+          "competencies": [
+            "WriteDACL",
+            "GenericAll",
+            "Shadow Credentials",
+            "ESC1..ESC8",
+            "certipy"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "ad-m2-u1-kb-acl",
+              "kind": "theory",
+              "title": "Abuso de ACL e persistência",
+              "estimated_minutes": 60,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-acl-persistence-abuse",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u1-kb-badsucc",
+              "kind": "theory",
+              "title": "BadSuccessor",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-acl-persistence-abuse-badsuccessor",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u1-kb-shadow",
+              "kind": "theory",
+              "title": "Shadow Credentials",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-acl-persistence-abuse-shadow-credentials",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u1-kb-dmsa",
+              "kind": "theory",
+              "title": "Migração para dMSA e abuso",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-badsuccessor-dmsa-migration-abuse",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u1-kb-gdmsa",
+              "kind": "theory",
+              "title": "Golden dMSA / gMSA",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-golden-dmsa-gmsa",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u1-kb-certs",
+              "kind": "theory",
+              "title": "Certificados do AD — visão geral",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-ad-certificates",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u1-kb-certs2",
+              "kind": "theory",
+              "title": "Certificados do AD — parte 2",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-ad-certificates-2",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u1-kb-esc",
+              "kind": "theory",
+              "title": "Escalada de domínio via certificados",
+              "estimated_minutes": 90,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-ad-certificates-domain-escalation",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u1-kb-certtheft",
+              "kind": "theory",
+              "title": "Roubo de certificado",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-ad-certificates-certificate-theft",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u1-ex-esc",
+              "kind": "exercises",
+              "title": "Exercício: classificar a configuração de CA",
+              "estimated_minutes": 70,
+              "body_md": "A plataforma REDVAULT não possui alvo de domínio Windows. Este exercício exige um laboratório próprio (mínimo: um controlador de domínio em VM e uma estação ingressada), ou pode ser entregue como análise sobre a documentação e sobre a saída de exemplo. Nunca execute contra domínio de terceiros.\n\nSem explorar nada, faça o **inventário** da PKI do seu laboratório:\n\n1. Liste as CAs publicadas na floresta e os templates publicados.\n2. Para cada template, registre: direito de inscrição, `EnrolleeSuppliesSubject`, uso de EKU de autenticação de cliente, requer aprovação, e se permite exportação da chave.\n3. Classifique cada template encontrado segundo as condições de escalada descritas no documento de escalada (ESC1 a ESC8), citando a condição exata que bate.\n4. Escreva a correção para cada um.\n\nEntregável: tabela de templates com classificação e correção. O exercício é de auditoria; exploração fica fora do escopo.",
+              "equipment": "required"
+            },
+            {
+              "slug": "ad-m2-u1-assess",
+              "kind": "assessment",
+              "title": "Avaliação: ACL e certificados",
+              "estimated_minutes": 25,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Qual direito permite reescrever a ACL de um objeto e portanto obter qualquer permissão depois? (sigla em inglês)",
+                  "accepted": [
+                    "writedacl",
+                    "write_dac",
+                    "writedac"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Qual técnica usa a chave `msDS-KeyCredentialLink` para autenticar como outro usuário?",
+                  "accepted": [
+                    "shadow credentials",
+                    "shadow credential",
+                    "shadowcredentials"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Que condição de template permite pedir um certificado com o nome de outro usuário? (nome do atributo)",
+                  "accepted": [
+                    "enrolleesuppliessubject",
+                    "supplies_subject",
+                    "suppliessubject"
+                  ]
+                }
+              ],
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "servicos",
+          "title": "Serviços internos como caminho de domínio",
+          "objective": "Enxergar MSSQL, spooler e ferramentas de inventário como superfície de domínio.",
+          "competencies": [
+            "MSSQL",
+            "PrintNightmare",
+            "spooler",
+            "Lansweeper",
+            "SCCM"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "ad-m2-u2-kb-mssql",
+              "kind": "theory",
+              "title": "Abuso de MSSQL no AD",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-abusing-ad-mssql",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u2-kb-print",
+              "kind": "theory",
+              "title": "Abuso do spooler de impressão",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-printers-spooler-service-abuse",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u2-kb-pn",
+              "kind": "theory",
+              "title": "PrintNightmare",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-printnightmare",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u2-kb-lansweeper",
+              "kind": "theory",
+              "title": "Lansweeper — segurança",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-lansweeper-security",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u2-kb-sccm",
+              "kind": "theory",
+              "title": "SCCM — management point e segredos de política",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-sccm-management-point-relay-sql-policy-secrets",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u2-kb-doublehop",
+              "kind": "theory",
+              "title": "O problema do double hop em Kerberos",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-kerberos-double-hop-problem",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m2-u2-kb-rdp",
+              "kind": "theory",
+              "title": "Abuso de sessões RDP",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-rdp-sessions-abuse",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Inventário de PKI classificado e avaliação ≥ 70%.",
+      "estimated_minutes": 600,
+      "requires_module": "enumeracao-ad"
+    },
+    {
+      "slug": "dominio-e-deteccao",
+      "title": "Domínio comprometido: persistência, florestas e detecção",
+      "summary": "Comprometer domínio é fácil de provar e difícil de justificar; o relatório com detecção é o produto real.",
+      "objective": "Chegar a Domain Admin, manter acesso, cruzar fronteira de floresta e provar que cada passo é detectável.",
+      "competencies": [
+        "DCSync",
+        "Golden Ticket",
+        "Silver Ticket",
+        "SID History",
+        "Shadow Credentials",
+        "detecção",
+        "limpeza"
+      ],
+      "units": [
+        {
+          "slug": "persistencia-ad",
+          "title": "Persistência no domínio",
+          "objective": "Manter acesso de forma que o próprio AD registre, e saber remover.",
+          "competencies": [
+            "krbtgt",
+            "Golden Ticket",
+            "Silver Ticket",
+            "Skeleton Key",
+            "DCShadow",
+            "DSRM",
+            "SID History"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "ad-m3-u1-kb-dcsync",
+              "kind": "theory",
+              "title": "DCSync",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-dcsync",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-golden",
+              "kind": "theory",
+              "title": "Golden Ticket",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-golden-ticket",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-silver",
+              "kind": "theory",
+              "title": "Silver Ticket",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-silver-ticket",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-diamond",
+              "kind": "theory",
+              "title": "Diamond Ticket",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-diamond-ticket",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-skeleton",
+              "kind": "theory",
+              "title": "Skeleton Key",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-skeleton-key",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-dcshadow",
+              "kind": "theory",
+              "title": "DCShadow",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-dcshadow",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-dsrm",
+              "kind": "theory",
+              "title": "Credenciais de DSRM",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-dsrm-credentials",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-sidhist",
+              "kind": "theory",
+              "title": "Injeção de SID History",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-sid-history-injection",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-customssp",
+              "kind": "theory",
+              "title": "Custom SSP",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-custom-ssp",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-dyn",
+              "kind": "theory",
+              "title": "Objetos dinâmicos e anti-forense",
+              "estimated_minutes": 25,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-ad-dynamic-objects-anti-forensics",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-timeroast",
+              "kind": "theory",
+              "title": "Timeroasting",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-timeroasting",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-certpersist",
+              "kind": "theory",
+              "title": "Persistência por certificado de conta",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-ad-certificates-account-persistence",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u1-kb-certdompersist",
+              "kind": "theory",
+              "title": "Persistência de domínio via certificados",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-ad-certificates-domain-persistence",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "florestas-e-deteccao",
+          "title": "Fronteiras de floresta e visão do defensor",
+          "objective": "Cruzar domínio e floresta com confiança explícita, e fechar com detecção e limpeza.",
+          "competencies": [
+            "trust",
+            "SID filtering",
+            "domain trust",
+            "Event ID",
+            "limpeza"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "ad-m3-u2-kb-outbound",
+              "kind": "theory",
+              "title": "Domínio de floresta externa — confiança de saída",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-external-forest-domain-one-way-outbound",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u2-kb-inbound",
+              "kind": "theory",
+              "title": "Domínio de floresta externa — confiança de entrada",
+              "estimated_minutes": 30,
+              "kb_slug": "ht-windows-hardening-active-directory-methodology-external-forest-domain-oneway-inbound",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u2-kb-lateral",
+              "kind": "theory",
+              "title": "Movimentação lateral no Windows (visão geral)",
+              "estimated_minutes": 20,
+              "kb_slug": "ht-windows-hardening-lateral-movement",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u2-project",
+              "kind": "project",
+              "title": "Relatório de domínio comprometido (capstone)",
+              "estimated_minutes": 120,
+              "body_md": "Entregue o relatório técnico do **capstone** desta trilha, a partir do laboratório de domínio que você montou (ou, se não montou, a partir dos caminhos enumerados no módulo 2 e das saídas de exemplo que você produziu em cada exercício).\n\nEstrutura obrigatória:\n\n1. **Escopo**: domínio, floresta, domínios filhos, e o que ficou fora.\n2. **Caminho**: da conta inicial até Domain Admin, com cada passo e o artefato que o comprova (ACL, template, ticket, log).\n3. **Persistência implementada** e como você a removeu, com a verificação que falha depois da remoção.\n4. **Detecção**: para cada achado, o Event ID ou a telemetria que o revela, e a regra que você proporia.\n5. **Risco residual**: o que continua possível mesmo depois das correções propostas.\n\nCritério de aceite: cada afirmação do relatório ou tem evidência citada, ou está marcada explicitamente como hipótese.",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u2-ex-deteccao",
+              "kind": "exercises",
+              "title": "Exercício: mapa de detecção",
+              "estimated_minutes": 60,
+              "body_md": "Sem executar nada, monte um mapa de detecção a partir da documentação que você leu nesta trilha:\n\n| Técnica | Artefato gerado no AD | Log/Event ID | Regra proposta |\n|---|---|---|---|\n\nCubra no mínimo: DCSync, Golden Ticket, Shadow Credentials, inscrição em template vulnerável, criação de objeto dinâmico, e alteração de `msDS-KeyCredentialLink`.\n\nEste exercício roda **só com software**: a entrega é a tabela e a justificativa de cada regra, não um teste em domínio.",
+              "equipment": "software"
+            },
+            {
+              "slug": "ad-m3-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: persistência e fronteiras",
+              "estimated_minutes": 25,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Qual operação do protocolo de replicação o DCSync imita? (nome)",
+                  "accepted": [
+                    "dsgetncchanges",
+                    "drsgetncchanges",
+                    "replicacao",
+                    "replicação"
+                  ]
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Que conta/atributo um Golden Ticket exige como segredo?",
+                  "accepted": [
+                    "krbtgt"
+                  ]
+                },
+                {
+                  "id": "q3",
+                  "prompt": "O Silver Ticket é válido contra qual componente?",
+                  "accepted": [
+                    "servico",
+                    "serviço",
+                    "service",
+                    "servidor",
+                    "aplicacao",
+                    "aplicação"
+                  ]
+                },
+                {
+                  "id": "q4",
+                  "prompt": "Qual mecanismo impede que um SID de outra floresta seja aceito numa confiança?",
+                  "accepted": [
+                    "sid filtering",
+                    "filtragem de sid",
+                    "sid filter"
+                  ]
+                }
+              ],
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Relatório do capstone entregue e avaliação ≥ 70%.",
+      "estimated_minutes": 600,
+      "requires_module": "escalada-ad"
+    }
+  ],
+  "capstone": {
+    "objective": "Comprometer um domínio de laboratório próprio e entregar relatório com caminho, persistência removida e detecção.",
+    "scope_md": "Domínio de laboratório montado pelo operador (controlador de domínio + ao menos uma estação). Escopo alternativo aceito: análise documentada sobre os caminhos enumerados e as saídas produzidas nos exercícios, sem execução contra alvo.",
+    "resources_md": "VMs próprias com Windows Server (avaliação) e Windows 10/11, BloodHound, PowerView, Rubeus, Impacket, Certipy, hashcat. Nenhum recurso pago é necessário. A plataforma não fornece domínio.",
+    "steps_md": "1. Mapear domínio, floresta e fronteiras de confiança.\n2. Enumerar e ordenar caminhos até Domain Admin com evidência.\n3. Executar a cadeia e registrar cada artefato.\n4. Implementar uma persistência, verificar e remover.\n5. Para cada achado, escrever a regra de detecção correspondente.\n6. Listar risco residual.",
+    "success_criteria": [
+      "Domain Admin obtido no laboratório, ou cadeia completa justificada com evidência de ACL/template",
+      "Cada passo reproduzível com comando e saída",
+      "Persistência removida e remoção comprovada",
+      "Regra de detecção para cada técnica usada",
+      "Risco residual explícito"
+    ],
+    "evidence": [
+      "Saída de enumeração (LDAP, PowerView, BloodHound)",
+      "Tabela de ACLs e de templates com classificação",
+      "Comandos e saídas do caminho até Domain Admin",
+      "Antes/depois da remoção de persistência",
+      "Mapa de detecção preenchido"
+    ],
+    "expected_result": "Domínio de laboratório comprometido com caminho, limpeza e detecção documentados.",
+    "grading_md": "Precisão técnica 30%, evidência 25%, detecção 25%, limpeza e risco residual 20%.",
+    "challenge_slug": ""
+  }
+}

@@ -38,11 +38,18 @@
       <div class="kb-prov-head">{{ m.icon("shield", 13) }} ORIGEM DO CONTEÚDO</div>
       <dl class="kb-prov-grid">
         <dt>Projeto</dt><dd><a href="{{ source.repo_url }}" target="_blank" rel="noopener">{{ source.name }}</a></dd>
-        <dt>Licença</dt><dd>{{ source.license_name }}</dd>
+        <dt>Licença</dt><dd><a href="{{ source.license_url }}" target="_blank" rel="noopener">{{ source.license_name }}</a></dd>
         <dt>Autor</dt><dd>{{ source.author }}</dd>
         <dt>Commit</dt><dd><code>{{ (doc.source_commit or source.commit_sha)[:12] }}</code></dd>
         <dt>Arquivo</dt><dd><code>{{ doc.source_path }}</code></dd>
       </dl>
+      {% if source.noncommercial_reuse and not source.redistributable %}
+      <div class="kb-nc-notice">
+        <strong>Uso não comercial.</strong> Conteúdo de {{ source.name }} por {{ source.author }},
+        sob {{ source.license_name }}. Créditos preservados ao autor original; não redistribua
+        nem utilize em produto comercial sem autorização.
+      </div>
+      {% endif %}
       <p class="kb-prov-note">Texto importado verbatim, preservando o original e os créditos. Tradução: {{ doc.translation_status }}. Revisão: {{ doc.review_status }}.</p>
     </div>
     {% elif doc.origin == "reference" %}

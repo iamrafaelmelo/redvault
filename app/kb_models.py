@@ -47,8 +47,14 @@ class KB_Source(Base):
     license_name: Mapped[str] = mapped_column(String(60), default="")
     license_url: Mapped[str] = mapped_column(String(300), default="")
     author: Mapped[str] = mapped_column(String(120), default="")
-    # Whether the license actually allows redistribution into this project.
+    # Whether the license actually allows redistribution into this project
+    # (permissive: MIT, CC BY, CC BY-SA...).
     redistributable: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Whether the license allows verbatim reuse for NON-COMMERCIAL use with
+    # attribution (e.g. CC BY-NC 4.0 — HackTricks). Kept separate from
+    # ``redistributable`` so the registry never claims a NC licence is fully
+    # redistributable: the distinction is shown to the operator.
+    noncommercial_reuse: Mapped[bool] = mapped_column(Boolean, default=False)
     branch: Mapped[str] = mapped_column(String(60), default="main")
     commit_sha: Mapped[str] = mapped_column(String(64), default="")
     last_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -33,3 +33,10 @@ htmlcov/
 # --- Logs / temporários --------------------------------------------------
 *.log
 /tmp/
+
+# --- Imagens importadas do HackTricks -------------------------------------
+# ~112 MB de imagens copiadas do clone upstream (CC BY-NC). Não versionar:
+# o importador (scripts/import_kb.py --source hacktricks) as recria a partir
+# do clone local. Mantê-las fora do Git evita inflar o repositório e
+# redistribuir mídia de terceiros.
+app/static/hacktricks/

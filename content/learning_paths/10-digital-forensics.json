@@ -1,0 +1,568 @@
+{
+  "slug": "digital-forensics",
+  "title": "Forense Digital",
+  "codename": "FOR",
+  "domain": "forensics",
+  "summary": "Custódia, aquisição, artefatos, memória, rede e linha do tempo: responder o que aconteceu de forma que o laudo se sustente.",
+  "description": "A trilha cobre forense de sistema, memória, rede e aplicação com o material importado sobre metodologia forense e dois documentos próprios: cadeia de custódia e análise de memória. O ponto central não é a ferramenta: é a separação entre fato observado e inferência, e a coluna de fonte que acompanha cada linha da linha do tempo. A plataforma não fornece imagem de disco nem dump de memória de terceiro — toda prática roda sobre o próprio sistema ou sobre material que o operador cria.",
+  "entry_level": "Linux e Windows básicos; linha de comando confortável",
+  "exit_level": "capaz de conduzir uma coleta forense de ponta a ponta e emitir laudo com limitações",
+  "estimated_hours": 32,
+  "priority": 72,
+  "phase": 3,
+  "icon": "search",
+  "accent": "violet",
+  "prerequisites": [
+    "linux-security",
+    "network-pentesting"
+  ],
+  "competencies": [
+    "Montar cadeia de custódia e preservar hash de integridade",
+    "Adquirir imagem sem alterar a prova",
+    "Interpretar artefatos de Windows, Linux, navegador e container",
+    "Explicar por que um dump de memória exige a tabela de símbolos correta",
+    "Ligar conexão a processo com evidência documentada",
+    "Distinguir linha do tempo de metadado de linha do tempo de evento",
+    "Reconhecer e testar cenário de anti-forense"
+  ],
+  "tools": [
+    "dd/dcfldd",
+    "Volatility 3",
+    "plaso",
+    "Timesketch",
+    "Wireshark",
+    "tcpdump",
+    "Sleuth Kit",
+    "Autopsy",
+    "foremost",
+    "plaso/psort",
+    "exiftool",
+    "journalctl"
+  ],
+  "equipment": "Somente software: o operador usa o próprio host, imagens que ele mesmo cria e captura da própria rede. Nenhuma imagem de disco ou dump de terceiro é fornecido pela plataforma.",
+  "modules": [
+    {
+      "slug": "principios",
+      "title": "Princípios, cadeia de custódia e aquisição",
+      "summary": "Sem cadeia de custódia, a análise não vale. Aquisição, hash e registro vêm antes de qualquer ferramenta.",
+      "objective": "Coletar prova de forma que o resultado seja útil: aquisição antes da análise, hash de integridade e registro de posse.",
+      "competencies": [
+        "cadeia de custódia",
+        "hash de integridade",
+        "aquisição de imagem",
+        "montagem somente leitura"
+      ],
+      "units": [
+        {
+          "slug": "custodia",
+          "title": "Cadeia de custódia",
+          "objective": "Entender por que a evidência vale o que vale o processo que a acompanha.",
+          "competencies": [
+            "aquisição",
+            "hash",
+            "registro de posse",
+            "cópia de trabalho"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "for-m0-u1-own-custodia",
+              "kind": "theory",
+              "title": "Cadeia de custódia e linha do tempo",
+              "estimated_minutes": 55,
+              "kb_slug": "own-forense-cadeia-custodia",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m0-u1-kb-metodologia",
+              "kind": "theory",
+              "title": "Metodologia básica de forense",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m0-u1-ex-registro",
+              "kind": "exercises",
+              "title": "Exercício: montar a ficha de custódia de um arquivo seu",
+              "estimated_minutes": 40,
+              "body_md": "**SOMENTE SOFTWARE.** Escolha um arquivo do sistema e trate-o como evidência.\n\nPreencha a ficha:\n\n1. Identificação do arquivo (caminho, origem, data).\n2. Hash calculado na coleta (`sha256sum`).\n3. Quem coletou e quando.\n4. Cópia de trabalho criada, com o hash da cópia.\n5. Confirmação de que os hashes coincidem.\n\nDepois, responda: se você alterar uma vírgula no arquivo de trabalho, o que a ficha revela? Faça o teste e mostre a divergência de hash.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "aquisicao",
+          "title": "Aquisição de imagem",
+          "objective": "Coletar disco ou partição sem alterar o objeto.",
+          "competencies": [
+            "dd/dcfldd",
+            "montagem somente leitura",
+            "imagem vs cópia",
+            "partição"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "for-m0-u2-kb-image",
+              "kind": "theory",
+              "title": "Aquisição de imagem e montagem",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-image-acquisition-and-mount",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m0-u2-ex-imagem",
+              "kind": "exercises",
+              "title": "Exercício: imagem de um pendrive ou arquivo, montada em somente leitura",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.** Opção segura: sem pendrive, faça a imagem de um arquivo de sistema de arquivos que você mesmo crie (`dd` de um arquivo para outro, ou `mkfs` num arquivo).\n\n1. Crie a imagem (ou use pendrive só se quiser).\n2. Calcule o hash **durante** a aquisição, não depois — mostre o comando usado.\n3. Monte a imagem com `-o ro`.\n4. Liste os arquivos e abra um deles.\n5. Desmonte e calcule o hash da imagem novamente.\n\nCompare os dois hashes. Se forem diferentes, você não usou somente leitura — e é exatamente esse o erro que a cadeia de custódia previne.",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m0-u2-ex-particao",
+              "kind": "exercises",
+              "title": "Exercício: identificar sistema de arquivos e partições sem montar",
+              "estimated_minutes": 40,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nNa imagem do exercício anterior:\n\n1. Identifique tipo de sistema de arquivos e layout de partições (`file`, `fdisk -l`, `mmls`).\n2. Explique o que é o *offset* de uma partição e por que ele importa quando a imagem é do disco inteiro.\n3. Monte a partição com offset explícito, em somente leitura.\n\nEntregue o comando de montagem com o offset calculado, não copiado.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Ficha de custódia preenchida, imagem adquirida com hash duplo e montagem somente leitura.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "artefatos-do-sistema",
+      "title": "Artefatos do sistema operacional",
+      "summary": "Registro, logs, navegador, documentos e containers: onde cada sistema guarda o que fez.",
+      "objective": "Saber onde um sistema operacional registra o que aconteceu, e o que cada artefato prova.",
+      "competencies": [
+        "registro do Windows",
+        "artefatos Linux",
+        "navegador",
+        "documento",
+        "docker"
+      ],
+      "units": [
+        {
+          "slug": "windows-e-linux",
+          "title": "Windows e Linux",
+          "objective": "Ler os artefatos nativos de cada sistema com a ressalva correta.",
+          "competencies": [
+            "chaves de registro",
+            "eventos",
+            "logs de sistema",
+            "journal"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "for-m1-u1-kb-win",
+              "kind": "theory",
+              "title": "Artefatos do Windows",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-windows-forensics",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m1-u1-kb-win-reg",
+              "kind": "theory",
+              "title": "Chaves interessantes do registro do Windows",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-windows-forensics-interesting-windows",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m1-u1-kb-linux",
+              "kind": "theory",
+              "title": "Forense em Linux",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-linux-forensics",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m1-u1-ex-journal",
+              "kind": "exercises",
+              "title": "Exercício: reconstruir uma sequência de eventos do próprio host",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Escolha uma ação que você fez hoje (instalar pacote, abrir serviço).\n2. Localize o registro dela em **pelo menos duas** fontes: `journalctl`, log de pacote ou log de autenticação.\n3. Monte uma tabela com horário, fonte e o que cada uma prova.\n\nResponda: qual das duas fontes é de **evento** e qual é de **metadado**? Se a conclusão dependesse de uma só, qual você citaria no laudo?",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "artefatos-de-aplicacao",
+          "title": "Artefatos de aplicação",
+          "objective": "Extrair contexto de navegador, documento e container.",
+          "competencies": [
+            "histórico de navegador",
+            "metadados de documento",
+            "camadas de container"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "for-m1-u2-kb-browser",
+              "kind": "theory",
+              "title": "Artefatos do navegador",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-specific-software-file-type-tricks-br",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m1-u2-kb-office",
+              "kind": "theory",
+              "title": "Análise de arquivos do Office",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-specific-software-file-type-tricks-of",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m1-u2-kb-pdf",
+              "kind": "theory",
+              "title": "Análise de arquivo PDF",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-specific-software-file-type-tricks-pd",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m1-u2-kb-docker",
+              "kind": "theory",
+              "title": "Forense de Docker",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-docker-forensics",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m1-u2-ex-metadata",
+              "kind": "exercises",
+              "title": "Exercício: extrair metadados de um documento e interpretar",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.** Use um documento seu (PDF, DOCX ou imagem).\n\n1. Extraia os metadados (`exiftool` ou equivalente).\n2. Para cada campo, classifique: **autoria declarada**, **ferramenta**, **data** ou **ruído**.\n3. Responda: qual campo sustenta atribuição a uma pessoa? Justifique por que os outros não sustentam.\n\nLembre que metadado pode ser herdado de outra ferramenta: atribua ao **documento**, não à pessoa.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "principios",
+      "completion": "Sequência de eventos do host reconstruída com duas fontes e metadados classificados.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "memoria-e-rede",
+      "title": "Memória e rede",
+      "summary": "Memória e rede: processo, conexão e exfiltração. Símbolo correto e filtro documentado.",
+      "objective": "Analisar o único lugar onde processo, conexão e código injetado aparecem juntos — e o tráfego que sobrou.",
+      "competencies": [
+        "dump de memória",
+        "Volatility",
+        "símbolos",
+        "pcap",
+        "exfiltração"
+      ],
+      "units": [
+        {
+          "slug": "memoria",
+          "title": "Forense de memória",
+          "objective": "Interpretar um dump com os símbolos corretos e ordenar os plugins.",
+          "competencies": [
+            "símbolos do kernel",
+            "pslist vs psscan",
+            "netscan",
+            "malfind"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "for-m2-u1-own-memoria",
+              "kind": "theory",
+              "title": "Forense de memória: símbolos, plugins e o que a RAM prova",
+              "estimated_minutes": 55,
+              "kb_slug": "own-forense-memoria-volatility",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m2-u1-kb-memdump",
+              "kind": "theory",
+              "title": "Análise de dump de memória",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-memory-dump-analysis",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m2-u1-kb-volcheat",
+              "kind": "theory",
+              "title": "Volatility — folha de consulta",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-memory-dump-analysis-volatility-cheat",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m2-u1-ex-simbolos",
+              "kind": "exercises",
+              "title": "Exercício: por que um dump sem símbolo não é análise",
+              "estimated_minutes": 40,
+              "body_md": "**SOMENTE SOFTWARE.** Não é preciso dump real.\n\n1. Descreva, em passos, o que o Volatility faz ao executar `windows.info`.\n2. Explique o que acontece quando a tabela de símbolos do kernel não está disponível.\n3. Escreva as duas conclusões **erradas** que um analista tiraria de uma saída vazia nesse caso.\n\nEntregue uma frase de alerta pronta para colar no laudo: algo como 'sem símbolo carregado, ausência de resultado não indica ausência de artefato'.",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m2-u1-ex-pslist",
+              "kind": "exercises",
+              "title": "Exercício: comparar listagem e varredura de processo",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.** No seu host (ou num dump, se tiver):\n\n1. Obtenha a lista de processos por caminho 'oficial' (`ps`).\n2. Obtenha por varredura direta de `/proc` ou de estruturas internas.\n3. Identifique a diferença e explique cada uma com uma causa benigna.\n\nDepois, escreva: qual é o **único** cenário em que a diferença vira achado — e qual é a segunda evidência necessária para confirmar.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "rede",
+          "title": "Tráfego de rede",
+          "objective": "Ler pcap e ligar conexão a processo, sem atribuir além do que o registro mostra.",
+          "competencies": [
+            "Wireshark",
+            "filtros",
+            "DNS como canal",
+            "exfiltração"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "for-m2-u2-kb-pcap",
+              "kind": "theory",
+              "title": "Inspeção de pcap",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-pcap-inspection",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m2-u2-kb-wireshark",
+              "kind": "theory",
+              "title": "Truques do Wireshark",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-pcap-inspection-wireshark-tricks",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m2-u2-kb-wifi-pcap",
+              "kind": "theory",
+              "title": "Análise de pcap Wi-Fi",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-pcap-inspection-wifi-pcap-analysis",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m2-u2-kb-dnscat",
+              "kind": "theory",
+              "title": "Análise de pcap do DNSCat",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-pcap-inspection-dnscat-exfiltration",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m2-u2-ex-captura",
+              "kind": "exercises",
+              "title": "Exercício: capturar o próprio tráfego e responder perguntas objetivas",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.** Precisa de `tcpdump`/Wireshark e de rede.\n\n1. Capture 2 minutos do seu tráfego em `pcap`.\n2. Responda com **filtro** (não com busca manual):\n   - quantas conexões TCP foram abertas?\n   - quais domínios foram consultados?\n   - qual conexão transferiu mais bytes?\n3. Anote cada filtro usado.\n\nEntregue a captura, os filtros e as respostas. O filtro é a prova de que a conclusão é reproduzível.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "artefatos-do-sistema",
+      "completion": "Explicação do papel do símbolo, comparação de listagem e relatório de captura com filtros.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "timeline-e-antiforense",
+      "title": "Linha do tempo, anti-forense e raiz de confiança",
+      "summary": "Timeline com fonte, anti-forense, carving e a raiz de confiança que mantém a prova íntegra.",
+      "objective": "Montar a linha do tempo que sustenta a conclusão, reconhecer quem tenta apagá-la e proteger a evidência.",
+      "competencies": [
+        "plaso",
+        "Timesketch",
+        "metadado vs evento",
+        "anti-forense",
+        "integridade de arquivo",
+        "carving"
+      ],
+      "units": [
+        {
+          "slug": "timeline",
+          "title": "Linha do tempo",
+          "objective": "Distinguir evento de metadado e montar a tabela que sustenta o laudo.",
+          "competencies": [
+            "plaso",
+            "Timesketch",
+            "MACB",
+            "fonte por evento"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "for-m3-u1-ex-timeline",
+              "kind": "exercises",
+              "title": "Exercício: montar linha do tempo com coluna de fonte",
+              "estimated_minutes": 60,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Reúna eventos de duas fontes diferentes do seu host: um evento de log e um metadado de arquivo (`stat`).\n2. Monte uma tabela: `horário | fonte | evento | o que prova`.\n3. Inclua **uma linha de metadado isolado** e marque como hipótese.\n4. Escreva a conclusão que só a linha de evento sustenta.\n\nResponda ainda: que ferramenta você usaria para gerar isso em escala, e por que ela exige que você declare qual parser produziu cada evento?",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m3-u1-ex-plaso",
+              "kind": "exercises",
+              "title": "Exercício: gerar uma linha do tempo normalizada e inspecionar a fonte",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.** Precisa de `plaso` instalado (opcional: Timesketch para visualizar).\n\n1. Gere uma linha do tempo de um diretório de teste.\n2. Escolha cinco eventos e identifique, para cada um, o **parser** que os produziu.\n3. Verifique se algum deles veio de metadado (MACB) e não de evento.\n\nO ponto do exercício é que a timeline normaliza tudo para o mesmo formato — e é por isso que o laudo precisa carregar a coluna de fonte.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "anti-forense-e-raiz",
+          "title": "Anti-forense e raiz de confiança",
+          "objective": "Reconhecer tentativa de apagar rastro e garantir que a evidência permaneça íntegra.",
+          "competencies": [
+            "timestomping",
+            "limpeza de log",
+            "carving",
+            "monitoramento de integridade"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "for-m3-u2-kb-anti",
+              "kind": "theory",
+              "title": "Técnicas anti-forenses",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-anti-forensic-techniques",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m3-u2-kb-fim",
+              "kind": "theory",
+              "title": "Monitoramento de integridade de arquivos",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-file-integrity-monitoring",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m3-u2-kb-carving",
+              "kind": "theory",
+              "title": "Partições, sistemas de arquivos e carving",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-partitions-file-systems-carving",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m3-u2-kb-carve-tools",
+              "kind": "theory",
+              "title": "Ferramentas de carving e recuperação",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-generic-methodologies-and-resources-basic-forensic-methodology-partitions-file-systems-carving-file-",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m3-u2-ex-carving",
+              "kind": "exercises",
+              "title": "Exercício: recuperar arquivo apagado de uma imagem sua",
+              "estimated_minutes": 60,
+              "body_md": "**SOMENTE SOFTWARE.**\n\n1. Crie um arquivo de imagem com sistema de arquivos (`truncate` + `mkfs`), monte-o, copie um arquivo com conteúdo reconhecível.\n2. Apague o arquivo e desmonte.\n3. Rode carving na imagem (`foremost`, `scalpel` ou equivalente).\n4. Verifique se o arquivo voltou e se o conteúdo é íntegro (hash).\n\nResponda: por que o hash do arquivo recuperado pode **não** bater com o original, e como você declara isso no laudo.",
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m3-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: forense digital",
+              "estimated_minutes": 35,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "Qual é a diferença entre linha do tempo de metadado e de evento?",
+                  "accepted": [
+                    "metadado vem de mtime e é fácil de manipular",
+                    "evento vem de log do sistema e é mais difícil de forjar"
+                  ],
+                  "explanation": "Metadado (MACB) é trivial de alterar; evento vem de registro do próprio sistema e é a base de uma conclusão robusta."
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Por que a imagem de disco deve ser montada em somente leitura?",
+                  "accepted": [
+                    "para não alterar a evidência",
+                    "para preservar o hash"
+                  ],
+                  "explanation": "Montagem em leitura/escrita altera a própria prova e invalida o hash de integridade."
+                },
+                {
+                  "id": "q3",
+                  "prompt": "O que um dump de memória consegue provar que o disco não prova?",
+                  "accepted": [
+                    "execução fileless",
+                    "processo executando sem arquivo",
+                    "código injetado em memória"
+                  ],
+                  "explanation": "A RAM guarda o código em execução e as conexões abertas, inclusive quando não há arquivo em disco."
+                },
+                {
+                  "id": "q4",
+                  "prompt": "Por que 'não encontrei o arquivo na imagem' não prova que ele nunca existiu?",
+                  "accepted": [
+                    "pode ter sido apagado e recuperável por carving",
+                    "a evidência pode ter sido sobrescrita"
+                  ],
+                  "explanation": "Arquivo apagado pode estar nos setores livres e ser recuperado por carving; a ausência na tabela do sistema de arquivos não é ausência dos dados."
+                }
+              ],
+              "equipment": "software"
+            },
+            {
+              "slug": "for-m3-u2-project",
+              "kind": "project",
+              "title": "Capstone: laudo forense de um sistema próprio",
+              "estimated_minutes": 160,
+              "body_md": "**SOMENTE SOFTWARE.** Entrega do capstone.\n\nAlvo: um sistema ou uma imagem que **você** controla e criou, com uma ação que você mesmo executou. Não use dado de terceiro.\n\nEntregue:\n\n1. Ficha de custódia com hashes.\n2. Metodologia de aquisição (comando e opção de somente leitura).\n3. Artefatos coletados, por fonte.\n4. Linha do tempo com coluna de **fonte**.\n5. Análise de pelo menos um artefato de memória **ou** de rede.\n6. Um cenário anti-forense que você simulou (ex.: apagar arquivo e recuperar por carving), com o resultado.\n7. Conclusão e limitações explícitas.\n\nRecusa: linha do tempo sem fonte por evento, hash de cópia apresentado como o da original, conclusão sustentada apenas por `mtime`.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "memoria-e-rede",
+      "completion": "Linha do tempo com fonte, recuperação por carving e avaliação aprovada.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    }
+  ],
+  "capstone": {
+    "objective": "Conduzir uma coleta forense completa de um sistema próprio e emitir laudo com fontes, custódia e limitações.",
+    "scope_md": "Um sistema ou imagem que o próprio operador criou e controla. Nenhum dado de terceiro, nenhum sistema de produção alheio.",
+    "resources_md": "Hipervisor ou máquina própria, ferramentas de aquisição e de imagem, Volatility 3, plaso/Timesketch, Wireshark/tcpdump, ferramento de carving. Todo o software é gratuito e já listado na trilha.",
+    "steps_md": "1. Descrever escopo, pergunta e limite da coleta.\n2. Adquirir a imagem com hash calculado durante a aquisição.\n3. Montar a imagem em somente leitura e documentar o comando.\n4. Coletar artefatos por fonte (log, metadado, memória, pcap).\n5. Montar a linha do tempo com coluna de fonte por evento.\n6. Simular e apresentar um cenário anti-forense com resultado.\n7. Emitir conclusão e limitações.",
+    "success_criteria": [
+      "Ficha de custódia completa com hash de original e de cópia",
+      "Comando de aquisição reproduzível, com hash calculado na aquisição",
+      "Montagem declarada como somente leitura",
+      "Cada evento da linha do tempo com a fonte identificada",
+      "Pelo menos um artefato de memória ou de rede analisado com método",
+      "Cenário anti-forense executado e resultado interpretado",
+      "Seção de limitações preenchida"
+    ],
+    "evidence": [
+      "Ficha de custódia",
+      "Comandos de aquisição e montagem",
+      "Linha do tempo com fonte",
+      "Saída da análise de memória ou de pcap",
+      "Registro do cenário anti-forense",
+      "Laudo final"
+    ],
+    "expected_result": "Laudo forense de um sistema próprio, com cadeia de custódia e limites explícitos.",
+    "grading_md": "Custódia 25%, fidelidade do método 30%, linha do tempo e fontes 25%, limitações 20%.",
+    "challenge_slug": ""
+  }
+}

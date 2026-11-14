@@ -13,6 +13,7 @@ from .database import init_db, SessionLocal
 from .lab_manager import lab_manager
 from .security import apply_session_cookie, decode_flash, local_user
 from .content import seed_platform_content
+from .lp_web import router as learning_paths_router
 from .web import router as web_router
 from .api import router as api_router
 from .internal import router as internal_router
@@ -33,18 +34,34 @@ async def lifespan(app: FastAPI):
         logger.info("content synced: %s challenges", result["challenges"])
     # Knowledge base: categories, challenge links, search index (idempotent).
     try:
+        from .kb_import import register_sources
+        from .kb_own import sync_own_documents
         from .kb_search import ensure_index, rebuild
         from .kb_seed import seed_all
 
         with SessionLocal() as db:
+            register_sources(db)
             kb_stats = seed_all(db)
+            own_docs = sync_own_documents(db)
             db.commit()
         ensure_index()
         rebuild()
-        logger.info("kb synced: %s categories, %s payloads, %s challenge links",
-                    kb_stats["categories"], kb_stats["payloads"], kb_stats["challenge_links"])
+        logger.info("kb synced: %s categories, %s payloads, %s challenge links, %s own docs",
+                    kb_stats["categories"], kb_stats["payloads"], kb_stats["challenge_links"], own_docs)
     except Exception as exc:  # noqa: BLE001 - kb must never block boot
         logger.warning("kb seed skipped: %s", exc)
+    # Learning paths: validated curricula (a broken reference aborts loudly).
+    try:
+        from .lp_seed import seed_all as seed_learning_paths
+
+        with SessionLocal() as db:
+            lp_stats = seed_learning_paths(db)
+        for warning in lp_stats["warnings"]:
+            logger.warning("learning-path: %s", warning)
+        logger.info("learning paths synced: %s trilhas, %s módulos, %s atividades",
+                    lp_stats["paths"], lp_stats["modules"], lp_stats["activities"])
+    except Exception as exc:  # noqa: BLE001 - curriculum error must be visible, not fatal
+        logger.error("learning paths NOT loaded: %s", exc)
     lab_manager.reconcile_startup()
     yield
     lab_manager.shutdown()
@@ -60,6 +77,7 @@ app = FastAPI(
 )
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.include_router(web_router)
+app.include_router(learning_paths_router)
 app.include_router(api_router)
 app.include_router(internal_router)
 

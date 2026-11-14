@@ -1,0 +1,495 @@
+{
+  "slug": "osint",
+  "title": "OSINT",
+  "codename": "OSI",
+  "domain": "osint",
+  "summary": "Da pergunta ao laudo: certificado, DNS, serviço exposto, código público e correlação de identidade — sempre com fonte, data e limite.",
+  "description": "OSINT é a área com menor material importado nesta base, e a trilha se apoia nos três documentos próprios de metodologia, superfície e pessoas. O eixo não é ferramenta: é o registro com fonte, data e confiança, a distinção entre fato e inferência, e o limite de escopo que separa investigação de assédio. Nenhum exercício autoriza tocar em alvo de terceiro, e credencial encontrada nunca é usada.",
+  "entry_level": "Internet, linha de comando e leitura de registro público",
+  "exit_level": "capaz de investigar superfície pública e emitir relatório com fonte e confiança",
+  "estimated_hours": 26,
+  "priority": 84,
+  "phase": 3,
+  "icon": "radar",
+  "accent": "blue",
+  "prerequisites": [],
+  "competencies": [
+    "Formular pergunta e escopo antes de coletar",
+    "Montar tabela de registro com fonte, data e confiança",
+    "Inventariar nomes por transparência de certificação",
+    "Ler resultado de buscador de serviços pelo limite de cobertura",
+    "Classificar exposição em repositório público e agir sem usar credencial",
+    "Avaliar vínculo de identidade com dois elementos independentes",
+    "Emitir relatório com data de corte e o que não foi confirmado"
+  ],
+  "tools": [
+    "bbot",
+    "theHarvester",
+    "recon-ng",
+    "Sherlock",
+    "crt.sh",
+    "Shodan",
+    "dig",
+    "whois"
+  ],
+  "equipment": "Somente software: coleta passiva em fonte pública, na máquina do operador. Não é necessária conta paga.",
+  "modules": [
+    {
+      "slug": "metodo-e-limites",
+      "title": "Método e limites",
+      "summary": "Pergunta, escopo, fonte, verificação e o limite que não se negocia.",
+      "objective": "Definir pergunta, escopo e registro antes de coletar qualquer coisa.",
+      "competencies": [
+        "pergunta",
+        "escopo",
+        "fonte",
+        "verificação",
+        "registro"
+      ],
+      "units": [
+        {
+          "slug": "pergunta-e-escopo",
+          "title": "Pergunta e escopo",
+          "objective": "Saber o que se pretende responder e o que está fora do exercício.",
+          "competencies": [
+            "pergunta formulável",
+            "escopo autorizado",
+            "dado sensível"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "osi-m0-u1-own-meth",
+              "kind": "theory",
+              "title": "OSINT: da pergunta ao registro",
+              "estimated_minutes": 60,
+              "kb_slug": "own-osint-metodologia",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m0-u1-academy",
+              "kind": "theory",
+              "title": "Reconhecimento: método",
+              "estimated_minutes": 40,
+              "academy_slug": "recon",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m0-u1-kb-ext",
+              "kind": "theory",
+              "title": "Metodologia de reconhecimento externo",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-external-recon-methodology",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m0-u1-ex-escopo",
+              "kind": "exercises",
+              "title": "Exercício: transformar um pedido vago em pergunta e escopo",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.** Nenhuma coleta nesta etapa.\n\nReceba o pedido: *'preciso saber tudo sobre a empresa X'*.\n\n1. Reescreva em **três** perguntas que possam ser respondidas com dado público.\n2. Para cada uma, defina o escopo (domínio, organização, janela de tempo).\n3. Liste o que fica **fora** de escopo e por quê.\n\nEntregue as perguntas, o escopo e a lista de exclusão. A lista de exclusão é a parte que protege a coleta de virar assédio.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "registro-e-verificacao",
+          "title": "Registro e verificação",
+          "objective": "Produzir tabela citável com confiança por linha.",
+          "competencies": [
+            "tabela de registro",
+            "fonte primária",
+            "independência",
+            "confiança"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "osi-m0-u2-ex-tabela",
+              "kind": "exercises",
+              "title": "Exercício: montar a tabela de registro com confiança",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nEscolha uma organização pública (não pessoa) e uma pergunta do exercício anterior.\n\n1. Colete **cinco** afirmações com fonte.\n2. Preencha: pergunta, afirmação, fonte, data de consulta, trecho, confiança.\n3. Marque quais afirmações têm **segunda fonte independente**.\n\nEntregue a tabela. Afirmação com fonte republicada não conta como segunda fonte — é a mesma fonte duas vezes.",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m0-u2-ex-limites",
+              "kind": "exercises",
+              "title": "Exercício: decidir quando parar",
+              "estimated_minutes": 40,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nLeia os quatro sinais de que a coleta cruzou o limite (no artigo de metodologia) e responda, para um cenário que você invente:\n\n1. Em que ponto a coleta deveria ter parado?\n2. Que dado coletado **não serve** para a conclusão?\n3. O que você faria se encontrasse credencial real?\n\nEntregue as três respostas. A terceira é a mais importante: usar credencial encontrada transforma exercício em crime.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "",
+      "completion": "Perguntas formuladas, tabela de registro preenchida e decisão de parada registrada.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "superficie-tecnica",
+      "title": "Superfície técnica",
+      "summary": "Nomes por certificado, DNS, registro e serviço exposto — com data e limite por afirmação.",
+      "objective": "Mapear domínio, DNS, certificado e serviço exposto com fonte por afirmação.",
+      "competencies": [
+        "certificate transparency",
+        "DNS",
+        "WHOIS",
+        "buscador de serviços",
+        "bucket"
+      ],
+      "units": [
+        {
+          "slug": "dominio-e-dns",
+          "title": "Domínio e DNS",
+          "objective": "Descobrir nomes e endereços sem tocar no alvo.",
+          "competencies": [
+            "registro de domínio",
+            "registros DNS",
+            "subdomínio",
+            "provedor"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "osi-m1-u1-own-surf",
+              "kind": "theory",
+              "title": "Superfície externa: certificate transparency, Shodan e limites",
+              "estimated_minutes": 60,
+              "kb_slug": "own-osint-superficie-externa",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m1-u1-kb-whois",
+              "kind": "theory",
+              "title": "43 — Pentesting WHOIS",
+              "estimated_minutes": 35,
+              "kb_slug": "ht-network-services-pentesting-43-pentesting-whois",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m1-u1-kb-dns",
+              "kind": "theory",
+              "title": "53 — Pentesting DNS",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-network-services-pentesting-pentesting-dns",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m1-u1-ex-ct",
+              "kind": "exercises",
+              "title": "Exercício: inventariar nomes por transparência de certificação",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.** Escolha um domínio que você administra ou um domínio público de organização com site institucional — coleta passiva.\n\n1. Consulte o log de transparência de certificação para o domínio.\n2. Deduplicate os nomes de host obtidos.\n3. Classifique: institucional, API, ambiente de teste, provedor de terceiro, ruído (wildcard).\n4. Para três nomes, registre o que mais você precisaria para afirmar que há serviço ativo.\n\nEntregue a tabela. Nome no log é nome pedido, não serviço funcionando.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "servico-e-recurso",
+          "title": "Serviço e recurso exposto",
+          "objective": "Ler buscador de serviços e recurso de armazenamento com a limitação correta.",
+          "competencies": [
+            "Shodan",
+            "banner",
+            "data de observação",
+            "bucket",
+            "CDN"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "osi-m1-u2-ex-buscador",
+              "kind": "exercises",
+              "title": "Exercício: interpretar resultado de buscador de serviços",
+              "estimated_minutes": 50,
+              "body_md": "**SOMENTE SOFTWARE.** Não escaneie nada.\n\n1. Escolha um endereço que você controla (ou um provedor público documentado).\n2. Consulte o buscador de serviços e registre: porta, banner, data da última observação.\n3. Compare com o que você **sabe** do seu host.\n\nResponda: quantas diferenças há entre o índice e a realidade? O que isso diz sobre usar esse índice como prova?",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m1-u2-kb-bucket",
+              "kind": "theory",
+              "title": "Buckets",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-network-services-pentesting-pentesting-web-buckets",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m1-u2-kb-web",
+              "kind": "theory",
+              "title": "80, 443 — Metodologia de pentesting web",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-network-services-pentesting-pentesting-web",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m1-u2-kb-cloudflare",
+              "kind": "theory",
+              "title": "Uncovering CloudFlare",
+              "estimated_minutes": 40,
+              "kb_slug": "ht-network-services-pentesting-pentesting-web-uncovering-cloudflare",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m1-u2-ex-origem",
+              "kind": "exercises",
+              "title": "Exercício: descrever como identificar origem atrás de CDN",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.** Análise documental.\n\n1. Descreva três sinais que sugerem que um domínio está atrás de provedor de borda (CDN).\n2. Descreva duas evidências que **confirmariam** um endereço de origem.\n3. Explique por que 'o IP do registro DNS' não é necessariamente a origem.\n\nEntregue as listas. Achar origem exige evidência independente; inferir pelo registro DNS é o erro mais comum.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "metodo-e-limites",
+      "completion": "Inventário de nomes por certificado e leitura crítica de buscador de serviços.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "vazamento-e-codigo",
+      "title": "Vazamento e código público",
+      "summary": "GitHub dork, busca ampla e vazamento: encontrar exposição sem usar credencial.",
+      "objective": "Encontrar exposição acidental em repositório e base pública — e não usar o que encontra.",
+      "competencies": [
+        "GitHub dork",
+        "busca ampla",
+        "vazamento de banco",
+        "credencial",
+        "notificação"
+      ],
+      "units": [
+        {
+          "slug": "repositorio",
+          "title": "Repositório",
+          "objective": "Localizar segredo publicado e agir corretamente.",
+          "competencies": [
+            "dork",
+            "busca em histórico",
+            "arquivo de configuração",
+            "notificação"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "osi-m2-u1-kb-gh",
+              "kind": "theory",
+              "title": "GitHub Dorks & Leaks",
+              "estimated_minutes": 50,
+              "kb_slug": "ht-generic-methodologies-and-resources-external-recon-methodology-github-leaked-secrets",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m2-u1-kb-wide",
+              "kind": "theory",
+              "title": "Busca ampla em código-fonte público",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-external-recon-methodology-wide-source-code-search",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m2-u1-ex-dork",
+              "kind": "exercises",
+              "title": "Exercício: procurar exposição acidental em repositório conhecido",
+              "estimated_minutes": 55,
+              "body_md": "**SOMENTE SOFTWARE.** Restrinja-se a repositório de organização pública e a busca **passiva**.\n\n1. Monte três consultas que encontrariam arquivo de configuração com credencial em repositório público.\n2. Execute e registre cada resultado: repositório, arquivo, data.\n3. Para cada resultado, classifique: **credencial ativa suspeita**, **placeholder**, **exemplo/documentação**.\n\nSe encontrar credencial que pareça ativa: **não use**. Documente e notifique. Usar é acesso não autorizado.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "vazamento-publico",
+          "title": "Vazamento público",
+          "objective": "Avaliar vazamento publicado sem ampliar o dano.",
+          "competencies": [
+            "base vazada",
+            "verificação",
+            "dado pessoal",
+            "relatório"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "osi-m2-u1b-kb-leaks",
+              "kind": "theory",
+              "title": "Leaks de bancos de dados",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-external-recon-methodology-database-leaks",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m2-u1b-kb-ti",
+              "kind": "theory",
+              "title": "Reconhecimento e APIs de inteligência de ameaças",
+              "estimated_minutes": 45,
+              "kb_slug": "ht-generic-methodologies-and-resources-external-recon-methodology-reconnaissance-and-threat-intelligenc",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m2-u2-ex-vazamento",
+              "kind": "exercises",
+              "title": "Exercício: descrever o procedimento para confirmar vazamento sem usá-lo",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.** Análise documental — nenhum dado real de pessoa.\n\n1. Escreva o procedimento para confirmar que um conjunto de dados publicado contém dado da organização alvo.\n2. Defina o mínimo de dado que precisa ser lido.\n3. Defina o que **não** se copia para o relatório.\n\nResponda: por que a confirmação de vazamento é um exercício de minimização, e não de coleta?",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "superficie-tecnica",
+      "completion": "Consultas de dork classificadas e procedimento de vazamento escrito.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    },
+    {
+      "slug": "pessoas-e-relatorio",
+      "title": "Pessoas e relatório",
+      "summary": "Homonímia, metadado e o relatório com data de corte e confiança declarada.",
+      "objective": "Correlacionar identidade com evidência e publicar sem atribuir além da prova.",
+      "competencies": [
+        "correlação",
+        "homonímia",
+        "metadata",
+        "relatório",
+        "atribuição"
+      ],
+      "units": [
+        {
+          "slug": "correlacao",
+          "title": "Correlação de identidade",
+          "objective": "Sustentar vínculo com dois elementos independentes.",
+          "competencies": [
+            "homonímia",
+            "nome de usuário",
+            "metadado",
+            "documento"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "osi-m3-u1-own-people",
+              "kind": "theory",
+              "title": "Pessoas e organizações: correlação e limite ético",
+              "estimated_minutes": 60,
+              "kb_slug": "own-osint-pessoas-organizacoes",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m3-u1-ex-homonimo",
+              "kind": "exercises",
+              "title": "Exercício: descartar vínculo por homonímia",
+              "estimated_minutes": 45,
+              "body_md": "**SOMENTE SOFTWARE.** Cenário fictício.\n\nVocê encontrou duas contas com o mesmo nome de usuário e uma com o mesmo nome completo de um funcionário da organização alvo.\n\n1. Liste o que cada coincidência **sustenta**.\n2. Liste o que faltaria para afirmar vínculo.\n3. Escreva a frase de relatório com confiança declarada.\n\nEntregue as três listas. 'Mesmo nome de usuário' propõe hipótese; não conclui.",
+              "equipment": "software"
+            }
+          ]
+        },
+        {
+          "slug": "relatorio",
+          "title": "Relatório",
+          "objective": "Entregar tabela com fonte, data e confiança, e dizer o que não foi confirmado.",
+          "competencies": [
+            "estrutura",
+            "data de corte",
+            "limitação",
+            "confiança"
+          ],
+          "estimated_minutes": 90,
+          "activities": [
+            {
+              "slug": "osi-m3-u2-ex-relatorio",
+              "kind": "exercises",
+              "title": "Exercício: relatório de OSINT com data de corte",
+              "estimated_minutes": 60,
+              "body_md": "**SOMENTE SOFTWARE.**\n\nProduza o relatório de uma investigação pequena:\n\n1. Pergunta e escopo.\n2. Tabela de afirmações com fonte, data e confiança.\n3. Separação explícita: fato / inferência.\n4. O que **não** foi possível confirmar.\n5. Data de corte.\n\nSe você escrever conclusão sem data de corte, o laudo não é reproduzível — as fontes mudam.",
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m3-u2-assess",
+              "kind": "assessment",
+              "title": "Avaliação: OSINT",
+              "estimated_minutes": 35,
+              "questions": [
+                {
+                  "id": "q1",
+                  "prompt": "O que torna duas fontes independentes?",
+                  "accepted": [
+                    "não é a mesma republicação",
+                    "origens diferentes"
+                  ],
+                  "explanation": "Duas páginas que copiam a mesma nota são uma fonte só."
+                },
+                {
+                  "id": "q2",
+                  "prompt": "Um nome de host no log de certificado prova que há serviço ativo?",
+                  "accepted": [
+                    "não",
+                    "nao",
+                    "não prova"
+                  ],
+                  "explanation": "O log registra pedido de certificado, não serviço em execução."
+                },
+                {
+                  "id": "q3",
+                  "prompt": "Qual é o procedimento ao encontrar credencial real?",
+                  "accepted": [
+                    "notificar e documentar, sem usar"
+                  ],
+                  "explanation": "Usar credencial encontrada é acesso não autorizado; o procedimento é documentar e notificar."
+                },
+                {
+                  "id": "q4",
+                  "prompt": "Por que um laudo de OSINT precisa de data de corte?",
+                  "accepted": [
+                    "as fontes mudam",
+                    "a internet é dinâmica"
+                  ],
+                  "explanation": "Sites mudam e conteúdo é excluído; a data de corte define quando a conclusão valia."
+                }
+              ],
+              "equipment": "software"
+            },
+            {
+              "slug": "osi-m3-u2-project",
+              "kind": "project",
+              "title": "Capstone: investigação OSINT de superfície com limites declarados",
+              "estimated_minutes": 160,
+              "body_md": "**SOMENTE SOFTWARE.** Entrega do capstone.\n\nEscolha **uma** superfície pública que você pode analisar (idealmente a do seu próprio domínio ou de organização com política pública de análise).\n\nEntregue:\n\n1. Perguntas e escopo, com lista de exclusão.\n2. Inventário por transparência de certificação, DNS e registro.\n3. Leitura de buscador de serviços com data de observação.\n4. Consultas de repositório público e classificação de resultado.\n5. Tabela de afirmações com fonte, data e confiança.\n6. O que não foi confirmado.\n7. Prova de que nenhuma credencial encontrada foi usada.\n\nRecusa: afirmação sem fonte, fonte republicada contada como independente, ou uso de credencial encontrada.",
+              "equipment": "software"
+            }
+          ]
+        }
+      ],
+      "prerequisites": "vazamento-e-codigo",
+      "completion": "Análise de homonímia, relatório com data de corte e avaliação aprovada.",
+      "estimated_minutes": 180,
+      "requires_module": ""
+    }
+  ],
+  "capstone": {
+    "objective": "Conduzir uma investigação de superfície pública com fonte por afirmação, confiança declarada e limites éticos explícitos.",
+    "scope_md": "Domínio ou organização com política pública de análise; preferencialmente a superfície do próprio operador. Coleta passiva apenas.",
+    "resources_md": "Navegador, terminal, crt.sh, consultas DNS, buscador de serviços gratuito, consultas de repositório público. Nenhuma ferramenta paga.",
+    "steps_md": "1. Definir pergunta, escopo e lista de exclusão.\n2. Inventariar nomes por transparência de certificação e DNS.\n3. Ler resultado de buscador de serviços com data.\n4. Consultar repositório público e classificar resultados.\n5. Preencher tabela de afirmações.\n6. Declarar o que não foi confirmado e a data de corte.",
+    "success_criteria": [
+      "Perguntas formuláveis e lista de exclusão",
+      "Cada afirmação com fonte, data e trecho",
+      "Confiança declarada por linha",
+      "Resultado de buscador com data de observação",
+      "Nenhuma credencial usada; procedimento documentado",
+      "Seção do que não foi confirmado e data de corte"
+    ],
+    "evidence": [
+      "Documento de escopo",
+      "Inventário de nomes",
+      "Consultas e resultados classificados",
+      "Tabela de afirmações",
+      "Relatório final"
+    ],
+    "expected_result": "Relatório de OSINT com fonte citável e limites declarados.",
+    "grading_md": "Método e escopo 25%, qualidade das fontes 30%, distinção fato/inferência 25%, limites 20%.",
+    "challenge_slug": ""
+  }
+}

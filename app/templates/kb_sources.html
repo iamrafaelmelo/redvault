@@ -22,14 +22,18 @@
         <strong>{{ source.name }}</strong>
         <small>{{ source.author }}</small>
       </div>
-      <span class="kb-license {% if source.redistributable %}kb-license-ok{% else %}kb-license-no{% endif %}">
+      <span class="kb-license {% if source.redistributable %}kb-license-ok{% elif source.noncommercial_reuse %}kb-license-nc{% else %}kb-license-no{% endif %}">
         {{ source.license_name }}
       </span>
     </div>
     <dl class="kb-prov-grid">
       <dt>Repositório</dt><dd><a href="{{ source.repo_url }}" target="_blank" rel="noopener">{{ source.repo_url }}</a></dd>
       <dt>Licença</dt><dd><a href="{{ source.license_url }}" target="_blank" rel="noopener">{{ source.license_name }}</a></dd>
-      <dt>Redistribuível</dt><dd>{{ "Sim — importado e traduzido" if source.redistributable else "Não — apenas referenciado" }}</dd>
+      <dt>Redistribuível</dt><dd>
+        {% if source.redistributable %}Sim — importado e traduzido
+        {% elif source.noncommercial_reuse %}Parcial — uso não comercial com atribuição
+        {% else %}Não — apenas referenciado{% endif %}
+      </dd>
       <dt>Branch / commit</dt><dd><code>{{ source.branch or "—" }}</code> · <code>{{ (source.commit_sha or "—")[:12] }}</code></dd>
       <dt>Documentos</dt><dd>{{ row.documents }}</dd>
       <dt>Última sincronização</dt><dd>{{ source.last_synced.strftime("%Y-%m-%d %H:%M") if source.last_synced else "nunca" }}</dd>
