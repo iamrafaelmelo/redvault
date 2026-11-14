@@ -60,6 +60,10 @@ Open **http://127.0.0.1:8000**. On first run:
 3. Challenge and machine manifests are seeded automatically.
 4. Use **Challenges → Start lab**, then open the shown `127.0.0.1:<port>` URL.
 
+Everything under `data/` is generated on first start and is ignored by Git. The
+repository never ships a database or a master secret, and neither should be
+committed to a remote.
+
 The library (Knowledge Base) starts empty except for the 24 documents written for
 REDVAULT. Import the external sources on your own machine, from your own clones:
 

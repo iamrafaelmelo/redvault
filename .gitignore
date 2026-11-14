@@ -1,10 +1,9 @@
-# --- Dados locais (versionados de propósito: instalação de um único operador) --
-# data/ contém o banco SQLite, o secret.key e o estado dos labs.
-# ATENÇÃO: data/secret.key deriva TODAS as flags. Este repo é privado e de uso
-# pessoal. Se ele virar público ou ganhar colaboradores, remova data/ do Git.
-data/labs/state/
-data/labs/logs/
-# SQLite WAL sidecar files are runtime state, not part of the tracked DB.
+# --- Dados locais (nunca versionar) ---------------------------------------
+# data/ contém o banco SQLite, o secret.key que deriva as flags e o estado dos
+# labs. Nada disso pertence ao repositório público.
+/data/
+
+# SQLite WAL sidecar files are runtime state, not part of the database file.
 *.db-shm
 *.db-wal
 

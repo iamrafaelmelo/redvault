@@ -158,7 +158,7 @@ HMAC-SHA256(data/secret.key, "flag:<slug>:<flag_key>")
 
 - A local process with the operator's UID may read `data/secret.key` if it can access the project directory. The threat model trusts local code; use a dedicated OS account if that is not acceptable.
 - A compromised lab process can read its own flags. That is by design.
-- If `secret.key` is leaked, all current flags can be derived. Rotate it by stopping the platform and replacing the file; all existing flag values change, and old submissions remain in the audit history.
+- If `secret.key` is leaked, all current flags can be derived. This is why `data/` is never committed: the repository ships without a database or master secret, and each installation generates its own on first start. Rotate it by stopping the platform and replacing the file; all existing flag values change, and old submissions remain in the audit history.
 - The database contains password hashes, session hashes, objective evidence and notes. Protect it like a credential store.
 
 ## 6. Lab process isolation
@@ -260,7 +260,7 @@ If you suspect the platform or a lab was compromised:
 
 ## 13. Reporting a platform vulnerability
 
-This is a private local project with no public security contact or bug bounty. If you find a vulnerability in the **platform core** (not an intentional lab flaw), do not publish exploit details before the owner has had a chance to fix it. Record the affected version, reproduction steps, impact and suggested fix in a private issue or note. Intentional vulnerabilities inside `labs/` are training content, not platform defects.
+This is a local study project without commercial support or a bug bounty. If you find a vulnerability in the **platform core** (not an intentional lab flaw), please open a [private security advisory](https://github.com/lunalully/redvault/security/advisories/new) with the affected version, reproduction steps, impact and a suggested fix. Intentional vulnerabilities inside `labs/` are training content, not platform defects.
 
 ## 14. References
 

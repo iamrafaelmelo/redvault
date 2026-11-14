@@ -2,6 +2,26 @@
 
 All notable changes to REDVAULT are documented here. The project follows a pragmatic version sequence; it is pre-1.0 and the content catalog is incomplete.
 
+## [1.8.0] — 2026-11-14
+
+Primeira versão pública do projeto.
+
+### Added
+
+- **Licença MIT** (`LICENSE`) para o código da plataforma, com as licenças de terceiros documentadas à parte.
+- **README em pt-BR** com os números atuais do catálogo, biblioteca e trilhas, capturas de tela reais em `docs/images/` e instruções de importação da biblioteca.
+- **Apresentação do projeto** em `docs/APRESENTACAO.md`, uma versão de leitura corrida para vitrine.
+
+### Changed
+
+- **`data/` saiu do controle de versão.** O banco SQLite, o `secret.key` que deriva as flags e o estado dos labs nunca mais são versionados; o `.gitignore` passou a ignorar `/data/` inteiro e o histórico foi reescrito para remover o que já havia sido commitado.
+- **Chave de flags rotacionada.** A primeira inicialização de uma instalação nova gera a própria chave.
+- `SECURITY.md` agora encaminha relatos de falha na plataforma para o canal privado do GitHub.
+
+### Tests
+
+- Suíte completa: **9/9 módulos, 199 testes**.
+
 ## [1.7.2] — 2026-11-14
 
 ### Fixed
@@ -25,7 +45,7 @@ All notable changes to REDVAULT are documented here. The project follows a pragm
 
 - `tests/test_platform.py`: **17 testes** (antes 14) — sessão do lab no ambiente do processo, callback registrando objetivo, concorrência de start/stop.
 - `tests/test_labs_phase3.py`: **36 testes** (antes 34).
-- Suíte completa: **9/9 módulos, 198 testes**.
+- Suíte completa: **9/9 módulos, 199 testes**.
 
 ## [1.7.1] — 2026-11-13
 
