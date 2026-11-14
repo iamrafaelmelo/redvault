@@ -2,6 +2,20 @@
 
 All notable changes to REDVAULT are documented here. The project follows a pragmatic version sequence; it is pre-1.0 and the content catalog is incomplete.
 
+## [1.7.1] — 2026-11-13
+
+### Fixed
+
+- **Termos técnicos no Learning Paths apareciam com crase literal.** Enunciados de avaliação, títulos de atividade, competências do módulo e critérios/evidências do capstone são agora renderizados por `inline_md()`: só `código` entre crases vira `<code>`, todo o resto é escapado (sem negrito, itálico ou HTML vindo do currículo). Três enunciados foram reescritos para não depender de `+`, `||` ou `*` dentro do código — o conteúdo e a resposta aceita não mudaram.
+- **Crase sem par no currículo agora falha na validação.** `_check_code_spans` em `app/lp_schema.py` rejeita enunciados, títulos, competências e critérios com crase ímpar, em vez de engolir o resto da frase na renderização.
+- Links de destino de atividade (título do documento de KB) também passam pela formatação, padronizando a exibição.
+
+### Tests
+
+- `tests/test_learning_paths.py`: **41 testes** (antes 38) — renderização inline, código no enunciado dentro da página e rejeição de crase sem par.
+- `tests/test_kb_hacktricks.py`: **10 testes** (antes 8) — verifica que os 24 documentos próprios são encontrados pelo FTS5 e pela busca da biblioteca.
+- Suíte completa: **9/9 módulos, 193 testes**.
+
 ## [1.7.0] — 2026-11-13
 
 ### Added

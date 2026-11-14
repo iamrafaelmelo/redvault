@@ -263,3 +263,33 @@ def test_sources_page_distinguishes_nc_license(client):
     page = client.get("/kb/sources")
     assert page.status_code == 200
     assert "Parcial — uso não comercial com atribuição" in page.text
+
+# ---------------------------------------------------------------------------
+# Own documents (content/kb_own) — written for REDVAULT, searchable like the rest
+# ---------------------------------------------------------------------------
+
+def test_own_documents_are_indexed_and_found_by_search(client):
+    """The 24 pt-BR docs authored for the Learning Paths must be reachable.
+
+    Seeding registers them with ``origin='own'``; the FTS5 index must return
+    each one for its own title, otherwise the curriculum theory links lead to
+    content the operator cannot find.
+    """
+    from app.kb_own import load_own_documents
+    from app.kb_search import rebuild, search
+
+    with SessionLocal() as db:
+        own = db.query(KB_Document).filter(KB_Document.origin == "own").all()
+        local = load_own_documents()
+        assert len(own) == len(local) >= 24
+        assert all(doc.language == "pt-BR" for doc in own)
+    rebuild()
+    for doc in own:
+        hits = search(doc.title, limit=20)
+        assert doc.slug in {hit["slug"] for hit in hits}, doc.slug
+
+
+def test_own_documents_are_searchable_from_the_library_page(client):
+    response = client.get("/kb", params={"q": "cadeia de custódia"})
+    assert response.status_code == 200
+    assert "own-forense-cadeia-custodia" in response.text

@@ -433,7 +433,7 @@
               "questions": [
                 {
                   "id": "q1",
-                  "prompt": "Um binário tem `cap_setuid+ep`. Qual efeito direto isso permite?",
+                  "prompt": "Um binário tem os bits `cap_setuid+ep` do arquivo. Qual efeito direto isso permite?",
                   "accepted": [
                     "setuid",
                     "mudar uid",

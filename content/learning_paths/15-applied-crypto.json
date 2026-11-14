@@ -409,7 +409,7 @@
               "questions": [
                 {
                   "id": "q1",
-                  "prompt": "O que HMAC impede que hash(chave || mensagem) não impede?",
+                  "prompt": "O que o HMAC impede que `hash(chave + mensagem)` (concatenação simples, sem segredo interno) não impede?",
                   "accepted": [
                     "ataque de extensão de comprimento",
                     "extensao de comprimento"

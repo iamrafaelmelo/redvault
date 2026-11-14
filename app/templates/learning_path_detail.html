@@ -104,7 +104,7 @@
         <div class="lp-module-grid">
           {% if module.competencies %}
           <div><span class="mono-label">COMPETÊNCIAS ESPERADAS</span>
-            <ul class="lp-bullets">{% for c in module.competencies %}<li>{{ c }}</li>{% endfor %}</ul>
+            <ul class="lp-bullets">{% for c in module.competencies %}<li>{{ inline_md(c) }}</li>{% endfor %}</ul>
           </div>
           {% endif %}
           {% if module.prerequisites %}
@@ -149,14 +149,14 @@
               <div class="lp-act-main">
                 <div class="lp-act-top">
                   <span class="lp-act-kind">{{ kind_labels.get(act.kind, act.kind)|upper }}</span>
-                  <span class="lp-act-title">{{ act.title }}</span>
+                  <span class="lp-act-title">{{ inline_md(act.title) }}</span>
                   {% if act.equipment %}<span class="lp-equip lp-equip-{{ act.equipment }}">{{ equipment_labels.get(act.equipment, act.equipment)|upper }}</span>{% endif %}
                   <span class="lp-act-state">{{ state_labels.get(st, st) }}</span>
                 </div>
                 <div class="lp-act-meta">
                   <span>{{ act.estimated_minutes }} MIN</span>
                   {% if item.target %}
-                  <a href="{{ item.target.url }}" target="_blank" rel="noopener">{{ m.icon("external", 10) }} {{ item.target.label }}</a>
+                  <a href="{{ item.target.url }}" target="_blank" rel="noopener">{{ m.icon("external", 10) }} {{ inline_md(item.target.label) }}</a>
                   {% endif %}
                   {% if act.row and act.row.score is not none %}<span class="lp-score">{{ act.row.score }}%</span>{% endif %}
                   {% if act.row and act.row.favorite %}<span class="lp-flag">{{ m.icon("bookmark", 9) }} FAVORITO</span>{% endif %}
@@ -177,7 +177,7 @@
                     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                     {% for q in act.answer_key.questions %}
                     <label class="field">
-                      <span>{{ loop.index }}. {{ q.prompt }}</span>
+                      <span>{{ loop.index }}. {{ inline_md(q.prompt) }}</span>
                       <input type="text" name="q_{{ q.id }}" autocomplete="off" placeholder="Sua resposta">
                     </label>
                     {% endfor %}
@@ -253,10 +253,10 @@
       </div>
       <div class="lp-capstone-grid">
         <div><span class="mono-label">CRITÉRIOS DE SUCESSO</span>
-          <ul class="lp-bullets">{% for c in cap.success_criteria %}<li>{{ c }}</li>{% endfor %}</ul>
+          <ul class="lp-bullets">{% for c in cap.success_criteria %}<li>{{ inline_md(c) }}</li>{% endfor %}</ul>
         </div>
         <div><span class="mono-label">EVIDÊNCIAS EXIGIDAS</span>
-          <ul class="lp-bullets">{% for c in cap.evidence %}<li>{{ c }}</li>{% endfor %}</ul>
+          <ul class="lp-bullets">{% for c in cap.evidence %}<li>{{ inline_md(c) }}</li>{% endfor %}</ul>
         </div>
         <div style="grid-column: 1 / -1"><span class="mono-label">AVALIAÇÃO TÉCNICA</span><div class="lp-md">{{ md(cap.grading_md) }}</div></div>
       </div>

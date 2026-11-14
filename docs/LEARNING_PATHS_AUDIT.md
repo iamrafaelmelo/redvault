@@ -324,3 +324,45 @@ procedimento passou a ser: consultar o slug por `LIKE` antes de escrever a ativi
 currículo e interface, e são a garantia de que um rótulo em inglês não entra sem falhar.
 
 Suíte completa: **9/9 módulos, 188 testes passando**.
+
+## 8. Pós-entrega — formatação e busca (v1.7.1)
+
+Dois ajustes que ficaram pendentes na entrega da Fase 3.
+
+### Código em enunciados e listas
+
+Os textos curtos do currículo (enunciado de questão, título de atividade, competências do
+módulo, critérios e evidências do capstone) usavam crase para marcar termos técnicos, mas
+eram impressos como texto puro — a tela mostrava `` `sudo -l` `` com as crases. Passam agora
+por `inline_md()` (`app/lp_web.py`), um renderizador deliberadamente mínimo:
+
+- só `código` entre crases vira `<code>`; nada de negrito, itálico, títulos ou listas;
+- o resto é escapado — o currículo é dado, não HTML;
+- crase sem par **não** é adivinhada como código: o validador rejeita o currículo
+  (`_check_code_spans` em `app/lp_schema.py`), porque uma crase aberta engoliria o resto da
+  frase.
+
+Três enunciados foram reescritos porque usavam asterisco, `+` ou `||` dentro do código
+(`cap_setuid+ep`, `${7*7}`, `hash(chave || mensagem)`); o conteúdo técnico está preservado e a
+resposta aceita não mudou.
+
+### Documentos próprios na busca
+
+Os 24 documentos próprios são gravados com `origin='own'` no seed e entram no índice FTS5
+como qualquer outro. A verificação antes pendente foi feita: cada um dos 24 documentos é
+encontrado pela própria busca e o termo "cadeia de custódia" traz o documento de forense na
+biblioteca. Dois testes guardam isso (`tests/test_kb_hacktricks.py`), para que um documento
+que exista na trilha e não apareça na busca falhe a suíte.
+
+### Testes
+
+`tests/test_learning_paths.py` — **41 testes** (antes 38):
+`test_inline_markdown_renders_code_but_not_emphasis`,
+`test_assessment_prompts_render_code_in_the_page`,
+`test_question_prompts_reject_unbalanced_code_spans`.
+`tests/test_kb_hacktricks.py` — **10 testes** (antes 8):
+`test_own_documents_are_indexed_and_found_by_search`,
+`test_own_documents_are_searchable_from_the_library_page`.
+
+Suíte completa: **9/9 módulos, 193 testes passando**. As 18 páginas de trilha foram abertas
+numa instância local e nenhuma exibiu crase literal.

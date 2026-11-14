@@ -42,7 +42,7 @@ from app.lp_progress import (  # noqa: E402
 )
 from app.lp_schema import CurriculumError, ValidationContext, collect_stats, validate_curriculum  # noqa: E402
 from app.lp_seed import build_context, duplicate_path, load_curriculum_files, validate_all  # noqa: E402
-from app.lp_web import grade_activity  # noqa: E402
+from app.lp_web import grade_activity, inline_md  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models import User  # noqa: E402
 
@@ -617,6 +617,60 @@ def test_pages_render(client):
         response = client.get(url)
         assert response.status_code == 200, url
         assert "Internal Server Error" not in response.text, url
+
+
+def test_inline_markdown_renders_code_but_not_emphasis():
+    assert str(inline_md("Rode `sudo -l` e veja.")) == "Rode <code>sudo -l</code> e veja."
+    # Windows paths keep their backslashes; nothing is decoded as an entity.
+    assert str(inline_md(r"Grave em `C:\Windows\System32`.")) == r"Grave em <code>C:\Windows\System32</code>."
+    # A literal asterisk is a number here, not the start of an italic run.
+    assert "<em>" not in str(inline_md("O parâmetro vira `${7*7}` na resposta."))
+    assert "<code>${7*7}</code>" in str(inline_md("O parâmetro vira `${7*7}` na resposta."))
+    # Curriculum strings are data, never markup.
+    assert "<script>" not in str(inline_md("a <script>b</script>"))
+    assert inline_md(None) == ""
+    # An unmatched backtick stays literal instead of swallowing the sentence
+    # (the validator rejects this in curricula; the renderer never guesses).
+    assert str(inline_md("`sem par")) == "`sem par"
+
+
+def test_assessment_prompts_render_code_in_the_page(client):
+    with SessionLocal() as db:
+        act = db.scalar(select(LearningActivity).where(LearningActivity.slug == "lx-m0-u2-assess"))
+        assert act is not None, "avaliação de Linux não semeada neste banco"
+        act_id = act.id
+    page = client.get(f"/learning-paths/linux-security?focus={act_id}").text
+    assert "<code>root:root</code>" in page
+    assert "<code>alice</code>" in page
+    assert "`root:root`" not in page
+
+
+def test_question_prompts_reject_unbalanced_code_spans():
+    ctx = ValidationContext(kb_slugs=set(), academy_slugs=set(), challenge_slugs=set(),
+                            challenge_kind={}, challenge_category={}, challenge_tags={}, source_names=set())
+
+    def wrapper(prompt: str) -> dict:
+        return {
+            "slug": "spans-test", "title": "Spans", "summary": "x", "entry_level": "a",
+            "exit_level": "b", "estimated_hours": 1,
+            "modules": [{"slug": "m", "title": "M", "objective": "o", "units": [{
+                "slug": "u", "title": "U",
+                "activities": [
+                    {"slug": "a", "kind": "assessment", "title": "A", "questions": [
+                        {"id": "q1", "prompt": prompt, "accepted": ["lista"]},
+                    ]},
+                    {"slug": "p", "kind": "project", "title": "Projeto", "body_md": "Entregar."},
+                ],
+            }]}],
+            "capstone": {"objective": "o", "success_criteria": ["c"], "evidence": ["e"], "grading_md": "g"},
+        }
+
+    with pytest.raises(CurriculumError, match="crase sem par"):
+        validate_curriculum(wrapper("O que `sudo -l faz?"), ctx, "test")
+    # A closed pair is accepted, including a literal asterisk inside it.
+    ctx = ValidationContext(kb_slugs=set(), academy_slugs=set(), challenge_slugs=set(),
+                            challenge_kind={}, challenge_category={}, challenge_tags={}, source_names=set())
+    validate_curriculum(wrapper("O que `${7*7}` faz?"), ctx, "test")
 
 
 def test_own_kb_documents_are_linked_and_translated(client):

@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy import func, select
+from markupsafe import Markup
 from sqlalchemy.orm import Session
 
 from .deps import get_db
@@ -237,7 +238,7 @@ async def learning_path_recommendations(request: Request, db: Session = Depends(
         return redirect
     recs = recommend(db, user.id, limit=40)
     return render(request, db, "learning_path_recommendations.html", user, "learning_paths",
-                  recs=recs, rec_labels=RECOMMENDATION_LABELS)
+                  recs=recs, rec_labels=RECOMMENDATION_LABELS, inline_md=inline_md)
 
 
 @router.get("/learning-paths/{slug}", response_class=HTMLResponse)
@@ -302,14 +303,19 @@ async def learning_path_detail(
 
     cert = get_certificate(db, user.id, path.id)
     can_certify = certificate_ready(path, pp)
+    # ``focus`` scrolls to an activity; it must belong to *this* path, otherwise
+    # any id would render the page in an odd "focused" state.
     focus_act = db.get(LearningActivity, focus) if focus else None
+    focus_ids = {a["act"].id for acts in activities_by_unit.values() for a in acts}
+    if focus_act is not None and focus_act.id not in focus_ids:
+        focus_act = None
 
     return render(
         request, db, "learning_path_detail.html", user, "learning_paths",
         path=path, pp=pp, modules=unit_states, prereqs=prereqs, unlocked=unlocked,
         cert=cert, can_certify=can_certify, state_labels=STATE_LABELS,
         kind_labels=KIND_LABELS, focus=focus_act,
-        equipment_labels=EQUIPMENT_LABELS,
+        equipment_labels=EQUIPMENT_LABELS, inline_md=inline_md,
     )
 
 
@@ -385,6 +391,30 @@ def _normalise(value: str) -> str:
     value = value.strip().lower()
     value = re.sub(r"\s+", " ", value)
     return value
+
+
+_INLINE_CODE = re.compile(r"`([^`]+)`")
+
+
+def inline_md(value: str | None) -> Markup:
+    """Render a short single-line string as inline Markdown.
+
+    Curriculum strings (question prompts, titles) use only ``code`` spans for
+    technical terms — ``sudo -l``, ``C:\\Windows`` — so this helper is
+    deliberately narrower than :func:`deps.render_markdown`: no headings, no
+    emphasis, and literal asterisks stay literal (``..5j&#42;`` is a number, not
+    the start of an italic run). HTML from the curriculum is escaped.
+    """
+    if not value:
+        return Markup("")
+    out: list[Markup] = []
+    for index, part in enumerate(_INLINE_CODE.split(str(value))):
+        if index % 2:
+            # Inside backticks the text is code: it must survive verbatim.
+            out.append(Markup("<code>{}</code>").format(part))
+        else:
+            out.append(Markup.escape(part))
+    return Markup("".join(out))
 
 
 def grade_activity(act: LearningActivity, answers: dict[str, str]) -> tuple[int, list[dict]]:

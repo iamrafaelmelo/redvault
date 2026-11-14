@@ -8,6 +8,7 @@ or challenge. Missing *content* is allowed only when declared explicitly as a
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -58,6 +59,7 @@ def validate_activity(act: dict, where: str, ctx: ValidationContext) -> list[str
     """Validate one activity. Returns a list of non-fatal warnings."""
     warnings: list[str] = []
     _require_keys(act, ("slug", "kind", "title"), where)
+    _check_code_spans(where, "title", act["title"])
     kind = act["kind"]
     if kind not in VALID_KINDS:
         raise CurriculumError(f"{where}: kind inválido '{kind}' (válidos: {sorted(VALID_KINDS)})")
@@ -100,6 +102,7 @@ def validate_activity(act: dict, where: str, ctx: ValidationContext) -> list[str
         _require_keys(q, ("id", "prompt"), f"{where}.questions")
         if "answer" not in q and "accepted" not in q:
             raise CurriculumError(f"{where}.questions[{q.get('id')}]: questão sem 'answer'/'accepted'")
+        _check_code_spans(where, "questions", q.get("prompt", ""))
 
     if "quiz" in act and not isinstance(act["quiz"], bool):
         raise CurriculumError(f"{where}: 'quiz' deve ser booleano")
@@ -110,6 +113,12 @@ def validate_activity(act: dict, where: str, ctx: ValidationContext) -> list[str
             f"{where}: equipment inválido '{equipment}' (válidos: {sorted(VALID_EQUIPMENT)})"
         )
     return warnings
+
+
+def _check_code_spans(where: str, label: str, value: str) -> None:
+    """Short curriculum strings render through ``lp_web.inline_md``."""
+    if str(value).count("`") % 2:
+        raise CurriculumError(f"{where} > {label}: crase sem par (o texto depois dela viraria código): {value!r}")
 
 
 def validate_curriculum(data: dict, ctx: ValidationContext, filename: str = "") -> list[str]:
@@ -139,6 +148,8 @@ def validate_curriculum(data: dict, ctx: ValidationContext, filename: str = "") 
         seen_module_slugs.add(mod["slug"])
         if not mod["units"]:
             raise CurriculumError(f"{mwhere}: módulo sem disciplinas (units)")
+        for competency in mod.get("competencies", []) or []:
+            _check_code_spans(mwhere, "competencies", competency)
 
         seen_unit_slugs: set[str] = set()
         for ui, unit in enumerate(mod["units"], 1):
@@ -168,6 +179,9 @@ def validate_curriculum(data: dict, ctx: ValidationContext, filename: str = "") 
         raise CurriculumError(f"{where}: capstone declarado mas nenhuma atividade 'project' o representa")
     if not cap["success_criteria"]:
         raise CurriculumError(f"{where} > capstone: sem critérios de sucesso objetivos")
+    for field_name in ("success_criteria", "evidence"):
+        for item in cap[field_name]:
+            _check_code_spans(f"{where} > capstone", field_name, item)
     if cap.get("challenge_slug") and cap["challenge_slug"] not in ctx.challenge_slugs:
         raise CurriculumError(f"{where} > capstone: challenge_slug '{cap['challenge_slug']}' não existe")
 
