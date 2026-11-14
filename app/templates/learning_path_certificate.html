@@ -1,45 +1,45 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
 {% block title %}Certificado · {{ path.title }}{% endblock %}
-{% block crumb %}LEARNING PATHS / CERTIFICADO{% endblock %}
+{% block crumb %}Progressão / Certificado{% endblock %}
 {% block page_title %}Registro de conclusão{% endblock %}
 
 {% block content %}
-<a class="detail-back" href="/learning-paths/{{ path.slug }}">{{ m.icon("arrow-right", 12, "rot180") }} VOLTAR À TRILHA</a>
+<a class="detail-back" href="/learning-paths/{{ path.slug }}">{{ m.icon("arrow-left", 13) }} Voltar à trilha</a>
 
-<div class="lp-cert-sheet">
-  <div class="lp-cert-frame">
-    <div class="lp-cert-head">
-      <span class="lp-cert-brand">RED<span>VAULT</span></span>
-      <span class="mono-label">REGISTRO PRIVADO DE ESTUDOS</span>
+<div class="cert-sheet">
+  <div class="cert-frame">
+    <div class="cert-head">
+      <span class="cert-brand">RED<span>VAULT</span></span>
+      <span class="mono-label">Registro privado de estudos</span>
     </div>
 
-    <div class="lp-cert-body">
-      <span class="eyebrow">CERTIFICADO INTERNO DE CONCLUSÃO</span>
-      <div class="lp-cert-name">{{ user_obj.display_name }}</div>
-      <p class="lp-cert-text">
+    <div class="cert-body">
+      <span class="eyebrow">Certificado interno de conclusão</span>
+      <div class="cert-name">{{ user_obj.display_name }}</div>
+      <p class="cert-text">
         concluiu o programa de formação técnica
         <strong>{{ path.title }}</strong>
         com carga registrada de aproximadamente <strong>{{ cert.hours_logged }} horas</strong>
         e <strong>{{ cert.activities_completed }} atividades</strong> verificadas na plataforma.
       </p>
-      <div class="lp-cert-meta">
-        <div><span class="mono-label">SERIAL</span><strong>{{ cert.serial }}</strong></div>
-        <div><span class="mono-label">EMITIDO</span><strong>{{ cert.issued_at.strftime("%Y-%m-%d") }}</strong></div>
-        <div><span class="mono-label">TRILHA</span><strong>{{ path.slug }}</strong></div>
-        <div><span class="mono-label">NÍVEL DE SAÍDA</span><strong>{{ path.exit_level }}</strong></div>
+      <div class="cert-meta">
+        <div><span class="mono-label">Serial</span><strong>{{ cert.serial }}</strong></div>
+        <div><span class="mono-label">Emitido</span><strong>{{ cert.issued_at.strftime("%Y-%m-%d") }}</strong></div>
+        <div><span class="mono-label">Trilha</span><strong>{{ path.slug }}</strong></div>
+        <div><span class="mono-label">Nível de saída</span><strong>{{ path.exit_level }}</strong></div>
       </div>
     </div>
 
-    <div class="lp-cert-foot">
-      <span>EMITIDO LOCALMENTE PELA PLATAFORMA · {{ now.strftime("%Y-%m-%d %H:%M UTC") }}</span>
-      <span>{{ cert.serial }}</span>
+    <div class="cert-foot">
+      <span>Emitido localmente pela plataforma · {{ now.strftime("%Y-%m-%d %H:%M UTC") }}</span>
+      <span class="mono">{{ cert.serial }}</span>
     </div>
   </div>
 </div>
 
-<div class="lp-disclaimer">
-  {{ m.icon("alert", 14) }}
+<div class="disclaimer">
+  {{ m.icon("alert", 16) }}
   <div>
     <strong>Este é um registro privado de estudos.</strong>
     Não é uma certificação profissional, não é reconhecido por organismo certificador e não substitui
@@ -48,8 +48,8 @@
   </div>
 </div>
 
-<div class="btn-row" style="margin-top:16px">
-  <button class="btn btn-sm" type="button" onclick="window.print()">{{ m.icon("copy", 12) }} IMPRIMIR / SALVAR PDF</button>
-  <a class="btn btn-sm" href="/learning-paths/{{ path.slug }}">{{ m.icon("route", 12) }} VOLTAR À TRILHA</a>
+<div class="btn-row" style="margin-top:var(--space-4)">
+  <button class="btn btn-sm" type="button" onclick="window.print()">{{ m.icon("copy", 13) }} Imprimir / salvar PDF</button>
+  <a class="btn btn-sm btn-ghost" href="/learning-paths/{{ path.slug }}">{{ m.icon("route", 13) }} Voltar à trilha</a>
 </div>
 {% endblock %}

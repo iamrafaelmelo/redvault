@@ -5,51 +5,57 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#101116">
   {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
   <title>{% block title %}REDVAULT{% endblock %} · REDVAULT</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/css/fonts.css">
+  <link rel="stylesheet" href="/static/css/ds.css">
+  <link rel="stylesheet" href="/static/css/ui.css">
+  <link rel="stylesheet" href="/static/css/learning_paths.css">
   <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
 </head>
 <body class="lab-mode" data-page="{{ active }}" {% block body_attrs %}{% endblock %}>
 
-  <div class="lab-topbar">
+  <header class="lab-topbar">
     <div class="lab-topbar-left">
-      <a href="/" class="lab-brand" aria-label="Voltar ao painel">
+      <a href="/" class="brand lab-brand" aria-label="Voltar ao painel">
         <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 40 40" width="26" height="26" fill="none">
-            <path d="M20 2 35 10.5v19L20 38 5 29.5v-19L20 2Z" stroke="currentColor" stroke-width="1.5"/>
-            <circle cx="20" cy="20" r="7.5" stroke="currentColor" stroke-width="1.5"/>
-            <circle cx="20" cy="20" r="2.2" fill="currentColor"/>
+          <svg viewBox="0 0 40 40" width="22" height="22" fill="none">
+            <path d="M20 2 35 10.5v19L20 38 5 29.5v-19L20 2Z" stroke="currentColor" stroke-width="2"/>
+            <circle cx="20" cy="20" r="7" stroke="currentColor" stroke-width="2"/>
+            <circle cx="20" cy="20" r="2.4" fill="currentColor"/>
           </svg>
         </span>
-        <strong>RED<span>VAULT</span></strong>
+        <span class="brand-text"><strong>RED<span>VAULT</span></strong></span>
       </a>
       <div class="lab-topbar-title">
-        <span class="crumb">{% block crumb %}{{ "MÁQUINA" if challenge.kind != "challenge" else "DESAFIO" }} / {{ challenge.category.name|upper }}{% endblock %}</span>
+        <span class="crumb">{% block crumb %}{{ "Máquina" if challenge.kind != "challenge" else "Desafio" }} / {{ challenge.category.name }}{% endblock %}</span>
         <h1>{% block page_title %}{{ challenge.title }}{% endblock %}</h1>
       </div>
     </div>
     <div class="lab-topbar-right">
       {% if active_lab_count %}
       <a class="lab-pill is-live" href="/environments" title="Ambientes de lab ativos">
-        <span class="status-dot"></span><span>{{ active_lab_count }} LAB{% if active_lab_count != 1 %}S{% endif %}</span>
+        <span class="status-dot"></span><span>{{ active_lab_count }} lab{% if active_lab_count != 1 %}s{% endif %}</span>
       </a>
       {% endif %}
       <a class="btn btn-ghost btn-sm" href="/{{ 'machines' if challenge.kind != 'challenge' else 'challenges' }}">
-        {{ m.icon("arrow-right", 12, "rot180") }} {{ "MÁQUINAS" if challenge.kind != "challenge" else "DESAFIOS" }}
+        {{ m.icon("arrow-left", 12) }} {{ "Máquinas" if challenge.kind != "challenge" else "Desafios" }}
       </a>
-      <a class="btn btn-sm" href="/">{{ m.icon("dashboard", 12) }} PAINEL</a>
+      <a class="btn btn-sm" href="/">{{ m.icon("dashboard", 12) }} Painel</a>
     </div>
-  </div>
+  </header>
 
   <main class="lab-content">
     {% if flashes %}
     <div class="flash-stack">
       {% for flash in flashes %}
-      <div class="flash flash-{{ flash.kind }}">
-        {{ m.icon("check" if flash.kind == "ok" else "alert", 16) }}
+      <div class="flash flash-{{ flash.kind }}" role="status">
+        {{ m.icon("check-circle" if flash.kind == "ok" else "alert", 16) }}
         <span>{{ flash.message }}</span>
-        <button class="flash-close" aria-label="Fechar">{{ m.icon("x", 14) }}</button>
+        <button class="flash-close" aria-label="Fechar aviso">{{ m.icon("x", 14) }}</button>
       </div>
       {% endfor %}
     </div>

@@ -1,20 +1,20 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
-{% block title %}Recomendações · Learning Paths{% endblock %}
-{% block crumb %}LEARNING PATHS / RECOMENDAÇÕES{% endblock %}
+{% block title %}Recomendações · Trilhas{% endblock %}
+{% block crumb %}Progressão / Recomendações{% endblock %}
 {% block page_title %}O que estudar agora{% endblock %}
 
 {% block content %}
 <div class="page-head">
   <div>
-    <span class="eyebrow">CALCULADO DO SEU PROGRESSO REAL</span>
+    <span class="eyebrow">Calculado do seu progresso real</span>
     <h2>Próximos passos, sem pular pré-requisitos.</h2>
     <p>
       A ordem considera módulos concluídos, trilhas bloqueadas por pré-requisito e itens que você
       marcou para revisão. Conteúdo avançado não aparece enquanto a base necessária estiver pendente.
     </p>
   </div>
-  <a class="btn" href="/learning-paths">{{ m.icon("route", 13) }} VER TRILHAS</a>
+  <a class="btn" href="/learning-paths">{{ m.icon("route", 14) }} Ver trilhas</a>
 </div>
 
 {% if recs %}
@@ -29,6 +29,6 @@
   {% endfor %}
 </div>
 {% else %}
-{{ m.empty_state("bolt", "Sem recomendações ainda", "Conclua algumas atividades numa trilha para que o motor possa sugerir o próximo passo.", "/learning-paths", "ABRIR TRILHAS") }}
+{{ m.empty_state("bolt", "Sem recomendações ainda", "Conclua algumas atividades numa trilha para que o motor possa sugerir o próximo passo.", "/learning-paths", "Abrir trilhas") }}
 {% endif %}
 {% endblock %}

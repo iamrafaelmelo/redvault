@@ -1,75 +1,80 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
 {% block title %}{{ path.title }}{% endblock %}
-{% block crumb %}PROGRESSÃO / {{ path.title|upper }}{% endblock %}
+{% block crumb %}Progressão / {{ path.title }}{% endblock %}
 {% block page_title %}{{ path.title }}{% endblock %}
 
 {% block content %}
-<a class="detail-back" href="/paths">{{ m.icon("arrow-right", 12, "rot180") }} TODAS AS TRILHAS</a>
+<a class="detail-back" href="/paths">{{ m.icon("arrow-left", 13) }} Todas as trilhas</a>
 
-<div class="machine-hero">
-  <div class="path-detail-summary">
-    <div class="meta-row" style="margin-bottom:10px">
+<section class="path-hero">
+  <div class="path-hero-copy">
+    <div class="meta-row">
       {{ m.difficulty_badge(path.difficulty, difficulty_labels[path.difficulty]) }}
-      <span class="tag">~{{ path.estimated_hours }}h estimadas</span>
+      <span class="tag">{{ m.icon("clock", 11) }} ~{{ path.estimated_hours }}h estimadas</span>
       <span class="tag">{{ progress.total }} alvos</span>
     </div>
-    <span class="eyebrow">TRILHA DE APRENDIZADO / {{ path.slug|upper }}</span>
+    <span class="eyebrow">Trilha de aprendizado</span>
     <h2>{{ path.title }}</h2>
     <p>{{ path.description }}</p>
     {% if prereq_paths %}
     <div class="path-prereqs">
-      <span class="mono-label" style="margin-right:5px">PRÉ-REQUISITOS</span>
+      <span class="mono-label">Pré-requisitos</span>
       {% for prereq in prereq_paths %}
-      <a class="tag red" href="/paths/{{ prereq.slug }}">{{ prereq.title }} {{ m.icon("arrow-right", 10) }}</a>
+      <a class="badge badge--danger" href="/paths/{{ prereq.slug }}">{{ prereq.title }} {{ m.icon("arrow-right", 10) }}</a>
       {% endfor %}
     </div>
     {% endif %}
   </div>
-  <div class="machine-hero-stats">
-    <div class="machine-hero-stat"><strong>{{ progress.completed }}/{{ progress.total }}</strong><span>CONCLUÍDOS</span></div>
-    <div class="machine-hero-stat"><strong>{{ progress.percent }}%</strong><span>PROGRESSO</span></div>
-    <div class="machine-hero-stat"><strong>{{ progress.total - progress.completed }}</strong><span>RESTANTES</span></div>
-  </div>
-</div>
-
-<div style="margin-bottom:20px">
-  <div class="path-progress-top"><span>PROGRESSO DA TRILHA</span><span>{{ progress.percent }}%</span></div>
-  <div class="bar {% if progress.percent == 100 %}bar-green{% endif %}"><span style="width: {{ progress.percent }}%"></span></div>
-</div>
-
-<div class="path-route">
-  <div class="path-route-head">
-    <span class="mono-label">SEQUÊNCIA DE ALVOS</span>
-    <span class="mono-label">{{ progress.completed }}/{{ progress.total }} CONCLUÍDOS</span>
-  </div>
-  {% for row in items %}
-  {% set challenge = row.challenge %}
-  <div class="path-step {% if row.done %}done{% endif %}">
-    <span class="step-number">{% if row.done %}✓{% else %}{{ "%02d"|format(loop.index) }}{% endif %}</span>
-    <div class="step-main">
-      <strong><a href="/{% if challenge.kind == 'challenge' %}challenges{% else %}machines{% endif %}/{{ challenge.slug }}">{{ challenge.title }}</a></strong>
-      <small>{{ challenge.category.name }} · {{ difficulty_labels[challenge.difficulty] }} · {{ challenge.xp }} XP · {{ challenge.estimated_minutes }} min</small>
+  <div class="path-hero-side">
+    <div class="path-ring">
+      {{ m.progress_ring(progress.percent) }}
     </div>
-    <div class="step-side">
-      <span class="step-status {% if row.done %}done{% elif row.progress and row.progress.status == 'in_progress' %}progress{% endif %}">
-        {% if row.done %}CONCLUÍDO{% elif row.progress and row.progress.status == 'in_progress' %}EM ANDAMENTO{% else %}PENDENTE{% endif %}
-      </span>
-      {{ m.icon("chevron", 14) }}
+    <div class="path-ring-copy">
+      <strong>{{ progress.completed }}/{{ progress.total }}</strong>
+      <span>alvos concluídos</span>
+    </div>
+    <div class="path-hero-stats">
+      <div><strong>{{ progress.percent }}%</strong><span>progresso</span></div>
+      <div><strong>{{ progress.total - progress.completed }}</strong><span>restantes</span></div>
     </div>
   </div>
-  {% endfor %}
-</div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <div><span class="eyebrow">Sequência de alvos</span><h3>Percurso da trilha</h3></div>
+    <span class="mono-label">{{ progress.completed }}/{{ progress.total }} concluídos</span>
+  </div>
+  <ol class="path-route">
+    {% for row in items %}
+    {% set challenge = row.challenge %}
+    <li class="path-step {% if row.done %}done{% elif row.progress and row.progress.status == 'in_progress' %}progress{% endif %}">
+      <span class="step-number" aria-hidden="true">{% if row.done %}{{ m.icon("check", 12) }}{% else %}{{ "%02d"|format(loop.index) }}{% endif %}</span>
+      <div class="step-main">
+        <strong><a href="/{% if challenge.kind == 'challenge' %}challenges{% else %}machines{% endif %}/{{ challenge.slug }}">{{ challenge.title }}</a></strong>
+        <small>{{ challenge.category.name }} · {{ difficulty_labels[challenge.difficulty] }} · {{ challenge.xp }} XP · {{ challenge.estimated_minutes }} min</small>
+      </div>
+      <div class="step-side">
+        <span class="step-status">
+          {% if row.done %}Concluído{% elif row.progress and row.progress.status == 'in_progress' %}Em andamento{% else %}Pendente{% endif %}
+        </span>
+        <a class="icon-btn" href="/{% if challenge.kind == 'challenge' %}challenges{% else %}machines{% endif %}/{{ challenge.slug }}" aria-label="Abrir {{ challenge.title }}">{{ m.icon("chevron", 14) }}</a>
+      </div>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
 
 {% if related %}
 <section class="section">
-  <div class="section-head"><div><span class="eyebrow">CONTINUE EXPLORANDO</span><h3>Trilhas relacionadas</h3></div><a class="link-arrow" href="/paths">TODAS AS TRILHAS</a></div>
+  {{ m.section_head("Trilhas relacionadas", "Continue explorando", "/paths", "Todas as trilhas") }}
   <div class="grid-3">
     {% for other in related %}
     <a class="card card-pad card-hover" href="/paths/{{ other.slug }}">
-      <div class="mono-label">{{ other.estimated_hours }}H · {{ difficulty_labels[other.difficulty] }}</div>
-      <h3 style="font-size:14px;margin:7px 0 5px">{{ other.title }}</h3>
-      <p class="muted" style="font-size:11px;margin:0">{{ other.description[:110] }}…</p>
+      <span class="mono-label">{{ other.estimated_hours }}h · {{ difficulty_labels[other.difficulty] }}</span>
+      <h3 class="t-h4" style="margin:var(--space-2) 0 var(--space-1)">{{ other.title }}</h3>
+      <p class="t-sm">{{ other.description[:110] }}…</p>
     </a>
     {% endfor %}
   </div>

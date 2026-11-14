@@ -1,41 +1,57 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
 {% block title %}Perfil{% endblock %}
-{% block crumb %}OPERADOR / PERFIL{% endblock %}
+{% block crumb %}Operador / Perfil{% endblock %}
 {% block page_title %}Perfil do operador{% endblock %}
 
 {% block content %}
 <section class="profile-head">
   <span class="avatar avatar-lg">{{ user.display_name[:1]|upper }}</span>
   <div class="profile-identity">
-    <span class="eyebrow">DOSSIÊ DO OPERADOR</span>
+    <span class="eyebrow">Dossiê do operador</span>
     <h2>{{ user.display_name }}</h2>
-    <div class="handle">@{{ user.username }} · ATIVO DESDE {{ user.created_at.strftime("%d %b %Y")|upper }}</div>
+    <div class="handle">@{{ user.username }} · ativo desde {{ user.created_at.strftime("%d %b %Y") }}</div>
     <div class="meta-row">
-      <span class="tag red">NÍVEL {{ stats.level }} · {{ stats.level_title|upper }}</span>
-      <span class="tag">{{ stats.completed_items }} ALVOS CONCLUÍDOS</span>
-      <span class="tag">{{ stats.no_hint_solves }} SEM HINT</span>
+      <span class="badge badge--accent tone-auth">{{ m.icon("award", 11) }} Nível {{ stats.level }} · {{ stats.level_title }}</span>
+      <span class="tag">{{ stats.completed_items }} alvos concluídos</span>
+      <span class="tag">{{ stats.no_hint_solves }} sem hint</span>
     </div>
   </div>
   <div class="profile-xp">
-    <strong>{{ stats.xp }} <span style="font-size:10px;color:var(--dim)">XP</span></strong>
-    <span>{{ stats.level_title|upper }} · {{ stats.level_percent }}% PARA O PRÓXIMO</span>
-    <div class="bar"><span style="width: {{ stats.level_percent }}%"></span></div>
-    <span>{{ stats.level_floor }} → {{ stats.level_next if stats.level_next > stats.level_floor else "MÁX" }}</span>
+    <strong>{{ stats.xp }} <span class="t-xs">XP</span></strong>
+    <span>{{ stats.level_percent }}% para o próximo nível</span>
+    <div class="bar bar-xp"><span style="width: {{ stats.level_percent }}%"></span></div>
+    <span class="mono">{{ stats.level_floor }} → {{ stats.level_next if stats.level_next > stats.level_floor else "máx" }}</span>
   </div>
 </section>
 
-<div class="stats-grid">
-  <div class="stat-card"><div class="stat-label"><span>DESAFIOS</span>{{ m.icon("target", 12) }}</div><div class="stat-value">{{ stats.completed_challenges }}/{{ stats.total_challenges }}</div><div class="stat-foot">{{ stats.completion_rate }}% de conclusão geral</div></div>
-  <div class="stat-card green"><div class="stat-label"><span>MÁQUINAS</span>{{ m.icon("skull", 12) }}</div><div class="stat-value">{{ stats.completed_machines }}/{{ stats.total_machines }}</div><div class="stat-foot">alvos com múltiplas flags</div></div>
-  <div class="stat-card amber"><div class="stat-label"><span>PRECISÃO DE FLAGS</span>{{ m.icon("flag", 12) }}</div><div class="stat-value">{{ stats.accuracy }}%</div><div class="stat-foot">{{ stats.submissions_correct }}/{{ stats.submissions_total }} aceitas</div></div>
-  <div class="stat-card"><div class="stat-label"><span>TEMPO NO ALVO</span>{{ m.icon("clock", 12) }}</div><div class="stat-value">{{ duration(stats.time_spent_seconds) }}</div><div class="stat-foot">média de {{ stats.avg_minutes }}m por resolução</div></div>
+<div class="stat-grid">
+  <div class="stat-tile tone-auth">
+    <div class="stat-top"><span class="stat-label">Desafios</span><span class="stat-icon">{{ m.icon("target", 15) }}</span></div>
+    <div class="stat-value">{{ stats.completed_challenges }}<small>/{{ stats.total_challenges }}</small></div>
+    <div class="stat-foot"><span>{{ stats.completion_rate }}% de conclusão geral</span></div>
+  </div>
+  <div class="stat-tile tone-upload">
+    <div class="stat-top"><span class="stat-label">Máquinas</span><span class="stat-icon">{{ m.icon("server", 15) }}</span></div>
+    <div class="stat-value">{{ stats.completed_machines }}<small>/{{ stats.total_machines }}</small></div>
+    <div class="stat-foot"><span>alvos com múltiplas flags</span></div>
+  </div>
+  <div class="stat-tile tone-sqli">
+    <div class="stat-top"><span class="stat-label">Precisão de flags</span><span class="stat-icon">{{ m.icon("flag", 15) }}</span></div>
+    <div class="stat-value">{{ stats.accuracy }}<small>%</small></div>
+    <div class="stat-foot"><span>{{ stats.submissions_correct }}/{{ stats.submissions_total }} aceitas</span></div>
+  </div>
+  <div class="stat-tile tone-api">
+    <div class="stat-top"><span class="stat-label">Tempo no alvo</span><span class="stat-icon">{{ m.icon("clock", 15) }}</span></div>
+    <div class="stat-value">{{ duration(stats.time_spent_seconds) }}</div>
+    <div class="stat-foot"><span>média de {{ stats.avg_minutes }} min por resolução</span></div>
+  </div>
 </div>
 
-<div class="profile-grid" style="margin-top:16px">
-  <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+<div class="profile-grid" id="progresso" style="margin-top:var(--space-4)">
+  <div class="dash-col">
     <section class="panel">
-      <div class="panel-head"><div><span class="eyebrow">ÚLTIMOS 14 DIAS</span><h3>Ritmo de resoluções</h3></div><span class="mono-label">{{ stats.completed_items }} NO TOTAL</span></div>
+      <div class="panel-head"><div><span class="eyebrow">Últimos 14 dias</span><h3>Ritmo de resoluções</h3></div><span class="mono-label">{{ stats.completed_items }} no total</span></div>
       <div class="panel-body">
         <div class="chart">
           {% set max_count = stats.activity_14d|map(attribute="count")|max %}
@@ -50,29 +66,33 @@
     </section>
 
     <section class="panel">
-      <div class="panel-head"><div><span class="eyebrow">MAPA DE CAPACIDADES</span><h3>Categorias</h3></div><span class="mono-label">{{ stats.mastered_categories|length }} DOMINADAS</span></div>
+      <div class="panel-head"><div><span class="eyebrow">Mapa de capacidades</span><h3>Proficiência por categoria</h3></div><span class="mono-label">{{ stats.mastered_categories|length }} dominadas</span></div>
       <div class="panel-body">
-        <div class="category-bars">
+        <div class="cap-list">
           {% for cat in stats.category_stats %}
-          <div class="category-bar-row">
-            <div class="name">{{ m.category_icon(cat.slug, 14) }} {{ cat.name }}</div>
-            <div class="pct">{{ cat.completed }}/{{ cat.total }} · {{ cat.percent }}%</div>
+          <div class="cap-row tone-{{ cat.slug }}">
+            <div class="cap-name">
+              {{ m.category_icon(cat.slug, 14) }}
+              <span>{{ cat.name }}</span>
+              {% if cat.mastered %}<span class="badge badge--success">dominada</span>{% endif %}
+            </div>
+            <span class="cap-pct">{{ cat.completed }}/{{ cat.total }} · {{ cat.percent }}%</span>
             <div class="bar {% if cat.mastered %}bar-green{% endif %}"><span style="width: {{ cat.percent }}%"></span></div>
           </div>
           {% endfor %}
         </div>
         {% if stats.weakest_categories %}
-        <div class="divider"></div>
-        <div class="mono-label" style="margin-bottom:8px">REVISÃO PRIORITÁRIA</div>
+        <hr class="divider">
+        <div class="mono-label" style="margin-bottom:var(--space-2)">Revisão prioritária</div>
         <div class="meta-row">
-          {% for cat in stats.weakest_categories %}<a class="tag red" href="/challenges?category={{ cat.slug }}">{{ cat.name }} · {{ cat.percent }}%</a>{% endfor %}
+          {% for cat in stats.weakest_categories %}<a class="badge badge--danger" href="/challenges?category={{ cat.slug }}">{{ cat.name }} · {{ cat.percent }}%</a>{% endfor %}
         </div>
         {% endif %}
       </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-head"><div><span class="eyebrow">CONQUISTAS</span><h3>Reconhecimento</h3></div><span class="mono-label">{{ owned|length }}/{{ achievements|length }}</span></div>
+    <section class="panel" id="conquistas">
+      <div class="panel-head"><div><span class="eyebrow">Conquistas</span><h3>Reconhecimento</h3></div><span class="mono-label">{{ owned|length }}/{{ achievements|length }}</span></div>
       <div class="panel-body">
         <div class="achievement-grid">
           {% for achievement in achievements %}
@@ -82,7 +102,7 @@
             <div class="ach-info">
               <strong>{{ achievement.name }}</strong>
               <small>{{ achievement.description }}</small>
-              {% if achievement.xp_bonus %}<span class="ach-xp">+{{ achievement.xp_bonus }} XP DE BÔNUS</span>{% endif %}
+              {% if achievement.xp_bonus %}<span class="ach-xp">+{{ achievement.xp_bonus }} XP de bônus</span>{% endif %}
             </div>
           </div>
           {% endif %}
@@ -91,19 +111,36 @@
       </div>
     </section>
 
+    <section class="panel" id="atividade">
+      <div class="panel-head"><div><span class="eyebrow">Trilha de auditoria</span><h3>Histórico de atividades</h3></div><span class="mono-label">mais recentes</span></div>
+      <div class="activity-list">
+        {% for item in stats.recent_activity %}
+        <div class="activity-row">
+          <span class="activity-icon {% if item.kind == 'challenge_completed' %}solve{% elif item.kind == 'flag_accepted' %}flag{% elif item.kind == 'hint_unlocked' %}hint{% elif item.kind in ('lab_started','lab_reset') %}lab{% elif item.kind == 'achievement' %}level{% endif %}">
+            {{ m.icon("check" if item.kind == "challenge_completed" else "flag" if item.kind == "flag_accepted" else "unlock" if item.kind == "hint_unlocked" else "award" if item.kind == "achievement" else "terminal", 13) }}
+          </span>
+          <div class="activity-body"><div>{{ item.message }}</div><small>{{ time_ago(item.created_at) }}</small></div>
+          {% if item.meta and item.meta.xp %}<span class="activity-xp">+{{ item.meta.xp }}</span>{% endif %}
+        </div>
+        {% else %}
+        <div class="activity-row"><div class="activity-body"><div class="muted">Nenhuma atividade registrada ainda.</div></div></div>
+        {% endfor %}
+      </div>
+    </section>
+
     <section class="panel">
-      <div class="panel-head"><div><span class="eyebrow">TRILHA DE AUDITORIA</span><h3>Envios de flag</h3></div><span class="mono-label">VALORES MASCARADOS</span></div>
-      <div class="panel-body flush" style="overflow-x:auto">
+      <div class="panel-head"><div><span class="eyebrow">Trilha de auditoria</span><h3>Envios de flag</h3></div><span class="mono-label">valores mascarados</span></div>
+      <div class="panel-body flush table-scroll">
         <table class="history-table">
           <thead><tr><th>Hora</th><th>Alvo</th><th>Slot</th><th>Enviado</th><th>Resultado</th></tr></thead>
           <tbody>
             {% for sub, challenge in submissions %}
             <tr>
-              <td class="mono" style="font-size:9px">{{ sub.created_at.strftime("%d/%m %H:%M") }}</td>
-              <td><a href="/challenges/{{ challenge.slug }}" style="color:var(--text-soft)">{{ challenge.title }}</a></td>
-              <td class="mono" style="font-size:9px">{{ sub.flag_key }}</td>
+              <td class="mono" style="white-space:nowrap">{{ sub.created_at.strftime("%d/%m %H:%M") }}</td>
+              <td><a href="/challenges/{{ challenge.slug }}">{{ challenge.title }}</a></td>
+              <td class="mono">{{ sub.flag_key }}</td>
               <td class="flagval">{{ sub.value_masked }}</td>
-              <td class="{% if sub.status == 'correct' %}ok{% else %}bad{% endif %}">{{ "CORRETA" if sub.status == 'correct' else "INCORRETA" }}</td>
+              <td class="{% if sub.status == 'correct' %}ok{% else %}bad{% endif %}">{{ "correta" if sub.status == 'correct' else "incorreta" }}</td>
             </tr>
             {% else %}
             <tr><td colspan="5" class="muted">Nenhuma submissão ainda.</td></tr>
@@ -114,35 +151,33 @@
     </section>
 
     <section class="panel">
-      <div class="panel-head"><div><span class="eyebrow">REGISTRO DE HINTS</span><h3>Hints desbloqueados</h3></div><span class="mono-label">{{ hint_rows|length }} USADOS</span></div>
+      <div class="panel-head"><div><span class="eyebrow">Registro de hints</span><h3>Hints desbloqueados</h3></div><span class="mono-label">{{ hint_rows|length }} usados</span></div>
       <div class="panel-body flush">
         {% for hint, challenge, unlock in hint_rows %}
-        <div class="activity-item">
-          <span class="activity-dot hint">{{ m.icon("unlock", 12) }}</span>
+        <div class="activity-row">
+          <span class="activity-icon hint">{{ m.icon("unlock", 12) }}</span>
           <div class="activity-body">
-            <div><a href="/challenges/{{ challenge.slug }}" style="color:var(--text-soft)">{{ challenge.title }}</a> · hint {{ hint.level }} “{{ hint.title }}”</div>
+            <div><a href="/challenges/{{ challenge.slug }}">{{ challenge.title }}</a> · hint {{ hint.level }} “{{ hint.title }}”</div>
             <small>{{ time_ago(unlock.created_at) }} · −{{ hint.cost }} XP</small>
           </div>
         </div>
         {% else %}
-        <div class="activity-item"><div class="activity-body"><div class="muted">Nenhum hint desbloqueado. Continue assim.</div></div></div>
+        <div class="activity-row"><div class="activity-body"><div class="muted">Nenhum hint desbloqueado. Continue assim.</div></div></div>
         {% endfor %}
       </div>
     </section>
   </div>
 
-  <aside style="display:flex;flex-direction:column;gap:16px">
+  <aside class="dash-col">
     <section class="panel">
-      <div class="panel-head"><div><span class="eyebrow">PROGRESSÃO</span><h3>Trilhas</h3></div><a class="link-arrow" href="/paths">TODAS</a></div>
+      <div class="panel-head"><div><span class="eyebrow">Progressão</span><h3>Trilhas curadas</h3></div><a class="link-arrow" href="/paths">Todas</a></div>
       <div class="panel-body">
         <div class="path-mini-list">
           {% for card in path_cards %}
           <div class="path-mini-row">
-            <a href="/paths/{{ card.path.slug }}" style="color:var(--text-soft);font-size:11px">{{ card.path.title }}</a>
-            <div style="display:flex;align-items:center;gap:7px">
-              <div class="bar"><span style="width: {{ card.progress.percent }}%"></span></div>
-              <span class="mono" style="font-size:8px;color:var(--dim)">{{ card.progress.percent }}%</span>
-            </div>
+            <a href="/paths/{{ card.path.slug }}">{{ card.path.title }}</a>
+            <div class="bar"><span style="width: {{ card.progress.percent }}%"></span></div>
+            <span class="mono dim" style="font-size:var(--text-2xs)">{{ card.progress.percent }}%</span>
           </div>
           {% endfor %}
         </div>
@@ -150,24 +185,10 @@
     </section>
 
     <section class="panel">
-      <div class="panel-head"><div><span class="eyebrow">RECENTE</span><h3>Registro de atividade</h3></div></div>
-      <div class="activity-list">
-        {% for item in stats.recent_activity %}
-        <div class="activity-item">
-          <span class="activity-dot {% if item.kind == 'challenge_completed' %}solve{% elif item.kind == 'flag_accepted' %}flag{% elif item.kind == 'hint_unlocked' %}hint{% endif %}">
-            {{ m.icon("check" if item.kind == "challenge_completed" else "flag" if item.kind == "flag_accepted" else "unlock" if item.kind == "hint_unlocked" else "terminal", 11) }}
-          </span>
-          <div class="activity-body"><div>{{ item.message }}</div><small>{{ time_ago(item.created_at) }}</small></div>
-        </div>
-        {% endfor %}
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head"><div><span class="eyebrow">DADOS</span><h3>Exportar dossiê</h3></div></div>
+      <div class="panel-head"><div><span class="eyebrow">Dados</span><h3>Exportar dossiê</h3></div></div>
       <div class="panel-body">
-        <p class="muted" style="font-size:11px">Baixe um snapshot JSON do progresso, envios, conquistas e anotações. As flags não são incluídas — apenas os seus resultados.</p>
-        <a class="btn btn-block" href="/profile/export">{{ m.icon("copy", 12) }} BAIXAR JSON</a>
+        <p class="t-sm" style="margin-bottom:var(--space-3)">Baixe um snapshot JSON do progresso, envios, conquistas e anotações. As flags não são incluídas — apenas os seus resultados.</p>
+        <a class="btn btn-block" href="/profile/export">{{ m.icon("copy", 13) }} Baixar JSON</a>
       </div>
     </section>
   </aside>

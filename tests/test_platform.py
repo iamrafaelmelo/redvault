@@ -92,7 +92,7 @@ def test_local_operator_has_no_login(client):
     # The dashboard is served immediately: no setup screen, no sign-in form.
     response = client.get("/", follow_redirects=False)
     assert response.status_code == 200
-    assert "OPERAÇÕES" in response.text
+    assert "Operações" in response.text
     assert 'name="password"' not in response.text
 
     # A browser without the session cookie still gets the operator dashboard,
@@ -101,7 +101,7 @@ def test_local_operator_has_no_login(client):
     first = fresh.get("/", follow_redirects=False)
     assert first.status_code == 200
     assert "rv_session" in first.cookies
-    assert "OPERAÇÕES" in first.text
+    assert "Operações" in first.text
 
     with SessionLocal() as db:
         assert db.query(User).count() == 1
@@ -116,6 +116,29 @@ def test_local_operator_has_no_login(client):
     for path in ("/login", "/setup"):
         assert client.get(path, follow_redirects=False).status_code == 303
         assert client.get(path, follow_redirects=False).headers["location"] == "/"
+
+
+def test_prepaint_sidebar_script_is_allowed_by_csp(client):
+    """The inline pre-paint script must be covered by the CSP hash.
+
+    A plain script-src 'self' silently blocks inline scripts, which broke the
+    persisted sidebar state. If the script changes, this test fails so the hash
+    is updated instead of quietly disabling the feature in real browsers.
+    """
+    import base64
+    import hashlib
+    from pathlib import Path
+
+    response = client.get("/")
+    csp = response.headers["content-security-policy"]
+    script_src = next(part.strip() for part in csp.split(";") if part.strip().startswith("script-src"))
+    assert "'unsafe-inline'" not in script_src
+
+    template = (Path(__file__).resolve().parents[1] / "app" / "templates" / "base.html").read_text()
+    inline = re.search(r"<script>(.*?)</script>", template, re.S)
+    assert inline, "base.html must keep the pre-paint script"
+    digest = base64.b64encode(hashlib.sha256(inline.group(1).encode()).digest()).decode()
+    assert f"'sha256-{digest}'" in script_src, "CSP hash no longer matches the pre-paint script"
 
 
 def test_csrf_still_required_for_mutating_requests(session):
@@ -148,9 +171,9 @@ def test_html_and_catalog_never_leak_flag_values(session):
 
     detail = client.get(f"/challenges/{slug}").text
     assert expected not in detail
-    assert "DESBLOQUEAR HINT 1" in detail
+    assert "Desbloquear hint 1" in detail
     assert "backups/ops.env" not in detail, "hint 3 body must stay locked"
-    assert "DESBLOQUEAR WALKTHROUGH" in detail
+    assert "Desbloquear walkthrough" in detail
 
     machine = client.get("/machines/machine-nexus-commerce")
     assert machine.status_code == 200
@@ -499,7 +522,7 @@ def test_primary_ui_pages_render(session):
     # raw English keys coming from the manifests.
     detail = client.get("/machines/machine-meridian-bank").text
     assert "Difícil" in detail
-    assert "MÁQUINA" in detail
+    assert ">Máquina<" in detail
     assert ">HARD<" not in detail and ">MACHINE<" not in detail
     cves = client.get("/academy/cves").text
     assert "registro" in cves.lower() or "vulnerabilidade" in cves.lower()
@@ -527,19 +550,19 @@ def test_dedicated_lab_pages_are_full_screen(session):
     assert 'href="/lab/access-idor-invoices"' not in challenge.text
     assert 'href="/challenges"' in challenge.text
     assert 'href="/"' in challenge.text
-    assert "PÁGINA DO DESAFIO" not in challenge.text
+    assert "Página do laboratório" not in challenge.text
 
     machine = client.get("/lab/machine-meridian-bank")
     assert machine.status_code == 200
     assert 'class="lab-mode"' in machine.text
     assert '<aside class="sidebar"' not in machine.text
-    assert "MÁQUINA" in machine.text
+    assert ">Máquina<" in machine.text
 
     # The panel detail view still works and offers the dedicated page.
     panel = client.get("/challenges/access-idor-invoices")
     assert panel.status_code == 200
     assert '<aside class="sidebar"' in panel.text
-    assert "PÁGINA DO DESAFIO" in panel.text
+    assert "Página do laboratório" in panel.text
 
     # Missing targets are a clean 404, not a stack trace.
     assert client.get("/lab/does-not-exist").status_code == 404
@@ -568,7 +591,7 @@ def test_academy_articles_and_filters(session):
     ):
         article = client.get(f"/academy/{slug}")
         assert article.status_code == 200, slug
-        assert "NESTA PÁGINA" in article.text
+        assert "Nesta página" in article.text
         assert article.text.count("https://") >= 4, f"{slug} needs primary references"
 
     search = client.get("/academy", params={"q": "JWT"})

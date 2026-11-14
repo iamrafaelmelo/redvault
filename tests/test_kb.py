@@ -207,9 +207,9 @@ def test_library_pages_render(client):
 
     doc = client.get("/kb/d/patt-sql-injection-readme")
     assert doc.status_code == 200
-    assert "ORIGEM DO CONTEÚDO" in doc.text        # provenance is visible
+    assert "Origem do conteúdo" in doc.text        # provenance is visible
     assert "MIT" in doc.text
-    assert "NESTA PÁGINA" in doc.text              # table of contents
+    assert "Nesta página" in doc.text              # table of contents
     assert "js-copy" in doc.text                   # payload copy buttons
     assert "PayloadsAllTheThings" in doc.text      # attribution
 

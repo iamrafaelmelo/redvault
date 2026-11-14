@@ -1,42 +1,46 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
 {% block title %}{{ doc.title }} · Biblioteca{% endblock %}
-{% block crumb %}BIBLIOTECA / {{ doc.category.title|upper if doc.category else "GERAL" }}{% endblock %}
+{% block crumb %}Biblioteca / {{ doc.category.title if doc.category else "Geral" }}{% endblock %}
 {% block page_title %}{{ doc.title }}{% endblock %}
 
 {% block content %}
-<a class="detail-back" href="/kb">{{ m.icon("arrow-right", 12, "rot180") }} BIBLIOTECA TÉCNICA</a>
+<nav class="breadcrumbs" aria-label="Trilha de navegação">
+  <a href="/kb">Biblioteca técnica</a>
+  <span aria-hidden="true">/</span>
+  {% if doc.category %}<a href="/kb/c/{{ doc.category.slug }}">{{ doc.category.title }}</a>{% else %}<span>{{ doc.origin }}</span>{% endif %}
+</nav>
 
-<div class="article-shell">
-  <article id="top">
-    <header class="article-head">
+<div class="doc-reader">
+  <article class="doc-article" id="top">
+    <header class="doc-head">
       <div class="meta-row">
-        {% if doc.category %}<a class="tag" href="/kb/c/{{ doc.category.slug }}">{{ doc.category.title|upper }}</a>{% endif %}
-        <span class="kb-origin kb-origin-{{ doc.origin }}">{{ doc.origin }}</span>
-        <span class="kb-lang">{{ doc.language|upper }}</span>
-        <span class="kb-status kb-status-{{ doc.translation_status }}">{{ doc.translation_status }}</span>
-        {% if doc.review_status != "pending" %}<span class="kl-status-review">{{ doc.review_status }}</span>{% endif %}
+        {% if doc.category %}<a class="tag" href="/kb/c/{{ doc.category.slug }}">{{ doc.category.title }}</a>{% endif %}
+        <span class="badge badge--outline">{{ doc.origin }}</span>
+        <span class="tag mono">{{ doc.language }}</span>
+        <span class="tag">{{ doc.translation_status }}</span>
+        {% if doc.review_status != "pending" %}<span class="badge badge--success">{{ doc.review_status }}</span>{% endif %}
       </div>
-      <h1>{{ doc.title }}</h1>
-      {% if doc.summary %}<p>{{ doc.summary }}</p>{% endif %}
-      <div class="article-meta">
-        <span>{{ doc.word_count }} PALAVRAS</span>
-        {% if doc.imported_at %}<span>IMPORTADO {{ doc.imported_at.strftime("%Y-%m-%d") }}</span>{% endif %}
-        {% if doc.cwe %}<span>CWE {{ doc.cwe }}</span>{% endif %}
-        {% if doc.owasp %}<span>{{ doc.owasp }}</span>{% endif %}
+      <h1 class="doc-title">{{ doc.title }}</h1>
+      {% if doc.summary %}<p class="doc-lede">{{ doc.summary }}</p>{% endif %}
+      <div class="doc-meta">
+        <span>{{ doc.word_count }} palavras</span>
+        {% if doc.imported_at %}<span>Importado {{ doc.imported_at.strftime("%Y-%m-%d") }}</span>{% endif %}
+        {% if doc.cwe %}<span class="mono">CWE {{ doc.cwe }}</span>{% endif %}
+        {% if doc.owasp %}<span class="mono">{{ doc.owasp }}</span>{% endif %}
       </div>
-      <form method="post" action="/kb/d/{{ doc.slug }}/favorite" class="kb-fav-form">
+      <form method="post" action="/kb/d/{{ doc.slug }}/favorite" class="meta-row" style="margin:var(--space-4) 0 0">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <button class="btn btn-sm {% if bookmarked %}btn-primary{% else %}btn-ghost{% endif %}" type="submit">
-          {{ m.icon("bookmark", 12) }} {{ "NOS FAVORITOS" if bookmarked else "ADICIONAR AOS FAVORITOS" }}
+          {{ m.icon("bookmark", 12) }} {{ "Nos favoritos" if bookmarked else "Adicionar aos favoritos" }}
         </button>
       </form>
     </header>
 
     {% if source and doc.origin == "imported" %}
-    <div class="kb-provenance">
-      <div class="kb-prov-head">{{ m.icon("shield", 13) }} ORIGEM DO CONTEÚDO</div>
-      <dl class="kb-prov-grid">
+    <section class="doc-provenance">
+      <div class="doc-prov-head">{{ m.icon("shield", 13) }} Origem do conteúdo</div>
+      <dl class="doc-prov-grid">
         <dt>Projeto</dt><dd><a href="{{ source.repo_url }}" target="_blank" rel="noopener">{{ source.name }}</a></dd>
         <dt>Licença</dt><dd><a href="{{ source.license_url }}" target="_blank" rel="noopener">{{ source.license_name }}</a></dd>
         <dt>Autor</dt><dd>{{ source.author }}</dd>
@@ -44,65 +48,64 @@
         <dt>Arquivo</dt><dd><code>{{ doc.source_path }}</code></dd>
       </dl>
       {% if source.noncommercial_reuse and not source.redistributable %}
-      <div class="kb-nc-notice">
+      <div class="doc-warning">
         <strong>Uso não comercial.</strong> Conteúdo de {{ source.name }} por {{ source.author }},
         sob {{ source.license_name }}. Créditos preservados ao autor original; não redistribua
         nem utilize em produto comercial sem autorização.
       </div>
       {% endif %}
-      <p class="kb-prov-note">Texto importado verbatim, preservando o original e os créditos. Tradução: {{ doc.translation_status }}. Revisão: {{ doc.review_status }}.</p>
-    </div>
+      <p class="doc-prov-note">Texto importado verbatim, preservando o original e os créditos. Tradução: {{ doc.translation_status }}. Revisão: {{ doc.review_status }}.</p>
+    </section>
     {% elif doc.origin == "reference" %}
-    <div class="kb-provenance kb-prov-reference">
-      <div class="kb-prov-head">{{ m.icon("external", 13) }} REFERÊNCIA EXTERNA</div>
+    <section class="doc-provenance">
+      <div class="doc-prov-head">{{ m.icon("external", 13) }} Referência externa</div>
       <p>Este documento resume uma técnica cujo material original pertence a terceiros e não é redistribuído aqui. O texto é uma síntese própria em PT-BR; a fonte primária está linkada abaixo.</p>
-    </div>
+    </section>
     {% endif %}
 
-    <div class="article-callout">
+    <div class="doc-callout">
       <strong>Nota de campo:</strong> conteúdo apenas para testes autorizados. Aponte comandos e payloads somente para alvos seus ou com permissão explícita.
     </div>
 
-    <div class="prose kb-prose">
+    <div class="prose doc-prose">
       {{ html|safe }}
     </div>
 
     {% if payloads %}
-    <section class="kb-payload-section" id="payloads">
-      <div class="section-head">
-        <div><span class="eyebrow">EXTRAÍDO DO DOCUMENTO</span><h3>Payloads desta técnica</h3></div>
-        <a class="link-arrow" href="/kb/payloads">BIBLIOTECA COMPLETA {{ m.icon("arrow-right", 12) }}</a>
-      </div>
-      {% for payload in payloads %}
-      <div class="payload-card">
-        <div class="payload-head">
-          <span class="payload-technique">{{ payload.technique or "geral" }}</span>
-          <span class="payload-lang">{{ payload.language }}</span>
-          <button class="btn btn-sm btn-ghost js-copy" type="button" data-copy="{{ payload.code }}" title="Copiar payload">{{ m.icon("copy", 11) }} COPIAR</button>
+    <section class="section" id="payloads">
+      {{ m.section_head("Payloads desta técnica", "Extraído do documento", "/kb/payloads", "Biblioteca completa") }}
+      <div class="payload-list">
+        {% for payload in payloads %}
+        <div class="payload-card">
+          <div class="payload-head">
+            <span class="payload-technique">{{ payload.technique or "geral" }}</span>
+            <span class="tag mono">{{ payload.language }}</span>
+            <button class="btn btn-sm btn-ghost js-copy" type="button" data-copy="{{ payload.code }}" title="Copiar payload">{{ m.icon("copy", 12) }} Copiar</button>
+          </div>
+          {% if payload.description %}<p class="payload-desc">{{ payload.description }}</p>{% endif %}
+          <pre class="codeblock"><code class="language-{{ payload.language }}">{{ payload.code }}</code></pre>
+          <dl class="payload-meta">
+            {% if payload.context %}<dt>Contexto</dt><dd>{{ payload.context }}</dd>{% endif %}
+            {% if payload.expected %}<dt>Resultado esperado</dt><dd>{{ payload.expected }}</dd>{% endif %}
+            {% if payload.limitations %}<dt>Limitações</dt><dd>{{ payload.limitations }}</dd>{% endif %}
+            {% if payload.source_ref %}<dt>Fonte</dt><dd><a href="{{ payload.source_ref }}" target="_blank" rel="noopener">{{ payload.source_ref }}</a></dd>{% endif %}
+          </dl>
         </div>
-        {% if payload.description %}<p class="payload-desc">{{ payload.description }}</p>{% endif %}
-        <pre class="codeblock"><code class="language-{{ payload.language }}">{{ payload.code }}</code></pre>
-        <dl class="payload-meta">
-          {% if payload.context %}<dt>Contexto</dt><dd>{{ payload.context }}</dd>{% endif %}
-          {% if payload.expected %}<dt>Resultado esperado</dt><dd>{{ payload.expected }}</dd>{% endif %}
-          {% if payload.limitations %}<dt>Limitações</dt><dd>{{ payload.limitations }}</dd>{% endif %}
-          {% if payload.source_ref %}<dt>Fonte</dt><dd><a href="{{ payload.source_ref }}" target="_blank" rel="noopener">{{ payload.source_ref }}</a></dd>{% endif %}
-        </dl>
+        {% endfor %}
       </div>
-      {% endfor %}
     </section>
     {% endif %}
 
     {% if references %}
-    <section class="kb-references">
-      <div class="section-head"><div><span class="eyebrow">FONTES VERIFICÁVEIS</span><h3>Referências</h3></div></div>
+    <section class="section">
+      {{ m.section_head("Referências", "Fontes verificáveis") }}
       <ul class="ref-list">
         {% for ref in references %}
         <li>
           <a href="{{ ref.url }}" target="_blank" rel="noopener">{{ ref.title }}</a>
           <span class="ref-org">{{ ref.organization }}</span>
-          <span class="ref-kind ref-kind-{{ ref.kind }}">{{ ref.kind }}</span>
-          {% if ref.verified %}<span class="ref-ok">verificado</span>{% endif %}
+          <span class="tag">{{ ref.kind }}</span>
+          {% if ref.verified %}<span class="badge badge--success">{{ m.icon("check", 10) }} verificado</span>{% endif %}
         </li>
         {% endfor %}
       </ul>
@@ -110,13 +113,13 @@
     {% endif %}
 
     {% if challenges %}
-    <section class="kb-labs">
-      <div class="section-head"><div><span class="eyebrow">PRATIQUE AGORA</span><h3>Labs desta técnica</h3></div></div>
-      <div class="kb-strip">
+    <section class="section">
+      {{ m.section_head("Labs desta técnica", "Pratique agora") }}
+      <div class="doc-strip">
         {% for challenge in challenges %}
-        <a class="kb-chip-card" href="/lab/{{ challenge.slug }}">
+        <a class="doc-chip" href="/lab/{{ challenge.slug }}">
           <strong>{{ challenge.title }}</strong>
-          <small>{{ "MÁQUINA" if challenge.kind != "challenge" else "DESAFIO" }} · {{ challenge.xp }} XP</small>
+          <small>{{ "Máquina" if challenge.kind != "challenge" else "Desafio" }} · {{ challenge.xp }} XP</small>
         </a>
         {% endfor %}
       </div>
@@ -124,15 +127,15 @@
     {% endif %}
 
     {% if related or siblings %}
-    <section class="related-articles">
-      <div class="section-head"><div><span class="eyebrow">MESMA FAMÍLIA TÉCNICA</span><h3>Conteúdo relacionado</h3></div></div>
-      <div class="related-grid">
+    <section class="section">
+      {{ m.section_head("Conteúdo relacionado", "Mesma família técnica") }}
+      <div class="doc-grid">
         {% for item in related %}
-        <a class="article-card" href="/kb/d/{{ item.slug }}"><h3>{{ item.title }}</h3><p>{{ item.summary[:120] }}</p></a>
+        <a class="doc-card" href="/kb/d/{{ item.slug }}"><h3>{{ item.title }}</h3><p>{{ item.summary[:120] }}</p></a>
         {% endfor %}
         {% for item in siblings %}
         {% if item not in related %}
-        <a class="article-card" href="/kb/d/{{ item.slug }}"><h3>{{ item.title }}</h3><p>{{ item.summary[:120] }}</p></a>
+        <a class="doc-card" href="/kb/d/{{ item.slug }}"><h3>{{ item.title }}</h3><p>{{ item.summary[:120] }}</p></a>
         {% endif %}
         {% endfor %}
       </div>
@@ -140,18 +143,20 @@
     {% endif %}
   </article>
 
-  <aside class="article-toc">
-    <h4>NESTA PÁGINA</h4>
-    {% if toc %}<div class="toc kb-toc">{{ toc|safe }}</div>{% endif %}
-    <div class="kb-toc-actions">
-      <a class="btn btn-sm btn-ghost btn-block" href="#top">VOLTAR AO TOPO</a>
+  <aside class="doc-aside">
+    <div class="doc-toc">
+      <div class="doc-toc-head">Nesta página</div>
+      {% if toc %}<div class="toc">{{ toc|safe }}</div>{% endif %}
+      <div class="doc-toc-foot">
+        <a class="btn btn-sm btn-ghost btn-block" href="#top">{{ m.icon("arrow-right", 12, "rot270") }} Voltar ao topo</a>
+      </div>
+      {% if source %}
+      <div class="doc-toc-source">
+        <span class="mono-label">Fonte</span>
+        <a href="{{ doc.source_url or source.repo_url }}" target="_blank" rel="noopener">{{ source.name }} {{ m.icon("external", 11) }}</a>
+      </div>
+      {% endif %}
     </div>
-    {% if source %}
-    <div class="kb-toc-source">
-      <span class="mono-label">FONTE</span>
-      <a href="{{ doc.source_url or source.repo_url }}" target="_blank" rel="noopener">{{ source.name }} {{ m.icon("external", 10) }}</a>
-    </div>
-    {% endif %}
   </aside>
 </div>
 {% endblock %}

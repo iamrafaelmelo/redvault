@@ -5,120 +5,151 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#101116">
   {% if csrf_token %}<meta name="csrf-token" content="{{ csrf_token }}">{% endif %}
   <title>{% block title %}REDVAULT{% endblock %} · REDVAULT</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="preload" href="/static/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/css/fonts.css">
+  <link rel="stylesheet" href="/static/css/ds.css">
+  <link rel="stylesheet" href="/static/css/ui.css">
   <link rel="stylesheet" href="/static/css/learning_paths.css">
   <link rel="icon" href="/static/img/favicon.svg" type="image/svg+xml">
   {% block head %}{% endblock %}
+  <script>
+    /* Apply the saved sidebar state before first paint to avoid a flash. */
+    try {
+      if (localStorage.getItem("rv:sidebar") === "collapsed") document.documentElement.classList.add("is-collapsed");
+    } catch (_) { /* storage may be unavailable */ }
+  </script>
 </head>
 <body data-page="{{ active }}" {% block body_attrs %}{% endblock %}>
+  <a class="skip-link" href="#main-content">Pular para o conteúdo</a>
   <div class="app-shell">
     <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
-      <a href="/" class="brand">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 40 40" width="34" height="34" fill="none">
-            <path d="M20 2 35 10.5v19L20 38 5 29.5v-19L20 2Z" stroke="currentColor" stroke-width="1.5"/>
-            <circle cx="20" cy="20" r="7.5" stroke="currentColor" stroke-width="1.5"/>
-            <circle cx="20" cy="20" r="2.2" fill="currentColor"/>
-            <path d="M20 12.5V6M20 34v-5M27.5 20H34M6 20h6.5M25.3 14.7l4.6-4.6M10.1 29.9l4.6-4.6M25.3 25.3l4.6 4.6M10.1 10.1l4.6 4.6" stroke="currentColor" stroke-width="1.2" opacity=".55"/>
-          </svg>
-        </span>
-        <span class="brand-text">
-          <strong>RED<span>VAULT</span></strong>
-          <small>LABORATÓRIO OFFENSIVE PRIVADO</small>
-        </span>
-      </a>
+      <div class="brand-row">
+        <a href="/" class="brand" aria-label="REDVAULT — Painel">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 40 40" width="26" height="26" fill="none">
+              <path d="M20 2 35 10.5v19L20 38 5 29.5v-19L20 2Z" stroke="currentColor" stroke-width="2"/>
+              <circle cx="20" cy="20" r="7" stroke="currentColor" stroke-width="2"/>
+              <circle cx="20" cy="20" r="2.4" fill="currentColor"/>
+            </svg>
+          </span>
+          <span class="brand-text">
+            <strong>RED<span>VAULT</span></strong>
+            <small>offensive lab</small>
+          </span>
+        </a>
+        <button class="icon-btn collapse-btn" id="sidebar-collapse" type="button"
+                aria-label="Recolher navegação" aria-controls="sidebar" aria-expanded="true">
+          {{ m.icon("chevrons-left", 16) }}
+        </button>
+      </div>
 
       <nav class="nav">
-        <div class="nav-label">OPERAÇÕES</div>
-        <a class="nav-item {% if active == 'dashboard' %}active{% endif %}" href="/">
-          {{ m.icon("dashboard", 17) }}<span>Painel</span>
+        <div class="nav-label">Operações</div>
+        <a class="nav-item tooltip {% if active == 'dashboard' and request.url.path == '/' %}active{% endif %}" href="/" data-tip="Painel" {% if request.url.path == '/' %}aria-current="page"{% endif %}>
+          {{ m.icon("dashboard", 18) }}<span>Painel</span>
         </a>
-        <a class="nav-item {% if active == 'challenges' %}active{% endif %}" href="/challenges">
-          {{ m.icon("target", 17) }}<span>Desafios</span>
+        <a class="nav-item tooltip {% if active == 'challenges' %}active{% endif %}" href="/challenges" data-tip="Desafios" {% if active == 'challenges' %}aria-current="page"{% endif %}>
+          {{ m.icon("target", 18) }}<span>Desafios</span>
         </a>
-        <a class="nav-item {% if active == 'machines' %}active{% endif %}" href="/machines">
-          {{ m.icon("skull", 17) }}<span>Máquinas</span>
+        <a class="nav-item tooltip {% if active == 'machines' %}active{% endif %}" href="/machines" data-tip="Máquinas" {% if active == 'machines' %}aria-current="page"{% endif %}>
+          {{ m.icon("server", 18) }}<span>Máquinas</span>
         </a>
 
-        <div class="nav-label">PROGRESSÃO</div>
-        <a class="nav-item {% if active == 'learning_paths' or request.url.path.startswith('/learning-paths') %}active{% endif %}" href="/learning-paths">
-          {{ m.icon("graduation", 17) }}<span>Learning Paths</span>
+        <div class="nav-label">Progressão</div>
+        <a class="nav-item tooltip {% if request.url.path.startswith('/learning-paths') %}active{% endif %}" href="/learning-paths" data-tip="Trilhas de aprendizado" {% if request.url.path.startswith('/learning-paths') %}aria-current="page"{% endif %}>
+          {{ m.icon("graduation", 18) }}<span>Trilhas de aprendizado</span>
         </a>
-        <a class="nav-item {% if active == 'paths' %}active{% endif %}" href="/paths">
-          {{ m.icon("route", 17) }}<span>Trilhas de aprendizado</span>
+        <a class="nav-item tooltip {% if active == 'paths' %}active{% endif %}" href="/paths" data-tip="Trilhas de aprendizado" {% if active == 'paths' %}aria-current="page"{% endif %}>
+          {{ m.icon("route", 18) }}<span>Trilhas curadas</span>
         </a>
-        <a class="nav-item {% if active == 'environments' %}active{% endif %}" href="/environments">
-          {{ m.icon("server", 17) }}<span>Ambientes</span>
+        <a class="nav-item tooltip {% if active == 'environments' %}active{% endif %}" href="/environments" data-tip="Ambientes" {% if active == 'environments' %}aria-current="page"{% endif %}>
+          {{ m.icon("layers", 18) }}<span>Ambientes</span>
           {% if active_lab_count %}<span class="nav-badge live">{{ active_lab_count }}</span>{% endif %}
         </a>
-
-        <div class="nav-label">INTELIGÊNCIA</div>
-        <a class="nav-item {% if request.url.path.startswith('/kb') %}active{% endif %}" href="/kb">
-          {{ m.icon("database", 17) }}<span>Biblioteca técnica</span>
-        </a>
-        <a class="nav-item {% if active == 'academy' and request.url.path in ('/academy',) %}active{% endif %}" href="/academy">
-          {{ m.icon("book", 17) }}<span>Academia</span>
-        </a>
-        <a class="nav-item {% if request.url.path.startswith('/academy/tools') %}active{% endif %}" href="/academy/tools">
-          {{ m.icon("terminal", 17) }}<span>Biblioteca de ferramentas</span>
+        <a class="nav-item tooltip {% if active == 'history' %}active{% endif %}" href="/profile#atividade" data-tip="Histórico de atividades">
+          {{ m.icon("history", 18) }}<span>Histórico de atividades</span>
         </a>
 
-        <div class="nav-label">OPERADOR</div>
-        <a class="nav-item {% if active == 'profile' %}active{% endif %}" href="/profile">
-          {{ m.icon("user", 17) }}<span>Perfil</span>
+        <div class="nav-label">Inteligência</div>
+        <a class="nav-item tooltip {% if request.url.path == '/kb' or request.url.path.startswith('/kb/c/') or request.url.path.startswith('/kb/d/') or request.url.path.startswith('/kb/sources') %}active{% endif %}" href="/kb" data-tip="Biblioteca técnica">
+          {{ m.icon("books", 18) }}<span>Biblioteca técnica</span>
         </a>
-        <a class="nav-item {% if active == 'settings' %}active{% endif %}" href="/settings">
-          {{ m.icon("settings", 17) }}<span>Configurações</span>
+        <a class="nav-item tooltip {% if request.url.path == '/academy' or (request.url.path.startswith('/academy/') and not request.url.path.startswith('/academy/tools') and not request.url.path.startswith('/academy/glossary') and not request.url.path.startswith('/academy/cves') and not request.url.path.startswith('/academy/quick-reference')) %}active{% endif %}" href="/academy" data-tip="Academy">
+          {{ m.icon("book", 18) }}<span>Academy</span>
+        </a>
+        <a class="nav-item tooltip {% if request.url.path.startswith('/academy/tools') %}active{% endif %}" href="/academy/tools" data-tip="Biblioteca de ferramentas">
+          {{ m.icon("wrench", 18) }}<span>Biblioteca de ferramentas</span>
+        </a>
+        <a class="nav-item tooltip {% if request.url.path.startswith('/kb/payloads') %}active{% endif %}" href="/kb/payloads" data-tip="Payload Library">
+          {{ m.icon("package", 18) }}<span>Payload Library</span>
+        </a>
+        <a class="nav-item tooltip {% if request.url.path.startswith('/academy/quick-reference') or request.url.path.startswith('/academy/glossary') or request.url.path.startswith('/academy/cves') %}active{% endif %}" href="/academy/quick-reference" data-tip="Documentação" {% if request.url.path.startswith('/academy/quick-reference') or request.url.path.startswith('/academy/glossary') or request.url.path.startswith('/academy/cves') %}aria-current="page"{% endif %}>
+          {{ m.icon("file", 18) }}<span>Documentação</span>
+        </a>
+
+        <div class="nav-label">Operador</div>
+        <a class="nav-item tooltip {% if active == 'profile' %}active{% endif %}" href="/profile" data-tip="Perfil">
+          {{ m.icon("user", 18) }}<span>Perfil</span>
+        </a>
+        <a class="nav-item tooltip {% if active == 'settings' %}active{% endif %}" href="/settings" data-tip="Configurações">
+          {{ m.icon("settings", 18) }}<span>Configurações</span>
+        </a>
+        <a class="nav-item tooltip" href="/profile#progresso" data-tip="Estatísticas">
+          {{ m.icon("chart", 18) }}<span>Estatísticas</span>
         </a>
       </nav>
 
       <div class="sidebar-foot">
-        <div class="level-card">
+        <a class="level-card tooltip" href="/profile#progresso" data-tip="Nível {{ sidebar.level }} · {{ sidebar.xp }} XP">
           <div class="level-top">
-            <span class="eyebrow">CREDENCIAL</span>
-            <span class="level-number">NÍVEL {{ sidebar.level }}</span>
+            <span class="eyebrow">Nível {{ sidebar.level }}</span>
+            <span class="level-number"><span class="when-expanded">{{ sidebar.title|upper }}</span><span class="when-collapsed">N{{ sidebar.level }}</span></span>
           </div>
-          <div class="level-name">{{ sidebar.title }}</div>
-          <div class="bar bar-thin"><span style="width: {{ sidebar.percent }}%"></span></div>
-          <div class="level-meta"><span>{{ sidebar.xp }} XP</span><span>{{ sidebar.percent }}%</span></div>
-        </div>
+          <div class="level-name">{{ sidebar.title }}<b>{{ sidebar.xp }} XP</b></div>
+          <div class="bar bar-thin bar-xp"><span style="width: {{ sidebar.percent }}%"></span></div>
+          <div class="level-meta"><span>{{ sidebar.percent }}% → próximo nível</span></div>
+        </a>
         <div class="sidebar-mark">
-          <span class="status-dot"></span> OPERAÇÕES LOCAIS · ISOLADAS
+          <span class="status-dot is-live"></span> <span>operações locais · isoladas</span>
         </div>
       </div>
     </aside>
+    <button class="sidebar-scrim" id="sidebar-scrim" tabindex="-1" aria-label="Fechar navegação"></button>
 
     <div class="main">
       <header class="topbar">
-        <button class="icon-btn menu-btn" id="menu-toggle" aria-label="Alternar navegação">{{ m.icon("menu", 20) }}</button>
+        <button class="icon-btn menu-btn" id="menu-toggle" aria-label="Abrir navegação" aria-controls="sidebar" aria-expanded="false">{{ m.icon("menu", 20) }}</button>
         <div class="topbar-title">
-          <span class="crumb">{% block crumb %}OPERAÇÕES{% endblock %}</span>
+          <span class="crumb">{% block crumb %}Operações{% endblock %}</span>
           <h1>{% block page_title %}Painel{% endblock %}</h1>
         </div>
         <div class="topbar-actions">
-          <button class="search-trigger" id="search-trigger" type="button" aria-label="Buscar">
+          <button class="search-trigger" id="search-trigger" type="button" aria-label="Buscar no vault">
             {{ m.icon("search", 16) }}
             <span>Buscar no vault…</span>
             <kbd>Ctrl K</kbd>
           </button>
           <a class="lab-pill {% if active_lab_count %}is-live{% endif %}" href="/environments" title="Ambientes de lab ativos">
             <span class="status-dot"></span>
-            <span>{{ active_lab_count }} LAB{% if active_lab_count != 1 %}S{% endif %}</span>
+            <span>{{ active_lab_count }} lab{% if active_lab_count != 1 %}s{% endif %}</span>
           </a>
           {% if user %}
           <div class="user-menu">
-            <button class="user-button" id="user-button" aria-haspopup="true" aria-expanded="false">
+            <button class="user-button" id="user-button" aria-haspopup="true" aria-expanded="false" aria-controls="user-dropdown">
               <span class="avatar">{{ user.display_name[:1]|upper }}</span>
               <span class="user-copy">
                 <strong>{{ user.display_name }}</strong>
-                <small>@{{ user.username }}</small>
+                <small>nível {{ sidebar.level }} · {{ sidebar.xp }} XP</small>
               </span>
-              {{ m.icon("chevron", 14, "rot90") }}
+              {{ m.icon("chevron-down", 14) }}
             </button>
             <div class="user-dropdown" id="user-dropdown">
               <a href="/profile">{{ m.icon("user", 15) }} Perfil</a>
+              <a href="/profile#progresso">{{ m.icon("chart", 15) }} Estatísticas</a>
               <a href="/settings">{{ m.icon("settings", 15) }} Configurações</a>
               <a href="/profile/export">{{ m.icon("copy", 15) }} Exportar progresso</a>
               <div class="dropdown-rule"></div>
@@ -129,14 +160,14 @@
         </div>
       </header>
 
-      <main class="content">
+      <main class="content" id="main-content">
         {% if flashes %}
         <div class="flash-stack">
           {% for flash in flashes %}
-          <div class="flash flash-{{ flash.kind }}">
-            {{ m.icon("check" if flash.kind == "ok" else "alert", 16) }}
+          <div class="flash flash-{{ flash.kind }}" role="status">
+            {{ m.icon("check-circle" if flash.kind == "ok" else "alert", 16) }}
             <span>{{ flash.message }}</span>
-            <button class="flash-close" aria-label="Fechar">{{ m.icon("x", 14) }}</button>
+            <button class="flash-close" aria-label="Fechar aviso">{{ m.icon("x", 14) }}</button>
           </div>
           {% endfor %}
         </div>
@@ -145,8 +176,8 @@
       </main>
 
       <footer class="footer">
-        <span>REDVAULT // TREINAMENTO OFFENSIVE LOCAL-FIRST</span>
-        <span>USO AUTORIZADO APENAS · <a href="/academy/methodology">MANUAL DE CAMPO</a></span>
+        <span>REDVAULT · treinamento ofensivo local-first</span>
+        <span>uso autorizado apenas · <a href="/academy/methodology">manual de campo</a></span>
       </footer>
     </div>
   </div>
@@ -155,7 +186,7 @@
     <div class="palette" role="dialog" aria-modal="true" aria-label="Busca">
       <div class="palette-input">
         {{ m.icon("search", 18) }}
-        <input type="text" id="palette-input" placeholder="Buscar desafios, máquinas e conteúdo da academia…" autocomplete="off">
+        <input type="text" id="palette-input" placeholder="Buscar desafios, máquinas e conteúdo da academia…" autocomplete="off" aria-label="Termo de busca">
         <kbd>ESC</kbd>
       </div>
       <div class="palette-results" id="palette-results">

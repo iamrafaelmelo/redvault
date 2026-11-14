@@ -181,7 +181,7 @@
                       <input type="text" name="q_{{ q.id }}" autocomplete="off" placeholder="Sua resposta">
                     </label>
                     {% endfor %}
-                    <div class="btn-row"><button class="btn btn-primary btn-sm" type="submit">{{ m.icon("shield", 12) }} CORRIGIR</button>
+                    <div class="btn-row"><button class="btn btn-primary btn-sm" type="submit">{{ m.icon("check-circle", 12) }} Corrigir</button>
                       <span class="lp-small">Aprovação a partir de 70%.</span></div>
                   </form>
                 </div>
@@ -189,23 +189,23 @@
 
                 <div class="lp-act-tools">
                   <button type="button" class="lp-linkbtn" data-toggle="notes-{{ act.id }}">
-                    {{ m.icon("bookmark", 11) }} ANOTAÇÕES
+                    {{ m.icon("file", 12) }} Anotações
                   </button>
                   <form method="post" action="/learning-paths/activity/{{ act.id }}/toggle" class="inline-form">
                     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                     <input type="hidden" name="field" value="favorite">
-                    <button type="submit" class="lp-linkbtn {% if act.row and act.row.favorite %}on{% endif %}">{{ m.icon("bookmark", 11) }} FAVORITO</button>
+                    <button type="submit" class="lp-linkbtn {% if act.row and act.row.favorite %}on{% endif %}">{{ m.icon("star", 12) }} Favorito</button>
                   </form>
                   <form method="post" action="/learning-paths/activity/{{ act.id }}/toggle" class="inline-form">
                     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                     <input type="hidden" name="field" value="revisit">
-                    <button type="submit" class="lp-linkbtn {% if act.row and act.row.revisit %}on{% endif %}">{{ m.icon("refresh", 11) }} REVISITAR</button>
+                    <button type="submit" class="lp-linkbtn {% if act.row and act.row.revisit %}on{% endif %}">{{ m.icon("refresh", 12) }} Revisitar</button>
                   </form>
                   {% if st != "review" %}
                   <form method="post" action="/learning-paths/activity/{{ act.id }}/state" class="inline-form">
                     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                     <input type="hidden" name="state" value="review">
-                    <button type="submit" class="lp-linkbtn">{{ m.icon("alert", 11) }} MARCAR REVISÃO</button>
+                    <button type="submit" class="lp-linkbtn">{{ m.icon("alert", 12) }} Marcar revisão</button>
                   </form>
                   {% endif %}
                 </div>
@@ -222,7 +222,7 @@
                     <label class="field"><span>RESULTADOS</span>
                       <textarea name="result" rows="2" placeholder="Flags, achados, evidências, links.">{{ act.row.result if act.row else "" }}</textarea>
                     </label>
-                    <div class="btn-row"><button class="btn btn-sm btn-primary" type="submit">SALVAR</button></div>
+                    <div class="btn-row"><button class="btn btn-sm btn-primary" type="submit">Salvar</button></div>
                   </form>
                 </div>
               </div>

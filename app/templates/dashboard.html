@@ -1,99 +1,195 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
 {% block title %}Painel{% endblock %}
-{% block crumb %}OPERAÇÕES / VISÃO GERAL{% endblock %}
+{% block crumb %}Operações / Visão geral{% endblock %}
 {% block page_title %}Painel{% endblock %}
 
 {% block content %}
-<section class="hero">
-  <div>
+{% set name = (user.display_name or user.username).split(" ")[0] %}
+{% set next_item = active_path.path.items[active_path.progress.completed] if active_path and active_path.path.items|length > active_path.progress.completed else None %}
+
+<section class="dash-hero">
+  <div class="hero-copy">
     <div class="hero-kicker">
-      <span class="status-dot"></span>
-      <span class="eyebrow">AMBIENTE ONLINE · {{ stats.completed_items }}/{{ stats.total_items }} ALVOS CONCLUÍDOS</span>
+      <span class="status-dot is-live"></span>
+      <span class="eyebrow">{{ stats.completed_items }}/{{ stats.total_items }} alvos concluídos · ambiente online</span>
     </div>
-    <h2>Quebre o alvo.<br><span>Entenda o sistema.</span></h2>
-    <p>Seu ambiente privado para exploração real, evidências e análise de causa raiz. Sem walkthroughs de graça. Sem ranking público. Só o alvo e a sua metodologia.</p>
+    <h2>Bem-vindo de volta, <span class="grad">{{ name }}</span>.<br>{{ "Cada sistema tem uma superfície de ataque." }}</h2>
+    <p class="hero-lede">
+      {{ "Encontre a sua próxima." }}
+      {% if next_item %}
+      Sua próxima etapa em <strong>{{ active_path.path.title }}</strong> é <strong>{{ next_item.challenge.title }}</strong>.
+      {% elif active_labs %}
+      Você tem {{ active_labs|length }} ambiente{{ "s" if active_labs|length != 1 }} no ar agora — retome de onde parou.
+      {% else %}
+      Comece por um alvo curto, capture uma flag e deixe o rastro em evidência.
+      {% endif %}
+    </p>
     <div class="hero-actions">
-      {% if active_path %}
-      <a class="btn btn-primary" href="/paths/{{ active_path.path.slug }}">
-        {{ m.icon("play", 14) }} CONTINUAR TRILHA
+      {% if next_item %}
+      <a class="btn btn-primary btn-lg" href="/challenges/{{ next_item.challenge.slug }}">
+        {{ m.icon("play", 14) }} Continuar trilha
       </a>
       {% else %}
-      <a class="btn btn-primary" href="/challenges">{{ m.icon("target", 14) }} EXPLORAR DESAFIOS</a>
+      <a class="btn btn-primary btn-lg" href="/challenges">{{ m.icon("target", 15) }} Explorar desafios</a>
       {% endif %}
-      <a class="btn" href="/machines">{{ m.icon("skull", 14) }} MÁQUINAS COMPLETAS</a>
+      <a class="btn btn-lg" href="/machines">{{ m.icon("server", 15) }} Máquinas completas</a>
       {% if active_labs %}
-      <a class="btn btn-ghost" href="/environments">{{ m.icon("server", 14) }} {{ active_labs|length }} LAB{{ "S" if active_labs|length != 1 }} ATIVO{{ "S" if active_labs|length != 1 }}</a>
+      <a class="btn btn-ghost btn-lg" href="/environments">{{ m.icon("layers", 15) }} {{ active_labs|length }} lab{{ "s" if active_labs|length != 1 }} ativo{{ "s" if active_labs|length != 1 }}</a>
       {% endif %}
     </div>
   </div>
-  <div class="hero-stats">
-    <div class="hero-stat"><strong>{{ stats.completed_challenges }}</strong><span>Desafios concluídos</span></div>
-    <div class="hero-stat"><strong>{{ stats.completed_machines }}</strong><span>Máquinas com root</span></div>
-    <div class="hero-stat green"><strong>{{ stats.accuracy }}%</strong><span>Precisão de flags</span></div>
+
+  <div class="hero-side">
+    <div class="hero-level">
+      <div class="hero-level-top">
+        <div>
+          <span class="eyebrow">credencial do operador</span>
+          <div class="hero-level-name">{{ stats.level_title }}</div>
+        </div>
+        <span class="level-number">nível {{ stats.level }}</span>
+      </div>
+      <div class="hero-level-xp">{{ stats.xp }}<small>XP</small></div>
+      <div class="bar bar-xp"><span style="width: {{ stats.level_percent }}%"></span></div>
+      <div class="hero-level-foot">
+        <span>{{ stats.level_percent }}% para o próximo nível</span>
+        <span class="mono">{{ stats.level_floor }} → {{ stats.level_next if stats.level_next > stats.level_floor else "máx" }}</span>
+      </div>
+    </div>
+    <div class="hero-mini-grid">
+      <div class="hero-mini">
+        <strong>{{ stats.completed_challenges }}</strong>
+        <span>desafios</span>
+      </div>
+      <div class="hero-mini">
+        <strong>{{ stats.completed_machines }}</strong>
+        <span>máquinas</span>
+      </div>
+      <div class="hero-mini is-success">
+        <strong>{{ stats.accuracy }}%</strong>
+        <span>precisão</span>
+      </div>
+    </div>
   </div>
 </section>
 
-<div class="stats-grid">
-  <div class="stat-card">
-    <div class="stat-label"><span>XP DO OPERADOR</span>{{ m.icon("bolt", 13) }}</div>
+<div class="stat-grid">
+  <div class="stat-tile tone-sqli">
+    <div class="stat-top"><span class="stat-label">XP total</span><span class="stat-icon">{{ m.icon("bolt", 15) }}</span></div>
     <div class="stat-value">{{ stats.xp }}</div>
-    <div class="stat-foot">{{ stats.level_title }} · nível {{ stats.level }}</div>
+    <div class="stat-foot"><span>{{ stats.level_title }} · nível {{ stats.level }}</span></div>
   </div>
-  <div class="stat-card green">
-    <div class="stat-label"><span>CONCLUSÃO</span>{{ m.icon("chart", 13) }}</div>
-    <div class="stat-value">{{ stats.completion_rate }}%</div>
-    <div class="stat-foot">{{ stats.completed_items }} de {{ stats.total_items }} alvos</div>
+  <div class="stat-tile tone-api">
+    <div class="stat-top"><span class="stat-label">Conclusão</span><span class="stat-icon">{{ m.icon("chart", 15) }}</span></div>
+    <div class="stat-value">{{ stats.completion_rate }}<small>%</small></div>
+    <div class="stat-foot">
+      <span>{{ stats.completed_items }} de {{ stats.total_items }}</span>
+      {{ m.progress_bar(stats.completion_rate) }}
+    </div>
   </div>
-  <div class="stat-card amber">
-    <div class="stat-label"><span>RESOLVIDOS SEM HINT</span>{{ m.icon("eye-off", 13) }}</div>
+  <div class="stat-tile tone-upload">
+    <div class="stat-top"><span class="stat-label">Sem hint</span><span class="stat-icon">{{ m.icon("eye-off", 15) }}</span></div>
     <div class="stat-value">{{ stats.no_hint_solves }}</div>
-    <div class="stat-foot">{{ stats.hints_used }} hints usados no total</div>
+    <div class="stat-foot"><span>{{ stats.hints_used }} hint{{ "s" if stats.hints_used != 1 }} usados</span></div>
   </div>
-  <div class="stat-card">
-    <div class="stat-label"><span>TEMPO EM EXERCÍCIO</span>{{ m.icon("clock", 13) }}</div>
+  <div class="stat-tile tone-auth">
+    <div class="stat-top"><span class="stat-label">Tempo de lab</span><span class="stat-icon">{{ m.icon("clock", 15) }}</span></div>
     <div class="stat-value">{{ duration(stats.time_spent_seconds) }}</div>
-    <div class="stat-foot">{{ stats.submissions_total }} envios de flag</div>
+    <div class="stat-foot"><span>{{ stats.submissions_total }} envios de flag</span></div>
   </div>
 </div>
 
-<div class="dash-grid">
-  <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+<div class="dash-columns">
+  <div class="dash-col">
+    {% if active_path %}
+    <section class="continue-card">
+      <div class="continue-head">
+        <div>
+          <span class="eyebrow">continuar estudando</span>
+          <div class="continue-title">{{ active_path.path.title }}</div>
+          <p class="continue-desc">{{ active_path.path.description[:150] }}{% if active_path.path.description|length > 150 %}…{% endif %}</p>
+        </div>
+        <span class="badge badge--accent tone-auth">{{ active_path.progress.percent }}%</span>
+      </div>
+      {% if next_item %}
+      <div class="continue-next">
+        <span class="continue-next-icon">{{ m.category_icon(next_item.challenge.category.slug, 16) if next_item.challenge.category else m.icon("target", 16) }}</span>
+        <div class="continue-next-main">
+          <strong>Próxima atividade · {{ next_item.challenge.title }}</strong>
+          <small>
+            {% if next_item.challenge.category %}{{ next_item.challenge.category.name }} · {% endif %}
+            {{ difficulty_labels[next_item.challenge.difficulty] }} · {{ next_item.challenge.estimated_minutes }} min · {{ next_item.challenge.xp }} XP
+          </small>
+        </div>
+        <a class="btn btn-primary btn-sm" href="/challenges/{{ next_item.challenge.slug }}">{{ m.icon("play", 12) }} Abrir</a>
+      </div>
+      {% endif %}
+      <div class="seg-steps" aria-hidden="true">
+        {% for item in active_path.path.items %}
+        <i class="{% if loop.index <= active_path.progress.completed %}done{% elif loop.index == active_path.progress.completed + 1 %}current{% endif %}"></i>
+        {% endfor %}
+      </div>
+      <div class="continue-foot">
+        <span class="continue-meta">
+          <span>{{ active_path.progress.completed }}/{{ active_path.progress.total }} etapas</span>
+          <span>~{{ active_path.path.estimated_hours }}h estimadas</span>
+        </span>
+        <a class="link-arrow" href="/paths/{{ active_path.path.slug }}">Ver trilha {{ m.icon("arrow-right", 12) }}</a>
+      </div>
+    </section>
+    {% endif %}
+
     <section class="panel">
       <div class="panel-head">
-        <div><span class="eyebrow">PRÓXIMO OBJETIVO</span><h3>Alvos recomendados</h3></div>
-        <a class="link-arrow" href="/challenges">TODOS OS ALVOS {{ m.icon("arrow-right", 13) }}</a>
+        <div><span class="eyebrow">próximo objetivo</span><h3>Alvos recomendados</h3></div>
+        <a class="link-arrow" href="/challenges">Todos os alvos {{ m.icon("arrow-right", 12) }}</a>
       </div>
-      <div class="recommend-list">
+      <div class="rec-list">
         {% for challenge in recommended %}
-        <a class="recommend-item" href="/challenges/{{ challenge.slug }}">
-          <span class="rec-icon">{{ m.category_icon(challenge.category.slug, 16) }}</span>
+        <a class="rec-row tone-{{ challenge.category.slug if challenge.category else 'server' }}" href="/challenges/{{ challenge.slug }}">
+          <span class="rec-icon">{{ m.category_icon(challenge.category.slug, 17) if challenge.category else m.icon("target", 17) }}</span>
           <div class="rec-main">
             <strong>{{ challenge.title }}</strong>
-            <small>{{ challenge.category.name }} · {{ difficulty_labels[challenge.difficulty] }} · {{ challenge.estimated_minutes }} min</small>
+            <small>
+              {% if challenge.category %}<span>{{ challenge.category.name }}</span>{% endif %}
+              <span>·</span><span>{{ challenge.estimated_minutes }} min</span>
+              <span>·</span>
+              {{ m.difficulty_badge(challenge.difficulty, difficulty_labels[challenge.difficulty]) }}
+            </small>
           </div>
           <div class="rec-side">
-            <span class="tag">{{ challenge.xp }} XP</span>
+            <span class="rec-xp">{{ challenge.xp }} XP</span>
             {{ m.icon("chevron", 14) }}
           </div>
         </a>
         {% else %}
-        <div class="empty-state" style="border:0"><p>Todos os alvos publicados estão concluídos. Adicione mais labs ou limpe seu progresso.</p></div>
+        <div class="panel-body">
+          <div class="empty-state" style="border:0;padding:var(--space-8) var(--space-4)">
+            <div class="empty-icon">{{ m.icon("trophy", 24) }}</div>
+            <h3>Todos os alvos estão concluídos</h3>
+            <p>Nada publicado ficou para trás. Explore as máquinas completas para encadear exploração.</p>
+            <a class="btn" href="/machines">{{ m.icon("server", 13) }} Ver máquinas</a>
+          </div>
+        </div>
         {% endfor %}
       </div>
     </section>
 
     <section class="panel">
       <div class="panel-head">
-        <div><span class="eyebrow">MAPA DE CAPACIDADES</span><h3>Proficiência por categoria</h3></div>
-        <a class="link-arrow" href="/profile">ESTATÍSTICAS COMPLETAS {{ m.icon("arrow-right", 13) }}</a>
+        <div><span class="eyebrow">mapa de capacidades</span><h3>Proficiência por disciplina</h3></div>
+        <a class="link-arrow" href="/profile#progresso">Estatísticas {{ m.icon("arrow-right", 12) }}</a>
       </div>
       <div class="panel-body">
-        <div class="category-bars">
+        <div class="cap-list">
           {% for cat in stats.category_stats %}
-          <div class="category-bar-row">
-            <div class="name">{{ m.category_icon(cat.slug, 14) }} {{ cat.name }}</div>
-            <div class="pct">{{ cat.completed }}/{{ cat.total }} · {{ cat.percent }}%</div>
+          <div class="cap-row tone-{{ cat.slug }}">
+            <div class="cap-name">
+              {{ m.category_icon(cat.slug, 14) }}
+              <span>{{ cat.name }}</span>
+              {% if cat.mastered %}<span class="badge badge--success">dominada</span>{% endif %}
+            </div>
+            <span class="cap-pct">{{ cat.completed }}/{{ cat.total }} · {{ cat.percent }}%</span>
             <div class="bar {% if cat.mastered %}bar-green{% endif %}"><span style="width: {{ cat.percent }}%"></span></div>
           </div>
           {% endfor %}
@@ -102,68 +198,41 @@
     </section>
   </div>
 
-  <div style="display:flex;flex-direction:column;gap:16px">
-    {% if active_path %}
-    <section class="panel">
-      <div class="panel-head">
-        <div><span class="eyebrow">TRILHA ATIVA</span><h3>{{ active_path.path.title }}</h3></div>
-        {{ m.icon("route", 15) }}
-      </div>
-      <div class="path-continue">
-        <div class="path-continue-top">
-          <div>
-            <h4>{{ active_path.progress.completed }}/{{ active_path.progress.total }} etapas concluídas</h4>
-            <p>{{ active_path.path.description[:115] }}{% if active_path.path.description|length > 115 %}…{% endif %}</p>
-          </div>
-          <span class="tag red">{{ active_path.progress.percent }}%</span>
-        </div>
-        <div class="path-steps-mini">
-          {% for item in active_path.path.items %}
-          <i class="{% if loop.index <= active_path.progress.completed %}done{% elif loop.index == active_path.progress.completed + 1 %}current{% endif %}"></i>
-          {% endfor %}
-        </div>
-        <div class="path-continue-foot">
-          <span>~{{ active_path.path.estimated_hours }}H ESTIMADAS</span>
-          <a class="link-arrow" href="/paths/{{ active_path.path.slug }}">CONTINUAR {{ m.icon("arrow-right", 12) }}</a>
-        </div>
-      </div>
-    </section>
-    {% endif %}
-
+  <div class="dash-col">
     {% if active_labs %}
     <section class="panel">
       <div class="panel-head">
-        <div><span class="eyebrow">AMBIENTES ATIVOS</span><h3>Labs em execução</h3></div>
-        <span class="status-dot"></span>
+        <div><span class="eyebrow">ambientes ativos</span><h3>Labs em execução</h3></div>
+        <span class="status-dot is-live"></span>
       </div>
       <div class="panel-body">
-        <div class="labs-mini">
+        <div class="lab-list">
           {% for entry in active_labs %}
-          <div class="lab-mini">
-            <span class="status-dot"></span>
-            <div class="lab-mini-main">
+          <div class="lab-row">
+            <span class="status-dot is-live"></span>
+            <div class="lab-row-main">
               <strong>{{ entry.challenge.title }}</strong>
               <small>127.0.0.1:{{ entry.lab.port }}</small>
             </div>
-            <a href="http://127.0.0.1:{{ entry.lab.port }}/" target="_blank" rel="noopener">ABRIR {{ m.icon("external", 11) }}</a>
+            <a class="open" href="http://127.0.0.1:{{ entry.lab.port }}/" target="_blank" rel="noopener">abrir {{ m.icon("external", 11) }}</a>
           </div>
           {% endfor %}
         </div>
-        <a class="btn btn-ghost btn-sm btn-block" href="/environments" style="margin-top:11px">GERENCIAR AMBIENTES</a>
+        <a class="btn btn-ghost btn-sm btn-block" href="/environments" style="margin-top:var(--space-3)">Gerenciar ambientes</a>
       </div>
     </section>
     {% endif %}
 
     <section class="panel">
       <div class="panel-head">
-        <div><span class="eyebrow">TRILHA DE AUDITORIA</span><h3>Atividade recente</h3></div>
-        <a class="link-arrow" href="/profile">HISTÓRICO</a>
+        <div><span class="eyebrow">trilha de auditoria</span><h3>Atividade recente</h3></div>
+        <a class="link-arrow" href="/profile#atividade">Histórico</a>
       </div>
       <div class="activity-list">
         {% for item in stats.recent_activity[:7] %}
-        <div class="activity-item">
-          <span class="activity-dot {% if item.kind == 'challenge_completed' %}solve{% elif item.kind == 'flag_accepted' %}flag{% elif item.kind == 'hint_unlocked' %}hint{% elif item.kind in ('lab_started','lab_reset') %}lab{% endif %}">
-            {{ m.icon("check" if item.kind == "challenge_completed" else "flag" if item.kind == "flag_accepted" else "unlock" if item.kind == "hint_unlocked" else "terminal", 12) }}
+        <div class="activity-row">
+          <span class="activity-icon {% if item.kind == 'challenge_completed' %}solve{% elif item.kind == 'flag_accepted' %}flag{% elif item.kind == 'hint_unlocked' %}hint{% elif item.kind in ('lab_started','lab_reset') %}lab{% elif item.kind == 'achievement' %}level{% endif %}">
+            {{ m.icon("check" if item.kind == "challenge_completed" else "flag" if item.kind == "flag_accepted" else "unlock" if item.kind == "hint_unlocked" else "award" if item.kind == "achievement" else "terminal", 13) }}
           </span>
           <div class="activity-body">
             <div>{{ item.message }}</div>
@@ -172,7 +241,7 @@
           {% if item.meta and item.meta.xp %}<span class="activity-xp">+{{ item.meta.xp }}</span>{% endif %}
         </div>
         {% else %}
-        <div class="activity-item"><div class="activity-body"><div class="muted">Nenhuma atividade ainda. Inicie um lab e faça o primeiro movimento.</div></div></div>
+        <div class="activity-row"><div class="activity-body"><div class="muted">Nenhuma atividade ainda. Inicie um lab e faça o primeiro movimento.</div></div></div>
         {% endfor %}
       </div>
     </section>
@@ -180,19 +249,42 @@
     {% if recent_achievements %}
     <section class="panel">
       <div class="panel-head">
-        <div><span class="eyebrow">RECONHECIMENTO</span><h3>Conquistas recentes</h3></div>
-        <a class="link-arrow" href="/profile">TODAS</a>
+        <div><span class="eyebrow">reconhecimento</span><h3>Conquistas recentes</h3></div>
+        <a class="link-arrow" href="/profile#conquistas">Todas</a>
       </div>
-      <div class="panel-body" style="display:flex;flex-direction:column;gap:9px">
-        {% for achievement, ua in recent_achievements %}
-        <div class="achievement unlocked" style="padding:10px">
-          <div class="ach-icon">{{ m.icon(achievement.icon, 15) }}</div>
-          <div class="ach-info"><strong>{{ achievement.name }}</strong><small>{{ achievement.description }}</small></div>
+      <div class="panel-body">
+        <div class="ach-strip">
+          {% for achievement, ua in recent_achievements %}
+          <div class="ach-pill">
+            <span class="icon-wrap">{{ m.icon(achievement.icon, 14) }}</span>
+            <div>
+              <strong>{{ achievement.name }}</strong>
+              <small>{{ achievement.description }}</small>
+            </div>
+          </div>
+          {% endfor %}
         </div>
-        {% endfor %}
       </div>
     </section>
     {% endif %}
+
+    <section class="panel">
+      <div class="panel-head">
+        <div><span class="eyebrow">programas</span><h3>Trilhas de aprendizado</h3></div>
+        <a class="link-arrow" href="/learning-paths">Explorar</a>
+      </div>
+      <div class="panel-body">
+        <div class="path-mini-list">
+          {% for card in path_cards[:4] %}
+          <div class="path-mini-row">
+            <a href="/paths/{{ card.path.slug }}">{{ card.path.title }}</a>
+            <div class="bar"><span style="width: {{ card.progress.percent }}%"></span></div>
+            <span class="mono dim" style="font-size:var(--text-2xs)">{{ card.progress.percent }}%</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 {% endblock %}

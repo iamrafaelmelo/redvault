@@ -1,50 +1,53 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
-{% block title %}Academia{% endblock %}
-{% block crumb %}INTELIGÊNCIA / ACADEMIA{% endblock %}
-{% block page_title %}Academia{% endblock %}
+{% block title %}Academy{% endblock %}
+{% block crumb %}Inteligência / Academy{% endblock %}
+{% block page_title %}Academy{% endblock %}
 
 {% block content %}
-<section class="academy-hero">
-  <span class="eyebrow">BIBLIOTECA TÉCNICA / FONTES VERIFICÁVEIS</span>
-  <h2>Técnica de campo, não folclore.</h2>
-  <p>Mecânica, metodologia de teste, primitivas de exploração e mitigações. Todo artigo remete à documentação primária, a padrões ou a pesquisa real. Quando algo é incerto, isso é indicado explicitamente.</p>
-  <form class="academy-search" method="get" action="/academy">
-    <input type="search" name="q" value="{{ filters.q }}" placeholder="Buscar SQL injection, JWT, cache poisoning, metodologia…" aria-label="Buscar na academia">
+<section class="lib-hero">
+  <div class="lib-hero-copy">
+    <span class="eyebrow">Biblioteca técnica · fontes verificáveis</span>
+    <h2>Técnica de campo, não folclore.</h2>
+    <p>Mecânica, metodologia de teste, primitivas de exploração e mitigações. Todo artigo remete à documentação primária, a padrões ou a pesquisa real. Quando algo é incerto, isso é indicado explicitamente.</p>
+  </div>
+  <form class="lib-search" method="get" action="/academy" role="search">
+    {{ m.icon("search", 16) }}
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Buscar SQL injection, JWT, cache poisoning, metodologia…" aria-label="Buscar na Academy">
     {% if filters.category %}<input type="hidden" name="category" value="{{ filters.category }}">{% endif %}
     {% if filters.difficulty %}<input type="hidden" name="difficulty" value="{{ filters.difficulty }}">{% endif %}
-    <button class="btn btn-primary" type="submit">{{ m.icon("search", 13) }} BUSCAR</button>
   </form>
 </section>
 
-<div class="academy-layout">
-  <aside class="academy-side">
-    <div class="academy-side-head">DISCIPLINAS</div>
-    <a class="academy-cat {% if not filters.category %}active{% endif %}" href="/academy{% if filters.q %}?q={{ filters.q|urlencode }}{% endif %}">
+<div class="lib-layout">
+  <aside class="lib-side">
+    <div class="lib-side-head">Disciplinas</div>
+    <a class="lib-cat {% if not filters.category %}active{% endif %}" href="/academy{% if filters.q %}?q={{ filters.q|urlencode }}{% endif %}">
       <span>Todos os artigos</span><span class="count">{{ total }}</span>
     </a>
     {% for cat in categories %}
-    <a class="academy-cat {% if filters.category == cat.key %}active{% endif %}" href="/academy?category={{ cat.key }}{% if filters.q %}&q={{ filters.q|urlencode }}{% endif %}">
+    <a class="lib-cat {% if filters.category == cat.key %}active{% endif %}" href="/academy?category={{ cat.key }}{% if filters.q %}&q={{ filters.q|urlencode }}{% endif %}">
       <span>{{ cat.label }}</span><span class="count">{{ cat.count }}</span>
     </a>
     {% endfor %}
-    <div class="academy-side-head" style="border-top:1px solid var(--line)">ACESSO RÁPIDO</div>
-    <a class="academy-cat" href="/academy/quick-reference"><span>Referência rápida</span>{{ m.icon("bolt", 11) }}</a>
-    <a class="academy-cat" href="/academy/tools"><span>Biblioteca de ferramentas</span>{{ m.icon("terminal", 11) }}</a>
-    <a class="academy-cat" href="/academy/glossary"><span>Glossário</span>{{ m.icon("book", 11) }}</a>
-    <a class="academy-cat" href="/academy/cves"><span>Índice de CVE</span>{{ m.icon("alert", 11) }}</a>
+    <div class="lib-side-head">Acesso rápido</div>
+    <a class="lib-cat" href="/academy/quick-reference"><span>Referência rápida</span>{{ m.icon("bolt", 13) }}</a>
+    <a class="lib-cat" href="/academy/tools"><span>Biblioteca de ferramentas</span>{{ m.icon("wrench", 13) }}</a>
+    <a class="lib-cat" href="/academy/glossary"><span>Glossário</span>{{ m.icon("book", 13) }}</a>
+    <a class="lib-cat" href="/academy/cves"><span>Índice de CVE</span>{{ m.icon("alert", 13) }}</a>
+    <a class="lib-cat" href="/kb"><span>Biblioteca técnica (KB)</span>{{ m.icon("books", 13) }}</a>
   </aside>
 
-  <div>
+  <div class="lib-main">
     <div class="section-head" style="margin-top:0">
       <div>
-        <span class="eyebrow">{{ articles|length }} RESULTADO{{ "S" if articles|length != 1 }}{% if filters.q %} PARA “{{ filters.q }}”{% endif %}</span>
+        <span class="eyebrow">{{ articles|length }} resultado{{ "s" if articles|length != 1 }}{% if filters.q %} para “{{ filters.q }}”{% endif %}</span>
         <h3>{% if filters.category %}{{ categories|selectattr("key","equalto",filters.category)|map(attribute="label")|first }}{% else %}Biblioteca de campo{% endif %}</h3>
       </div>
-      <form method="get" action="/academy" class="meta-row">
+      <form method="get" action="/academy" class="meta-row" style="margin:0">
         {% if filters.q %}<input type="hidden" name="q" value="{{ filters.q }}">{% endif %}
         {% if filters.category %}<input type="hidden" name="category" value="{{ filters.category }}">{% endif %}
-        <select class="filter-select js-auto-submit" name="difficulty" aria-label="Filtrar por dificuldade">
+        <select class="js-auto-submit" name="difficulty" aria-label="Filtrar por dificuldade" style="width:auto;min-width:150px">
           <option value="">Todos os níveis</option>
           {% for difficulty in difficulties %}
           <option value="{{ difficulty }}" {% if filters.difficulty == difficulty %}selected{% endif %}>{{ difficulty_labels[difficulty] }}</option>
@@ -54,24 +57,24 @@
     </div>
 
     {% if articles %}
-    <div class="article-grid">
-      {% for article in articles %}
-      <article class="article-card">
-        <div class="article-card-foot" style="border-top:0;padding-top:0">
-          <span class="source-badge source-{{ article.source_type }}">{{ article.source_type }}</span>
-          <span>{{ article.reading_minutes }} MIN DE LEITURA</span>
+    <div class="doc-grid">
+      {% for entry in articles %}
+      <article class="doc-card">
+        <div class="doc-card-top">
+          <span class="badge badge--outline">{{ entry.source_type }}</span>
+          <span class="t-xs">{{ entry.reading_minutes }} min de leitura</span>
         </div>
-        <h3><a href="/academy/{{ article.slug }}">{{ article.title }}</a></h3>
-        <p>{{ article.summary }}</p>
-        <div class="article-card-foot">
-          <span>{{ article.category|replace("-", " ")|upper }}</span>
-          <span>{{ article.updated or "—" }}</span>
+        <h3><a href="/academy/{{ entry.slug }}">{{ entry.title }}</a></h3>
+        <p>{{ entry.summary }}</p>
+        <div class="doc-card-foot">
+          <span>{{ entry.category|replace("-", " ")|replace("_", " ")|title }}</span>
+          <span>{{ entry.updated or "—" }}</span>
         </div>
       </article>
       {% endfor %}
     </div>
     {% else %}
-    {{ m.empty_state("search", "No articles match", "Try a broader term or clear the discipline filter.", "/academy", "CLEAR FILTERS") }}
+    {{ m.empty_state("search", "Nenhum artigo corresponde", "Tente um termo mais amplo ou limpe o filtro de disciplina.", "/academy", "Limpar filtros") }}
     {% endif %}
   </div>
 </div>

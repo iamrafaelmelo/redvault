@@ -1,62 +1,69 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
 {% block title %}{{ article.title }}{% endblock %}
-{% block crumb %}ACADEMIA / {{ article.category|upper }}{% endblock %}
+{% block crumb %}Academy / {{ article.category|replace("-", " ")|replace("_", " ") }}{% endblock %}
 {% block page_title %}{{ article.title }}{% endblock %}
 
 {% block content %}
-<a class="detail-back" href="/academy">{{ m.icon("arrow-right", 12, "rot180") }} ACADEMIA</a>
-<div class="article-shell">
-  <article>
-    <header class="article-head">
+<nav class="breadcrumbs" aria-label="Trilha de navegação">
+  <a href="/academy">Academy</a>
+  <span aria-hidden="true">/</span>
+  <span>{{ article.category|replace("-", " ")|replace("_", " ")|title }}</span>
+</nav>
+
+<div class="doc-reader">
+  <article class="doc-article" id="top">
+    <header class="doc-head">
       <div class="meta-row">
-        <span class="source-badge source-{{ article.source_type }}">{{ article.source_type }}</span>
-        <span class="tag">{{ article.category|replace("-", " ")|upper }}</span>
-        <span class="tag">{{ difficulty_labels.get(article.difficulty, article.difficulty)|upper }}</span>
+        <span class="badge badge--outline">{{ article.source_type }}</span>
+        <span class="tag">{{ difficulty_labels.get(article.difficulty, article.difficulty) }}</span>
+        {% for tag in article.tags[:3] %}<span class="tech-chip">#{{ tag }}</span>{% endfor %}
       </div>
-      <h1>{{ article.title }}</h1>
-      {% if article.summary %}<p>{{ article.summary }}</p>{% endif %}
-      <div class="article-meta">
-        <span>{{ article.reading_minutes }} MIN DE LEITURA</span>
-        <span>ATUALIZADO {{ article.updated or "UNKNOWN" }}</span>
-        {% if article.version %}<span>VERSÃO {{ article.version }}</span>{% endif %}
-        <span>{{ article.body_md.split()|length }} PALAVRAS</span>
+      <h1 class="doc-title">{{ article.title }}</h1>
+      {% if article.summary %}<p class="doc-lede">{{ article.summary }}</p>{% endif %}
+      <div class="doc-meta">
+        <span>{{ m.icon("clock", 13) }} {{ article.reading_minutes }} min de leitura</span>
+        <span>{{ m.icon("refresh", 13) }} Atualizado {{ article.updated or "—" }}</span>
+        {% if article.version %}<span>Versão {{ article.version }}</span>{% endif %}
+        <span>{{ article.body_md.split()|length }} palavras</span>
       </div>
     </header>
-    <div class="article-callout">
+
+    <div class="doc-callout">
       <strong>Nota de campo:</strong> este material é apenas para testes autorizados. Todo comando e payload deve apontar para um alvo seu ou que você tenha permissão explícita de avaliar. As referências são fontes primárias; verifique versões e aplicabilidade no seu contexto.
     </div>
-    <div class="prose">
+
+    <div class="prose doc-prose">
       {{ article.html|safe }}
     </div>
+
     {% if article.tags %}
-    <div class="tech-row" style="margin-top:22px">
+    <div class="tech-row" style="margin-top:var(--space-6)">
       {% for tag in article.tags %}<span class="tech-chip">#{{ tag }}</span>{% endfor %}
     </div>
     {% endif %}
   </article>
 
-  <aside class="article-toc">
-    <h4>NESTA PÁGINA</h4>
-    <div class="toc">{{ article.toc|safe }}</div>
-    <div style="padding:0 13px 12px">
-      <a class="btn btn-sm btn-ghost btn-block" href="#top">VOLTAR AO TOPO</a>
+  <aside class="doc-aside">
+    <div class="doc-toc">
+      <div class="doc-toc-head">Nesta página</div>
+      <div class="toc">{{ article.toc|safe }}</div>
+      <div class="doc-toc-foot">
+        <a class="btn btn-sm btn-ghost btn-block" href="#top">{{ m.icon("arrow-right", 12, "rot270") }} Voltar ao topo</a>
+      </div>
     </div>
   </aside>
 </div>
 
 {% if related %}
-<section class="related-articles">
-  <div class="section-head">
-    <div><span class="eyebrow">MESMA DISCIPLINA</span><h3>Leitura relacionada</h3></div>
-    <a class="link-arrow" href="/academy">BIBLIOTECA {{ m.icon("arrow-right", 12) }}</a>
-  </div>
-  <div class="related-grid">
+<section class="section">
+  {{ m.section_head("Leitura relacionada", "Mesma disciplina", "/academy", "Biblioteca") }}
+  <div class="doc-grid">
     {% for item in related %}
-    <a class="article-card" href="/academy/{{ item.slug }}">
+    <a class="doc-card" href="/academy/{{ item.slug }}">
       <h3>{{ item.title }}</h3>
       <p>{{ item.summary }}</p>
-      <div class="article-card-foot"><span>{{ item.reading_minutes }} MIN</span><span>{{ difficulty_labels.get(item.difficulty, item.difficulty)|upper }}</span></div>
+      <div class="doc-card-foot"><span>{{ item.reading_minutes }} min</span><span>{{ difficulty_labels.get(item.difficulty, item.difficulty) }}</span></div>
     </a>
     {% endfor %}
   </div>

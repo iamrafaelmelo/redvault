@@ -1,32 +1,42 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
 {% block title %}Fontes e licenças{% endblock %}
-{% block crumb %}BIBLIOTECA / FONTES{% endblock %}
+{% block crumb %}Inteligência / Fontes e licenças{% endblock %}
 {% block page_title %}Fontes e licenças{% endblock %}
 
 {% block content %}
-<a class="detail-back" href="/kb">{{ m.icon("arrow-right", 12, "rot180") }} BIBLIOTECA TÉCNICA</a>
+<nav class="breadcrumbs" aria-label="Trilha de navegação">
+  <a href="/kb">Biblioteca técnica</a>
+  <span aria-hidden="true">/</span>
+  <span>Fontes e licenças</span>
+</nav>
 
-<section class="detail-hero" style="margin-bottom:18px">
-  <span class="eyebrow">RASTREABILIDADE</span>
-  <h2>De onde vem cada documento</h2>
-  <p style="color:var(--muted);font-size:12px;max-width:820px;margin:0">A biblioteca só importa texto de projetos cuja licença permite redistribuição. Fontes sem licença permissiva aparecem como referência externa — o texto é síntese própria e o material original fica linkado.</p>
-</section>
+<div class="page-head">
+  <div>
+    <span class="eyebrow">Rastreabilidade</span>
+    <h2>De onde vem cada documento</h2>
+    <p>A biblioteca só importa texto de projetos cuja licença permite redistribuição. Fontes sem licença permissiva aparecem como referência externa — o texto é síntese própria e o material original fica linkado.</p>
+  </div>
+</div>
 
-<div class="kb-doc-list">
+<div class="doc-list">
   {% for row in rows %}
   {% set source = row.source %}
-  <div class="kb-source-card">
-    <div class="kb-source-head">
+  <div class="source-card">
+    <div class="source-card-head">
       <div>
         <strong>{{ source.name }}</strong>
         <small>{{ source.author }}</small>
       </div>
-      <span class="kb-license {% if source.redistributable %}kb-license-ok{% elif source.noncommercial_reuse %}kb-license-nc{% else %}kb-license-no{% endif %}">
-        {{ source.license_name }}
-      </span>
+      {% if source.redistributable %}
+      <span class="badge badge--success">{{ source.license_name }}</span>
+      {% elif source.noncommercial_reuse %}
+      <span class="badge badge--warning">{{ source.license_name }}</span>
+      {% else %}
+      <span class="badge badge--danger">{{ source.license_name }}</span>
+      {% endif %}
     </div>
-    <dl class="kb-prov-grid">
+    <dl class="doc-prov-grid">
       <dt>Repositório</dt><dd><a href="{{ source.repo_url }}" target="_blank" rel="noopener">{{ source.repo_url }}</a></dd>
       <dt>Licença</dt><dd><a href="{{ source.license_url }}" target="_blank" rel="noopener">{{ source.license_name }}</a></dd>
       <dt>Redistribuível</dt><dd>
@@ -38,7 +48,7 @@
       <dt>Documentos</dt><dd>{{ row.documents }}</dd>
       <dt>Última sincronização</dt><dd>{{ source.last_synced.strftime("%Y-%m-%d %H:%M") if source.last_synced else "nunca" }}</dd>
     </dl>
-    {% if source.notes %}<p class="kb-prov-note">{{ source.notes }}</p>{% endif %}
+    {% if source.notes %}<p class="doc-prov-note">{{ source.notes }}</p>{% endif %}
   </div>
   {% endfor %}
 </div>

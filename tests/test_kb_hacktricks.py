@@ -253,7 +253,7 @@ def test_reimport_is_idempotent_and_keeps_reviewed_bodies(repo, images_root):
 def test_reader_page_shows_attribution_and_nc_notice(client):
     page = client.get("/kb/d/ht-pentesting-web-sql-injection")
     assert page.status_code == 200
-    assert "ORIGEM DO CONTEÚDO" in page.text
+    assert "Origem do conteúdo" in page.text
     assert "Uso não comercial" in page.text
     assert "Carlos Polop" in page.text
     assert "CC BY-NC 4.0" in page.text

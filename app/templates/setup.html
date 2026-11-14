@@ -3,7 +3,7 @@
 {% block title %}Inicializar vault{% endblock %}
 {% block form %}
 <div class="auth-form-head">
-  <span class="auth-kicker">PROVISIONAMENTO INICIAL</span>
+  <span class="eyebrow">Provisionamento inicial</span>
   <h2>Crie seu operador</h2>
   <p>O vault está vazio. Esta conta libera todo o ambiente privado. Sem e-mail, sem nuvem, sem serviço de recuperação.</p>
 </div>
@@ -12,21 +12,21 @@
 
 <form method="post" action="/setup" class="form-stack">
   <label class="field">
-    <span>NOME DO OPERADOR</span>
+    <span>Nome do operador</span>
     <input name="username" value="{{ username or '' }}" autocomplete="username" required minlength="3" maxlength="32" autofocus placeholder="e.g. nightowl">
     <small>Letras, números, pontos, sublinhados ou hífens.</small>
   </label>
   <label class="field">
-    <span>SENHA MESTRA</span>
+    <span>Senha mestra</span>
     <input type="password" name="password" autocomplete="new-password" required minlength="10" placeholder="Pelo menos 10 caracteres">
     <small>Armazenada localmente. Seu lab, suas chaves.</small>
   </label>
   <label class="field">
-    <span>CONFIRMAR SENHA</span>
+    <span>Confirmar senha</span>
     <input type="password" name="confirm" autocomplete="new-password" required minlength="10" placeholder="Repita a senha">
   </label>
   <button class="btn btn-primary btn-block btn-lg" type="submit">
-    INICIALIZAR VAULT {{ m.icon("arrow-right", 16) }}
+    Inicializar vault {{ m.icon("arrow-right", 16) }}
   </button>
 </form>
 

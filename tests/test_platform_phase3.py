@@ -274,12 +274,15 @@ def test_pages_have_lang_title_and_alt_text(session):
 
 def test_responsive_css_has_mobile_breakpoint(session):
     client = session["client"]
-    css = client.get("/static/css/app.css")
+    css = client.get("/static/css/ui.css")
     assert css.status_code == 200, css.text[:200]
+    tokens = client.get("/static/css/ds.css")
+    assert tokens.status_code == 200, tokens.text[:200]
     body = css.text
     assert "@media" in body
     assert "max-width" in body
-    assert "--" in body  # custom properties drive theming
+    assert body.count("@media (max-width: 1120px)") == 1, "the sidebar must become a drawer on small screens"
+    assert "--" in tokens.text  # custom properties drive theming
 
 
 def test_markup_is_escaped_in_catalog(session):

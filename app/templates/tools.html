@@ -1,50 +1,57 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
 {% block title %}Biblioteca de ferramentas{% endblock %}
-{% block crumb %}INTELIGÊNCIA / BIBLIOTECA DE FERRAMENTAS{% endblock %}
+{% block crumb %}Inteligência / Biblioteca de ferramentas{% endblock %}
 {% block page_title %}Biblioteca de ferramentas{% endblock %}
 
 {% block content %}
-<div class="page-head">
+<div class="catalog-head">
   <div>
-    <span class="eyebrow">FERRAMENTAS OFENSIVAS / REFERÊNCIA OPERACIONAL</span>
+    <span class="eyebrow">Ferramentas ofensivas · referência operacional</span>
     <h2>Conheça a ferramenta. Conheça o protocolo.</h2>
     <p>Cartões de referência para as ferramentas usadas no ambiente: propósito, instalação, opções de alto sinal e uma invocação prática. São notas de campo, não marketing de fornecedor.</p>
   </div>
-  <div class="page-actions"><a class="btn" href="/academy/quick-reference">{{ m.icon("bolt", 13) }} REFERÊNCIA RÁPIDA</a></div>
+  <div class="page-actions">
+    <a class="btn" href="/academy/quick-reference">{{ m.icon("bolt", 14) }} Referência rápida</a>
+  </div>
 </div>
 
 {% for category, items in grouped.items() %}
-<div class="tool-cat-title"><span>{{ category|upper }}</span><span>{{ items|length }} FERRAMENTAS</span></div>
+<div class="section-head">
+  <div><span class="eyebrow">{{ items|length }} ferramenta{{ "s" if items|length != 1 }}</span><h3>{{ category }}</h3></div>
+</div>
 <div class="tool-grid">
   {% for tool in items %}
   <article class="tool-card">
-    <div>
-      <h3>{{ tool.name }}</h3>
-      <div class="purpose">{{ tool.description }}</div>
+    <div class="tool-card-head">
+      <span class="tool-icon">{{ m.icon("terminal", 16) }}</span>
+      <div>
+        <h3>{{ tool.name }}</h3>
+        <span class="t-xs">{{ tool.category }}</span>
+      </div>
     </div>
+    <p class="tool-desc">{{ tool.description }}</p>
     <div class="meta-row">
-      <span class="tag">{{ tool.purpose }}</span>
-      <span class="source-badge source-official">DOCS OFICIAIS</span>
+      <span class="badge badge--outline">{{ tool.purpose }}</span>
+      <span class="badge badge--info">{{ m.icon("book", 10) }} docs oficiais</span>
     </div>
     {% if tool.install %}
-    <div>
-      <div class="mono-label" style="margin-bottom:5px">INSTALAR</div>
-      <pre>{{ tool.install }}</pre>
+    <div class="tool-block">
+      <span class="mono-label">Instalar</span>
+      <pre class="codeblock"><code>{{ tool.install }}</code></pre>
     </div>
     {% endif %}
     {% if tool.example %}
-    <div>
-      <div class="mono-label" style="margin-bottom:5px">EXEMPLO</div>
-      <pre>{{ tool.example }}</pre>
+    <div class="tool-block">
+      <span class="mono-label">Exemplo</span>
+      <pre class="codeblock"><code>{{ tool.example }}</code></pre>
     </div>
     {% endif %}
     {% if tool.notes %}
-    <div class="muted" style="font-size:10px;line-height:1.55">{{ tool.notes }}</div>
+    <p class="t-xs">{{ tool.notes }}</p>
     {% endif %}
     <div class="tool-foot">
-      <span class="mono-label">{{ tool.category }}</span>
-      <a href="{{ tool.url }}" target="_blank" rel="noopener noreferrer">DOCUMENTATION {{ m.icon("external", 10) }}</a>
+      <a class="link-arrow" href="{{ tool.url }}" target="_blank" rel="noopener noreferrer">Documentação {{ m.icon("external", 12) }}</a>
     </div>
   </article>
   {% endfor %}

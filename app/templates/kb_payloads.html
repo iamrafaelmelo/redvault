@@ -1,32 +1,38 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
-{% block title %}Biblioteca de payloads{% endblock %}
-{% block crumb %}BIBLIOTECA / PAYLOADS{% endblock %}
-{% block page_title %}Biblioteca de payloads{% endblock %}
+{% block title %}Payload Library{% endblock %}
+{% block crumb %}Inteligência / Payload Library{% endblock %}
+{% block page_title %}Payload Library{% endblock %}
 
 {% block content %}
-<a class="detail-back" href="/kb">{{ m.icon("arrow-right", 12, "rot180") }} BIBLIOTECA TÉCNICA</a>
-
-<section class="detail-hero" style="margin-bottom:18px">
-  <div class="detail-top">
-    <span class="tag red">PAYLOADS</span>
-    <span class="tag">{{ total }} PAYLOADS{% if pages > 1 %} · PÁGINA {{ page }}/{{ pages }}{% endif %}</span>
+<div class="catalog-head">
+  <div>
+    <span class="eyebrow">{{ total }} payloads · página {{ page }} de {{ pages }}</span>
+    <h2>Payloads contextualizados</h2>
+    <p>Cada payload aparece com a técnica a que pertence, o documento que o explica e a origem. Sem contexto, não é payload — é snippet.</p>
   </div>
-  <h2>Payloads contextualizados</h2>
-  <p style="color:var(--muted);font-size:12px;max-width:760px;margin:0 0 14px">Cada payload aparece com a técnica a que pertence, o documento que o explica e a origem. Sem contexto, não é payload — é snippet.</p>
-  <form class="academy-search" method="get" action="/kb/payloads">
-    <input type="search" name="q" value="{{ filters.q }}" placeholder="Filtrar por código ou descrição (ex.: union select, {{7*7}})" aria-label="Filtrar payloads">
-    <select class="filter-select" name="language" aria-label="Linguagem">
-      <option value="">Todas as linguagens</option>
-      {% for lang in languages %}<option value="{{ lang }}" {% if filters.language == lang %}selected{% endif %}>{{ lang }}</option>{% endfor %}
-    </select>
-    <select class="filter-select" name="technique" aria-label="Técnica">
-      <option value="">Todas as técnicas</option>
-      {% for tech in techniques %}<option value="{{ tech }}" {% if filters.technique == tech %}selected{% endif %}>{{ tech }}</option>{% endfor %}
-    </select>
-    <button class="btn btn-primary" type="submit">{{ m.icon("search", 13) }} FILTRAR</button>
-  </form>
-</section>
+  <div class="catalog-summary">
+    <div class="summary-stat"><strong>{{ total }}</strong><span>Payloads</span></div>
+    <div class="summary-stat"><strong>{{ techniques|length }}</strong><span>Técnicas</span></div>
+  </div>
+</div>
+
+<form class="toolbar" method="get" action="/kb/payloads" role="search">
+  <div class="toolbar-search">
+    {{ m.icon("search", 15) }}
+    <input type="search" name="q" value="{{ filters.q }}" placeholder="Filtrar por código ou descrição (ex.: union select, ssti)" aria-label="Filtrar payloads">
+  </div>
+  <select name="language" aria-label="Linguagem">
+    <option value="">Todas as linguagens</option>
+    {% for lang in languages %}<option value="{{ lang }}" {% if filters.language == lang %}selected{% endif %}>{{ lang }}</option>{% endfor %}
+  </select>
+  <select name="technique" aria-label="Técnica">
+    <option value="">Todas as técnicas</option>
+    {% for tech in techniques %}<option value="{{ tech }}" {% if filters.technique == tech %}selected{% endif %}>{{ tech }}</option>{% endfor %}
+  </select>
+  <button class="btn btn-sm" type="submit">{{ m.icon("filter", 13) }} Filtrar</button>
+  <span class="toolbar-count">{{ payloads|length }} exibidos</span>
+</form>
 
 {% if payloads %}
 <div class="payload-list">
@@ -34,9 +40,9 @@
   <div class="payload-card">
     <div class="payload-head">
       <span class="payload-technique">{{ payload.technique or "geral" }}</span>
-      <span class="payload-lang">{{ payload.language }}</span>
-      {% if payload.document %}<a class="payload-doc" href="/kb/d/{{ payload.document.slug }}">{{ payload.document.title }}</a>{% endif %}
-      <button class="btn btn-sm btn-ghost js-copy" type="button" data-copy="{{ payload.code }}" title="Copiar payload">{{ m.icon("copy", 11) }} COPIAR</button>
+      <span class="tag mono">{{ payload.language }}</span>
+      {% if payload.document %}<a class="payload-doc" href="/kb/d/{{ payload.document.slug }}">{{ m.icon("book", 11) }} {{ payload.document.title }}</a>{% endif %}
+      <button class="btn btn-sm btn-ghost js-copy" type="button" data-copy="{{ payload.code }}" title="Copiar payload">{{ m.icon("copy", 12) }} Copiar</button>
     </div>
     {% if payload.description %}<p class="payload-desc">{{ payload.description }}</p>{% endif %}
     <pre class="codeblock"><code class="language-{{ payload.language }}">{{ payload.code }}</code></pre>
@@ -49,13 +55,13 @@
   {% endfor %}
 </div>
 {% if pages > 1 %}
-<nav class="kb-pager" aria-label="Paginação de payloads">
-  {% if page > 1 %}<a class="btn btn-sm btn-ghost" href="{{ page_url(page - 1) }}">{{ m.icon("arrow-right", 11, "rot180") }} ANTERIOR</a>{% endif %}
-  <span class="kb-pager-info">{{ (page - 1) * page_size + 1 }}–{{ [page * page_size, total]|min }} DE {{ total }}</span>
-  {% if page < pages %}<a class="btn btn-sm btn-ghost" href="{{ page_url(page + 1) }}">PRÓXIMA {{ m.icon("arrow-right", 11) }}</a>{% endif %}
+<nav class="pager" aria-label="Paginação de payloads">
+  {% if page > 1 %}<a class="btn btn-sm btn-ghost" href="{{ page_url(page - 1) }}">{{ m.icon("arrow-left", 12) }} Anterior</a>{% endif %}
+  <span class="pager-info">{{ (page - 1) * page_size + 1 }}–{{ [page * page_size, total]|min }} de {{ total }}</span>
+  {% if page < pages %}<a class="btn btn-sm btn-ghost" href="{{ page_url(page + 1) }}">Próxima {{ m.icon("arrow-right", 12) }}</a>{% endif %}
 </nav>
 {% endif %}
 {% else %}
-{{ m.empty_state("terminal", "Nenhum payload catalogado ainda", "Os payloads aparecem aqui quando um documento importado traz blocos de código tagueados. Importe o PayloadsAllTheThings com scripts/import_kb.py.", "/kb", "VOLTAR À BIBLIOTECA") }}
+{{ m.empty_state("package", "Nenhum payload catalogado ainda", "Os payloads aparecem aqui quando um documento importado traz blocos de código tagueados. Importe o PayloadsAllTheThings com scripts/import_kb.py.", "/kb", "Voltar à biblioteca") }}
 {% endif %}
 {% endblock %}

@@ -1,34 +1,39 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
 {% block title %}Desafios{% endblock %}
-{% block crumb %}OPERAÇÕES / DESAFIOS{% endblock %}
-{% block page_title %}Desafios{% endblock %}
+{% block crumb %}Operações / Desafios{% endblock %}
+{% block page_title %}Biblioteca de desafios{% endblock %}
 
 {% macro challenge_card(challenge, progress_map, solved) %}
 {% set p = progress_map.get(challenge.id) %}
 {% set completed = p and p.status == "completed" %}
+{% set in_progress = p and p.status == "in_progress" and not completed %}
 {% set flags_total = challenge.flags|selectattr("required")|list|length %}
 {% set flags_done = solved.get(challenge.id, [])|select("in", challenge.flags|selectattr("required")|map(attribute="key")|list)|list|length %}
-<article class="challenge-card {% if completed %}solved{% endif %}">
-  <div class="challenge-card-top">
-    {{ m.difficulty_badge(challenge.difficulty, difficulty_labels[challenge.difficulty]) }}
-    <span class="cat-chip">{{ m.category_icon(challenge.category.slug, 12) }} {{ challenge.category.name }}</span>
-    <a class="card-open" href="/lab/{{ challenge.slug }}" title="Abrir a página dedicada deste desafio">{{ m.icon("external", 11) }} ABRIR</a>
+<article class="challenge-card card-edge tone-{{ challenge.category.slug if challenge.category else 'server' }} {% if completed %}solved{% elif in_progress %}in-progress{% endif %}">
+  <div class="cc-top">
+    <span class="cc-icon">{{ m.category_icon(challenge.category.slug, 17) if challenge.category else m.icon("target", 17) }}</span>
+    <span class="cc-cat">{{ challenge.category.name if challenge.category else "Geral" }}</span>
+    <a class="cc-open link-arrow" href="/lab/{{ challenge.slug }}" title="Abrir o laboratório deste desafio" aria-label="Abrir laboratório de {{ challenge.title }}">{{ m.icon("external", 13) }}</a>
   </div>
   <h3><a href="/challenges/{{ challenge.slug }}">{{ challenge.title }}</a></h3>
   <p class="desc">{{ challenge.summary }}</p>
-  <div class="challenge-card-foot">
-    <div class="meta">
-      <span>{{ m.icon("bolt", 11) }} {{ challenge.xp }} XP</span>
-      <span>{{ m.icon("clock", 11) }} {{ challenge.estimated_minutes }}m</span>
-      <span>{{ m.icon("flag", 11) }} {{ flags_done }}/{{ flags_total }}</span>
+  <div class="meta-row" style="margin-bottom:var(--space-3)">
+    {{ m.difficulty_badge(challenge.difficulty, difficulty_labels[challenge.difficulty]) }}
+    {% for tech in challenge.tech[:2] %}<span class="tech-chip">{{ tech }}</span>{% endfor %}
+  </div>
+  <div class="cc-foot">
+    <div class="cc-meta">
+      <span>{{ m.icon("bolt", 12) }} {{ challenge.xp }} XP</span>
+      <span>{{ m.icon("clock", 12) }} {{ challenge.estimated_minutes }} min</span>
+      {% if flags_total %}<span class="cc-flags">{{ flags_done }}/{{ flags_total }} flags</span>{% endif %}
     </div>
     {% if completed %}
-    <span class="progress-label">CONCLUÍDO +{{ p.xp_awarded }}</span>
-    {% elif p and p.status == "in_progress" %}
-    <span class="progress-label" style="color:var(--amber)">EM ANDAMENTO</span>
+    <span class="cc-state solved">{{ m.icon("check-circle", 13) }} Concluído</span>
+    {% elif in_progress %}
+    <span class="cc-state progress">{{ m.icon("play", 12) }} Em andamento</span>
     {% else %}
-    <span class="card-flags">{{ challenge.tech[:2]|join(" · ") }}</span>
+    <span class="cc-state">{{ m.icon("arrow-right", 12) }} Disponível</span>
     {% endif %}
   </div>
 </article>
@@ -37,51 +42,53 @@
 {% block content %}
 <div class="catalog-head">
   <div>
-    <span class="eyebrow">AMBIENTE PÚBLICO / {{ total_count }} EXERCÍCIOS DISPONÍVEIS</span>
+    <span class="eyebrow">{{ total_count }} exercícios publicados</span>
     <h2>Biblioteca de desafios</h2>
     <p>Alvos isolados com um objetivo verificável — e profundidade suficiente para exigir investigação. Filtre por disciplina, dificuldade ou estado. Os hints ficam bloqueados até você pedir.</p>
   </div>
   <div class="catalog-summary">
-    <div><strong>{{ total_count }}</strong>PUBLICADOS</div>
-    <div><strong>{{ completed_count }}</strong>CONCLUÍDOS</div>
-    <div><strong>{{ total_count - completed_count }}</strong>RESTANTES</div>
+    <div class="summary-stat"><strong>{{ total_count }}</strong><span>Publicados</span></div>
+    <div class="summary-stat is-done"><strong>{{ completed_count }}</strong><span>Concluídos</span></div>
+    <div class="summary-stat"><strong>{{ total_count - completed_count }}</strong><span>Restantes</span></div>
   </div>
 </div>
 
-<form class="filter-bar" method="get" action="/challenges" id="filter-form">
-  <div class="filter-search">
+<form class="toolbar" method="get" action="/challenges" id="filter-form" role="search">
+  <div class="toolbar-search">
     {{ m.icon("search", 15) }}
     <input type="search" name="q" value="{{ filters.q }}" placeholder="Buscar por título, tecnologia ou tag…" aria-label="Buscar desafios">
   </div>
-  <select class="filter-select" name="category" aria-label="Categoria">
+  <select name="category" aria-label="Categoria" class="js-auto-submit">
     <option value="">Todas as disciplinas</option>
     {% for cat in categories %}
     <option value="{{ cat.slug }}" {% if filters.category == cat.slug %}selected{% endif %}>{{ cat.name }} ({{ category_counts.get(cat.slug, 0) }})</option>
     {% endfor %}
   </select>
-  <select class="filter-select" name="difficulty" aria-label="Dificuldade">
+  <select name="difficulty" aria-label="Dificuldade" class="js-auto-submit">
     <option value="">Todos os níveis</option>
     {% for difficulty in difficulties %}
     <option value="{{ difficulty }}" {% if filters.difficulty == difficulty %}selected{% endif %}>{{ difficulty_labels[difficulty] }}</option>
     {% endfor %}
   </select>
-  <select class="filter-select" name="state" aria-label="Estado">
+  <select name="state" aria-label="Estado" class="js-auto-submit">
     <option value="all" {% if filters.state == "all" %}selected{% endif %}>Qualquer estado</option>
     <option value="unsolved" {% if filters.state == "unsolved" %}selected{% endif %}>Não resolvidos</option>
     <option value="progress" {% if filters.state == "progress" %}selected{% endif %}>Em andamento</option>
     <option value="solved" {% if filters.state == "solved" %}selected{% endif %}>Resolvidos</option>
   </select>
   {% if filters.tag %}<input type="hidden" name="tag" value="{{ filters.tag }}">{% endif %}
-  <button class="btn btn-sm" type="submit">FILTRAR</button>
-  <span class="result-count">{{ challenges|length }} RESULTADO{{ "S" if challenges|length != 1 }}</span>
+  <button class="btn btn-sm" type="submit">{{ m.icon("filter", 13) }} Filtrar</button>
+  <span class="toolbar-count">{{ challenges|length }} resultado{{ "s" if challenges|length != 1 }}</span>
 </form>
 
 <div class="chip-row">
-  <a class="chip {% if not filters.category %}active{% endif %}" href="/challenges{% if filters.q or filters.difficulty or filters.tag %}?{% endif %}{% if filters.q %}q={{ filters.q|urlencode }}{% endif %}{% if filters.difficulty %}{% if filters.q %}&{% endif %}difficulty={{ filters.difficulty }}{% endif %}{% if filters.tag %}{% if filters.q or filters.difficulty %}&{% endif %}tag={{ filters.tag|urlencode }}{% endif %}">TODOS <span class="count">{{ total_count }}</span></a>
+  <a class="chip {% if not filters.category %}active{% endif %}" href="/challenges{% if filters.q or filters.difficulty or filters.tag or filters.state != 'all' %}?{% endif %}{% if filters.q %}q={{ filters.q|urlencode }}{% endif %}{% if filters.difficulty %}{% if filters.q %}&{% endif %}difficulty={{ filters.difficulty }}{% endif %}{% if filters.state != 'all' %}{% if filters.q or filters.difficulty %}&{% endif %}state={{ filters.state }}{% endif %}{% if filters.tag %}{% if filters.q or filters.difficulty or filters.state != 'all' %}&{% endif %}tag={{ filters.tag|urlencode }}{% endif %}">
+    Todas <span class="count">{{ total_count }}</span>
+  </a>
   {% for cat in categories %}
   {% if category_counts.get(cat.slug, 0) %}
-  <a class="chip {% if filters.category == cat.slug %}active{% endif %}" href="/challenges?category={{ cat.slug }}{% if filters.difficulty %}&difficulty={{ filters.difficulty }}{% endif %}{% if filters.state != 'all' %}&state={{ filters.state }}{% endif %}{% if filters.q %}&q={{ filters.q|urlencode }}{% endif %}">
-    {{ cat.name }} <span class="count">{{ category_counts.get(cat.slug, 0) }}</span>
+  <a class="chip tone-{{ cat.slug }} {% if filters.category == cat.slug %}active{% endif %}" href="/challenges?category={{ cat.slug }}{% if filters.difficulty %}&difficulty={{ filters.difficulty }}{% endif %}{% if filters.state != 'all' %}&state={{ filters.state }}{% endif %}{% if filters.q %}&q={{ filters.q|urlencode }}{% endif %}">
+    <span class="swatch"></span>{{ cat.name }} <span class="count">{{ category_counts.get(cat.slug, 0) }}</span>
   </a>
   {% endif %}
   {% endfor %}
@@ -94,6 +101,6 @@
   {% endfor %}
 </div>
 {% else %}
-{{ m.empty_state("search", "Nenhum alvo corresponde a este filtro", "Limpe um ou mais filtros para trazer o ambiente de volta. Nada fica oculto por dificuldade — apenas pela sua busca atual.", "/challenges", "LIMPAR FILTROS") }}
+{{ m.empty_state("search", "Nenhum alvo corresponde a este filtro", "Limpe um ou mais filtros para trazer o ambiente de volta. Nada fica oculto por dificuldade — apenas pela sua busca atual.", "/challenges", "Limpar filtros") }}
 {% endif %}
 {% endblock %}

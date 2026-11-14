@@ -3,7 +3,7 @@
 {% block title %}Entrar{% endblock %}
 {% block form %}
 <div class="auth-form-head">
-  <span class="auth-kicker">AUTENTICAÇÃO DO OPERADOR</span>
+  <span class="eyebrow">Autenticação do operador</span>
   <h2>Entrar no vault</h2>
   <p>Apenas credenciais locais. Toda ação aqui é atividade de treinamento autorizada em alvos isolados.</p>
 </div>
@@ -13,15 +13,15 @@
 <form method="post" action="/login" class="form-stack">
   <input type="hidden" name="next" value="{{ next or '/' }}">
   <label class="field">
-    <span>NOME DO OPERADOR</span>
+    <span>Nome do operador</span>
     <input name="username" value="{{ username or '' }}" autocomplete="username" required autofocus placeholder="operator">
   </label>
   <label class="field">
-    <span>SENHA MESTRA</span>
+    <span>Senha mestra</span>
     <input type="password" name="password" autocomplete="current-password" required placeholder="••••••••••">
   </label>
   <button class="btn btn-primary btn-block btn-lg" type="submit">
-    AUTENTICAR {{ m.icon("arrow-right", 16) }}
+    Autenticar {{ m.icon("arrow-right", 16) }}
   </button>
 </form>
 

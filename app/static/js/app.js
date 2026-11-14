@@ -44,25 +44,57 @@
 
   /* ---------------------------- navigation / menus ---------------------------- */
   const sidebar = $("#sidebar");
-  $("#menu-toggle")?.addEventListener("click", () => sidebar?.classList.toggle("open"));
-  document.addEventListener("click", (event) => {
-    if (window.innerWidth <= 1050 && sidebar?.classList.contains("open")) {
-      const target = event.target;
-      if (!sidebar.contains(target) && !target.closest("#menu-toggle")) sidebar.classList.remove("open");
-    }
+  const scrim = $("#sidebar-scrim");
+  const menuToggle = $("#menu-toggle");
+
+  function setDrawer(open) {
+    sidebar?.classList.toggle("open", open);
+    scrim?.classList.toggle("visible", open);
+    menuToggle?.setAttribute("aria-expanded", String(open));
+    document.body.style.overflow = open ? "hidden" : "";
+  }
+  menuToggle?.addEventListener("click", () => setDrawer(!sidebar?.classList.contains("open")));
+  scrim?.addEventListener("click", () => setDrawer(false));
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && sidebar?.classList.contains("open")) setDrawer(false);
   });
+  // Any navigation inside the drawer closes it.
+  $$(".nav-item", sidebar || document).forEach((link) => link.addEventListener("click", () => setDrawer(false)));
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 1120) setDrawer(false);
+  });
+
+  /* Collapsible sidebar (desktop): the state lives on <html> so the pre-paint
+     script can restore it before the first frame. */
+  const collapseBtn = $("#sidebar-collapse");
+  function setCollapsed(collapsed) {
+    document.documentElement.classList.toggle("is-collapsed", collapsed);
+    try { localStorage.setItem("rv:sidebar", collapsed ? "collapsed" : "expanded"); } catch (_) { /* ignore */ }
+    collapseBtn?.setAttribute("aria-expanded", String(!collapsed));
+    collapseBtn?.setAttribute("aria-label", collapsed ? "Expandir navegação" : "Recolher navegação");
+  }
+  collapseBtn?.addEventListener("click", () => setCollapsed(!document.documentElement.classList.contains("is-collapsed")));
+  if (collapseBtn) collapseBtn.setAttribute("aria-expanded", String(!document.documentElement.classList.contains("is-collapsed")));
 
   const userButton = $("#user-button");
   const userDropdown = $("#user-dropdown");
+  const setUserMenu = (open) => {
+    userDropdown?.classList.toggle("open", open);
+    userButton?.setAttribute("aria-expanded", String(open));
+  };
   userButton?.addEventListener("click", (event) => {
     event.stopPropagation();
-    const open = userDropdown.classList.toggle("open");
-    userButton.setAttribute("aria-expanded", String(open));
+    setUserMenu(!userDropdown?.classList.contains("open"));
   });
   document.addEventListener("click", (event) => {
     if (userDropdown && !userDropdown.contains(event.target) && !userButton?.contains(event.target)) {
-      userDropdown.classList.remove("open");
-      userButton?.setAttribute("aria-expanded", "false");
+      setUserMenu(false);
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && userDropdown?.classList.contains("open")) {
+      setUserMenu(false);
+      userButton?.focus();
     }
   });
 
@@ -181,7 +213,9 @@
       const value = button.dataset.copy || "";
       try {
         await navigator.clipboard.writeText(value);
-        toast("Copiado para a área de transferência.", "info", 1800);
+        button.classList.add("copied");
+        setTimeout(() => button.classList.remove("copied"), 1400);
+        toast("Copiado para a área de transferência.", "ok", 1600);
       } catch (_) {
         toast("Área de transferência indisponível neste navegador.", "error");
       }

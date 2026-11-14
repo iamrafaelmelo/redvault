@@ -106,7 +106,9 @@ async def security_and_flash(request: Request, call_next):
     if not request.url.path.startswith("/api/docs"):
         response.headers.setdefault(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+            # The pre-paint sidebar script in base.html is allowed by hash, never by 'unsafe-inline'.
+            "default-src 'self'; script-src 'self' 'sha256-maTIRaL/GEnGmSr5mzNfuW4Ky+NSIozK0dfZFCKqhU8='; "
+            "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; "
             "base-uri 'self'; form-action 'self'",
         )

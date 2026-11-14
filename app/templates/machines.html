@@ -1,20 +1,33 @@
 {% extends "base.html" %}
 {% import "macros.html" as m %}
 {% block title %}Máquinas{% endblock %}
-{% block crumb %}OPERAÇÕES / MÁQUINAS{% endblock %}
-{% block page_title %}Máquinas{% endblock %}
+{% block crumb %}Operações / Máquinas{% endblock %}
+{% block page_title %}Máquinas completas{% endblock %}
+
+{% macro machine_platform(machine) -%}
+{%- set blob = ((machine.tech or [])|join(" ") ~ " " ~ ((machine.tags or [])|join(" ")))|lower -%}
+{%- if "windows" in blob or "ad " in blob or "active directory" in blob or "smb" in blob -%}windows
+{%- elif "api" in blob or "rest" in blob -%}api
+{%- elif "realistic" in (machine.tags or []) -%}web
+{%- else -%}linux{%- endif -%}
+{%- endmacro %}
+
+{% macro platform_label(key) -%}
+{%- set labels = {"linux": "Linux / web", "windows": "Windows / AD", "api": "API / serviços", "web": "Aplicação web"} -%}
+{{ labels.get(key, "Ambiente") }}
+{%- endmacro %}
 
 {% block content %}
 <section class="machine-hero">
   <div>
-    <span class="eyebrow">ALVOS COMPLETOS / EXPLORAÇÃO ENCADEADA</span>
-    <h2>MÁQUINAS COMPLETAS</h2>
-    <p>Aplicações completas com múltiplas trust boundaries. O reconhecimento importa. Cada máquina carrega várias flags, estado próprio e um reset que restaura as condições iniciais. Sem lista de vulnerabilidades. Sem mão na mão.</p>
+    <span class="eyebrow">Alvos completos · exploração encadeada</span>
+    <h2>Máquinas completas</h2>
+    <p>Aplicações inteiras com múltiplas trust boundaries. O reconhecimento importa. Cada máquina carrega várias flags, estado próprio e um reset que restaura as condições iniciais. Sem lista de vulnerabilidades. Sem mão na mão.</p>
   </div>
   <div class="machine-hero-stats">
-    <div class="machine-hero-stat"><strong>{{ machines|length }}</strong><span>MÁQUINAS</span></div>
-    <div class="machine-hero-stat"><strong>{{ machines|selectattr("kind","equalto","realistic")|list|length }}</strong><span>REALISTAS</span></div>
-    <div class="machine-hero-stat"><strong>{{ machines|selectattr("kind","equalto","machine")|list|length }}</strong><span>DEDICADAS</span></div>
+    <div class="machine-hero-stat"><strong>{{ machines|length }}</strong><span>Máquinas</span></div>
+    <div class="machine-hero-stat"><strong>{{ machines|selectattr("kind","equalto","realistic")|list|length }}</strong><span>Realistas</span></div>
+    <div class="machine-hero-stat"><strong>{{ machines|selectattr("kind","equalto","machine")|list|length }}</strong><span>Dedicadas</span></div>
   </div>
 </section>
 
@@ -23,41 +36,51 @@
   {% for machine in machines %}
   {% set p = progress_map.get(machine.id) %}
   {% set completed = p and p.status == "completed" %}
+  {% set in_progress = p and p.status == "in_progress" and not completed %}
   {% set required = machine.flags|selectattr("required")|list %}
-  {% set found = solved.get(machine.id, []) %}
-  <article class="machine-card {{ machine.difficulty }}">
-    <div class="machine-stripe"></div>
+  {% set found = solved.get(machine.id, [])|list %}
+  {% set required_keys = required|map(attribute="key")|list %}
+  {% set found_count = found|select("in", required_keys)|list|length %}
+  {% set platform = machine_platform(machine) %}
+  <article class="machine-card diff-{{ machine.difficulty }} {% if completed %}solved{% endif %}">
+    <div class="machine-plate">
+      <span class="os">{{ m.os_icon(machine.tech|join(" "), 14) }} {{ platform_label(platform) }}</span>
+      <span class="tag mono">{{ "Realista" if machine.kind == "realistic" else "Dedicada" }}</span>
+      <span class="host">127.0.0.1</span>
+    </div>
     <div class="machine-card-body">
-      <div class="machine-glyph">{{ m.icon("skull" if machine.kind == "machine" else "crosshair", 25) }}</div>
+      <div class="machine-glyph">{{ m.icon("skull" if machine.kind == "machine" else "crosshair", 26) }}</div>
       <div class="machine-main">
         <h3><a href="/machines/{{ machine.slug }}">{{ machine.title }}</a></h3>
-        <div class="codename">{{ machine.codename or "ALVO DO AMBIENTE PRIVADO" }}</div>
-        <p>{{ machine.summary }}</p>
+        <div class="codename">{{ machine.codename or "Alvo do ambiente privado" }}</div>
+        <p class="machine-desc">{{ machine.summary }}</p>
         <div class="meta-row">
           {{ m.difficulty_badge(machine.difficulty, difficulty_labels[machine.difficulty]) }}
           <span class="tag">{{ machine.xp }} XP</span>
-          {% if machine.kind == "realistic" %}<span class="tag red">REALISTA</span>{% endif %}
-          <a class="card-open" href="/lab/{{ machine.slug }}" title="Abrir a página dedicada desta máquina">{{ m.icon("external", 11) }} ABRIR</a>
+          {% if machine.category %}<span class="tag">{{ machine.category.name }}</span>{% endif %}
         </div>
-        <div class="machine-obj" style="margin-top:11px">
-          {% for flag in required %}
-          <span class="obj-pip {% if flag.key in found %}done{% endif %}" title="{{ flag.label }}"></span>
-          {% endfor %}
-          <span class="mono" style="font-size:8px;color:var(--dim);margin-left:3px">{{ found|select("in", required|map(attribute="key")|list)|list|length }}/{{ required|length }} FLAGS</span>
+        <div class="machine-flags-row">
+          <span class="flag-pips" aria-label="{{ found_count }} de {{ required|length }} flags">
+            {% for flag in required %}
+            <i class="{{ 'done' if flag.key in found else '' }}" title="{{ flag.label }}">{{ m.icon("flag", 11) }}</i>
+            {% endfor %}
+          </span>
+          <span class="flag-count">{{ found_count }}/{{ required|length }} flags</span>
+          <a class="cc-open link-arrow" href="/lab/{{ machine.slug }}" title="Abrir o laboratório desta máquina" aria-label="Abrir laboratório de {{ machine.title }}">{{ m.icon("external", 13) }}</a>
         </div>
       </div>
     </div>
     <div class="machine-card-foot">
       <div class="machine-stats">
-        <span>{{ m.icon("clock", 10) }} {{ machine.estimated_minutes }}m</span>
-        <span>{{ m.icon("layers", 10) }} {{ machine.tech[:2]|join(" · ") }}</span>
+        <span>{{ m.icon("clock", 11) }} {{ machine.estimated_minutes }} min</span>
+        <span>{{ m.icon("cpu", 11) }} {{ machine.tech[:2]|join(" · ") }}</span>
       </div>
       {% if completed %}
-      <span class="progress-label">ROOT OBTIDO</span>
-      {% elif p and p.status == "in_progress" %}
-      <span class="progress-label" style="color:var(--amber)">EM ATAQUE</span>
+      <span class="root-badge">{{ m.icon("unlock", 12) }} Root</span>
+      {% elif in_progress %}
+      <span class="badge badge--warning">{{ m.icon("crosshair", 11) }} Em ataque</span>
       {% else %}
-      <span class="link-arrow">BRIEFING {{ m.icon("arrow-right", 12) }}</span>
+      <a class="link-arrow" href="/machines/{{ machine.slug }}">Dossiê {{ m.icon("arrow-right", 12) }}</a>
       {% endif %}
     </div>
   </article>
