@@ -60,7 +60,8 @@ _state = {
     "attempts": 0,
     "reported_ok": False,
 }
-_buffer: deque[tuple[float, bytes]] = deque()
+_buffer: deque[tuple[int, float, bytes]] = deque()
+_seq_counter = {"n": 0}
 _seq_counters: dict[tuple[str, str, int, int], int] = {}
 
 
@@ -81,11 +82,21 @@ def _frame(src_ip: str, dst_ip: str, ip_payload: bytes, proto: int, ident: int) 
 
 
 def _emit(frame: bytes) -> None:
+    """Append one frame to the ring buffer with a monotonic sequence number.
+
+    The live stream below has to know which packets a given listener has
+    already seen. Comparing by wall-clock timestamp looked natural, but
+    time.time() isn't fine-grained enough: a cell's request and response are
+    emitted microseconds apart and can land on the same float value, which
+    made the strictly-greater-than check drop the second one forever. A
+    sequence counter has no such ties.
+    """
     now = time.time()
     with _lock:
-        _buffer.append((now, pg.pcap_record(frame, ts=now)))
+        _seq_counter["n"] += 1
+        _buffer.append((_seq_counter["n"], now, pg.pcap_record(frame, ts=now)))
         cutoff = now - RETENTION_SECONDS
-        while _buffer and _buffer[0][0] < cutoff:
+        while _buffer and _buffer[0][1] < cutoff:
             _buffer.popleft()
 
 
@@ -313,11 +324,11 @@ def capture_live():
 
     def generate():
         yield pg.pcap_global_header()
-        last_sent = 0.0
+        last_seq = 0
         with _lock:
             snapshot = list(_buffer)
-        for ts, record in snapshot:
-            last_sent = ts
+        for seq, _ts, record in snapshot:
+            last_seq = seq
             yield record
         try:
             while True:
@@ -325,9 +336,9 @@ def capture_live():
                 with _lock:
                     if not _state["connected"]:
                         return
-                    pending = [(ts, rec) for ts, rec in _buffer if ts > last_sent]
-                for ts, record in pending:
-                    last_sent = ts
+                    pending = [(seq, rec) for seq, _ts, rec in _buffer if seq > last_seq]
+                for seq, record in pending:
+                    last_seq = seq
                     yield record
         except GeneratorExit:
             return
@@ -339,7 +350,7 @@ def capture_live():
 def capture_download():
     with _lock:
         snapshot = list(_buffer)
-    body = pg.pcap_global_header() + b"".join(record for _, record in snapshot)
+    body = pg.pcap_global_header() + b"".join(record for _, _ts, record in snapshot)
     return Response(
         body,
         mimetype="application/vnd.tcpdump.pcap",
