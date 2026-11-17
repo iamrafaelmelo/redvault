@@ -18,7 +18,7 @@
     {"key": "flag", "label": "Flag revelada ao identificar o host anômalo", "flag_type": "hidden", "points": 190, "required": true, "requires_objective": true}
   ],
   "hints": [
-    {"level": 1, "title": "Comece a escutar", "body": "Conecte-se à rede na página do lab. O tráfego só começa a fluir depois disso. `/capture/live` entrega um fluxo pcap em tempo real; aponte `tshark -i -` ou `tcpdump -r -` para ele, ou use o Wireshark com a mesma origem.", "cost": 10},
+    {"level": 1, "title": "Comece a escutar", "body": "Conecte-se à rede na página do lab. O tráfego só começa a fluir depois disso. `/capture/live` entrega um fluxo pcap em tempo real; capture com `curl -sN http://127.0.0.1:PORT/capture/live | tshark -i -` ou `curl -sN http://127.0.0.1:PORT/capture/live | tcpdump -r -`, ou use o Wireshark com a mesma origem.", "cost": 10},
     {"level": 2, "title": "Separe o que é normal", "body": "Clientes comuns sempre fazem uma consulta DNS antes de abrir uma conexão, e a conexão termina pouco depois (FIN). Filtre por isso e veja o que sobra.", "cost": 15},
     {"level": 3, "title": "O padrão que não encaixa", "body": "Uma máquina na rede conversa só com um único IP fixo na porta 9001, sem DNS antes, e a conexão nunca fecha, mesmo sem dado novo para enviar. Anote o IP de origem e informe-o em `/relatorio`, na página do lab: se estiver correto, a flag é revelada ali mesmo.", "cost": 25}
   ],
