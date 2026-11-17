@@ -3,7 +3,7 @@
   "title": "O café com Wi-Fi rápido demais",
   "codename": "RONSCOFFEE WIFI",
   "summary": "Conecte-se ao Wi-Fi aberto de um café e escute a rede com suas próprias ferramentas. Um host mantém um padrão de conexões que não combina com o resto do tráfego: encontre-o.",
-  "category": "recon",
+  "category": "mr-robot",
   "difficulty": "medium",
   "kind": "challenge",
   "lab_dir": "network-rons-coffee",

@@ -85,6 +85,7 @@ CATEGORY_META = {
     "client": ("Segurança Client-Side", "Ataque o DOM, a confiança do navegador e os dados do frontend.", "browser"),
     "advanced": ("Ataques Web Avançados", "Cache, race conditions e dessincronização na borda.", "bolt"),
     "chain": ("Encadeamento de Vulnerabilidades", "Um achado é apenas o começo.", "chain"),
+    "mr-robot": ("Mr. Robot", "Cenários inspirados no universo de Mr. Robot: Evil Corp, fsociety e os golpes que movem a trama.", "skull"),
 }
 
 SOURCE_TYPES = {
