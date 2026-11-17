@@ -1,8 +1,8 @@
 {
   "slug": "network-rons-coffee",
-  "title": "O café com Wi-Fi rápido demais",
+  "title": "Hello, friend (Ron's Coffee)",
   "codename": "RONSCOFFEE WIFI",
-  "summary": "Conecte-se ao Wi-Fi aberto de um café e escute a rede com suas próprias ferramentas. Um host mantém um padrão de conexões que não combina com o resto do tráfego: encontre-o.",
+  "summary": "Hello, friend. Nem todo mundo numa rede aberta é quem parece ser. Conecte-se ao Wi-Fi de um café e escute o tráfego com suas próprias ferramentas: um host ali mantém um padrão de conexões que não combina com o resto, e só prestando atenção você encontra.",
   "category": "mr-robot",
   "difficulty": "medium",
   "kind": "challenge",
