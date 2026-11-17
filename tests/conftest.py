@@ -92,6 +92,7 @@ SLUG_BY_TEST = {
     "test_recon_api_docs": "recon-api-docs",
     "test_recon_backup_vault": "recon-backup-vault",
     "test_recon_cloud_listing": "recon-cloud-listing",
+    "test_network_rons_coffee": "network-rons-coffee",
     "test_recon_js_bundle": "recon-js-bundle",
     "test_recon_source_map": "recon-source-map",
     "test_server_blind_cmdi": "server-blind-cmdi",
