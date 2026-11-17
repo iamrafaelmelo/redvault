@@ -182,34 +182,47 @@ def _ron_flow() -> None:
 
     # Cells are opaque padding, same as real Tor traffic: the flag is never
     # inside the payload. What identifies this host is the connection
-    # pattern itself (fixed guards, no prior DNS, always-on) -- that pattern
-    # is the evidence, and it's what /relatorio checks.
-    cell_size = 512
+    # pattern itself (fixed guards, no prior DNS, always-on), not a byte
+    # count. Varying the size here on purpose: a cell that was always
+    # exactly 512 bytes on a perfectly fixed clock would be a dead giveaway
+    # from the length column alone, which defeats the point of the exercise.
+    cell_size = random.randint(448, 560)
+    ack_size = random.randint(2, 12)
     cells_sent = _ron_session["cells_sent"]
     payload = os.urandom(cell_size)
 
     seq_c = _next_seq(RON_IP, guard_ip, sport, RON_PORT, cell_size)
-    seq_s = _next_seq(guard_ip, RON_IP, RON_PORT, sport, 4)
+    seq_s = _next_seq(guard_ip, RON_IP, RON_PORT, sport, ack_size)
     _emit(_tcp_frame(RON_IP, guard_ip, sport, RON_PORT, seq_c, seq_s, pg.TCP_PSH | pg.TCP_ACK, payload))
-    _emit(_tcp_frame(guard_ip, RON_IP, RON_PORT, sport, seq_s, seq_c + cell_size, pg.TCP_PSH | pg.TCP_ACK, os.urandom(4)))
+    _emit(_tcp_frame(guard_ip, RON_IP, RON_PORT, sport, seq_s, seq_c + cell_size, pg.TCP_PSH | pg.TCP_ACK, os.urandom(ack_size)))
     _ron_session["cells_sent"] = cells_sent + 1
+
+
+# How many ticks pass between two of the host's cells. Randomized per
+# interval instead of a fixed modulo, so the gaps aren't a perfectly regular
+# beat either -- only "no DNS, same two destinations, never closes" stays
+# constant across runs.
+RON_INTERVAL_TICKS = (2, 6)
 
 
 def _generator_loop() -> None:
     tick = 0
+    next_ron_tick = random.randint(*RON_INTERVAL_TICKS)
     while True:
         time.sleep(TICK_SECONDS)
         with _lock:
             connected = _state["connected"]
         if not connected:
             tick = 0
+            next_ron_tick = random.randint(*RON_INTERVAL_TICKS)
             _ron_session.clear()
             continue
         tick += 1
-        if random.random() < 0.6:
+        for _ in range(random.choice((0, 1, 1, 2))):
             _normal_client_flow()
-        if tick % 3 == 0:
+        if tick >= next_ron_tick:
             _ron_flow()
+            next_ron_tick = tick + random.randint(*RON_INTERVAL_TICKS)
 
 
 threading.Thread(target=_generator_loop, name="rons-coffee-traffic", daemon=True).start()
