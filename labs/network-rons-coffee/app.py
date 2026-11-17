@@ -48,7 +48,17 @@ SITES = {
     "news.ycombinator.com": "203.0.113.13",
     "weather.example": "203.0.113.14",
 }
-CLIENT_IPS = ["10.20.0.21", "10.20.0.22", "10.20.0.23", "10.20.0.24"]
+CLIENT_IPS = [
+    "10.20.0.14", "10.20.0.19", "10.20.0.26", "10.20.0.33",
+    "10.20.0.41", "10.20.0.47", "10.20.0.52", "10.20.0.58",
+    "10.20.0.63", "10.20.0.70", "10.20.0.81", "10.20.0.90",
+]
+
+# Penalty applied to each wrong /relatorio guess, seconds, capped. Keeps
+# guessing every host on the subnet by hand (or by script) from being a
+# viable shortcut around actually reading the capture.
+RELATORIO_BACKOFF_STEP = 0.6
+RELATORIO_BACKOFF_CAP = 6.0
 
 RETENTION_SECONDS = 90
 TICK_SECONDS = 1.2
@@ -303,12 +313,18 @@ def relatorio_submit():
     ip = request.form.get("ip", "").strip()
     with _lock:
         _state["attempts"] += 1
+        attempts = _state["attempts"]
     if ip == RON_IP:
         with _lock:
             _state["reported_ok"] = True
         lab.objective_async("flag", evidence=f"reported suspect ip {ip}")
         body = _flag_reveal_html()
     else:
+        # Each wrong guess gets a little slower, up to a cap. Harmless for a
+        # player checking one or two candidates after reading the capture;
+        # it turns guessing every host on the subnet into a multi-minute
+        # wait instead of a free shortcut.
+        time.sleep(min(attempts * RELATORIO_BACKOFF_STEP, RELATORIO_BACKOFF_CAP))
         body = '<div class="flash err">Esse IP não bate com o padrão descrito no objetivo. Reveja a captura.</div>'
     return shell("Relatório de IP suspeito", f'<div class="panel">{body}</div><p><a href="/relatorio">Tentar novamente</a></p>')
 
