@@ -12,7 +12,7 @@
   "tech": ["Flask", "TCP/IP", "DNS", "pcap"],
   "tags": ["network-sniffing", "traffic-analysis", "wireshark", "tor", "recon"],
   "story": "O café abriu uma rede Wi-Fi gratuita para os clientes. Assim que você conecta, o tráfego da rede já está fluindo: outros clientes navegando normalmente, resolvendo nomes, abrindo e fechando conexões. Só que um host na mesma rede não se comporta como cliente nenhum.",
-  "objective": "Conecte-se à rede `RonsCoffee_FreeWiFi` na página do lab. Escute o tráfego com sua própria ferramenta (tshark, tcpdump, Wireshark, scapy etc.) apontando para `/capture/live`. Identifique o host com conexões persistentes, sem resolução DNS prévia, para um pequeno conjunto fixo de IPs externos na porta 9001. Recupere a flag do payload desse fluxo e informe o IP suspeito na página `/relatorio` do lab antes de enviá-la no formulário do desafio.",
+  "objective": "Depois de conectar na rede `RonsCoffee_FreeWiFi`, pelo menos um host se comporta de um jeito que nenhum cliente comum se comporta. Sua tarefa:\n\n* Identificar o endpoint de captura de pacotes de rede\n* Escutar o tráfego da rede do café\n* Analisar e identificar o host com tráfego suspeito na rede\n\nRecupere a flag do payload desse fluxo e informe o IP suspeito na página `/relatorio` do lab antes de enviá-la no formulário do desafio.",
   "rules": "Fique no host do lab atribuído. O tráfego é inteiramente simulado: nenhum pacote sai da sua máquina de teste para a internet real. Não é necessário (nem possível) decifrar nada — o padrão de conexão é a evidência, não o conteúdo.",
   "flags": [
     {"key": "flag", "label": "Flag recuperada do fluxo anômalo", "flag_type": "hidden", "points": 190, "required": true, "requires_objective": true}
