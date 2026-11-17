@@ -217,6 +217,7 @@ def index():
 
     if connected:
         uptime = int(time.time() - connected_at)
+        capture_url = request.host_url.rstrip("/") + "/capture/live"
         banner = f"""<div class="panel">
           <h2>Conectado</h2>
           <table>
@@ -226,6 +227,8 @@ def index():
             <tr><td>Conectado há</td><td class="mono">{uptime}s</td></tr>
           </table>
           <p class="note">O tráfego já está fluindo. Use sua ferramenta de escuta apontando para este host na porta do lab.</p>
+          <p class="mono dim">Captura: <code>{capture_url}</code></p>
+          <p class="note">Esse endpoint entrega um stream pcap fabricado por este processo, não tráfego de uma placa de rede real. Por isso ele não aparece na lista de interfaces do Wireshark/tshark: a captura é feita lendo esse stream (ex. <code>curl -sN {capture_url} | tshark -i -</code>), nunca escolhendo sua Wi-Fi física.</p>
           <form method="post" action="/disconnect"><button class="btn btn-ghost" type="submit">Desconectar</button></form>
         </div>"""
     else:
