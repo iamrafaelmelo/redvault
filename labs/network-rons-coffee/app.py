@@ -170,15 +170,13 @@ def _ron_flow() -> None:
         _ron_session["seq"] = 1
         _ron_session["cells_sent"] = 0
 
+    # Cells are opaque padding, same as real Tor traffic: the flag is never
+    # inside the payload. What identifies this host is the connection
+    # pattern itself (fixed guards, no prior DNS, always-on) -- that pattern
+    # is the evidence, and it's what /relatorio checks.
     cell_size = 512
     cells_sent = _ron_session["cells_sent"]
-    marker = b""
-    if cells_sent == 4:
-        # One cell in the whole session carries the lab's evidence marker.
-        # Real Tor cells are opaque to an observer; this lab trades that
-        # realism for a payload the player can actually recover.
-        marker = b"RV-CELL-EVIDENCE:" + lab.flag("flag").encode()
-    payload = (marker + os.urandom(cell_size)).ljust(cell_size, b"\x00")[:cell_size]
+    payload = os.urandom(cell_size)
 
     seq_c = _next_seq(RON_IP, guard_ip, sport, RON_PORT, cell_size)
     seq_s = _next_seq(guard_ip, RON_IP, RON_PORT, sport, 4)
@@ -272,19 +270,23 @@ def disconnect():
     return lab.redirect("/")
 
 
+def _flag_reveal_html() -> str:
+    return f"""<div class="flash ok">
+      IP confirmado. A flag deste alvo é:
+      <pre>{html.escape(lab.flag("flag"))}</pre>
+      Copie o valor acima no formulário de flag do desafio, na plataforma.
+    </div>"""
+
+
 @app.get("/relatorio")
 def relatorio_form():
     with _lock:
         ok = _state["reported_ok"]
         attempts = _state["attempts"]
-    status = (
-        '<div class="flash ok">IP confirmado. A flag capturada no tráfego agora é aceita no formulário do desafio.</div>'
-        if ok
-        else ""
-    )
+    status = _flag_reveal_html() if ok else ""
     body = f"""<div class="panel">
       <h2>Relatar IP suspeito</h2>
-      <p>Depois de identificar o host com padrão de tráfego anômalo, informe o IP de origem aqui. Isso libera a aceitação da flag no formulário do desafio na plataforma.</p>
+      <p>Identifique, pela captura, o host com padrão de tráfego anômalo e informe o IP de origem dele aqui. Se o IP estiver correto, a flag deste alvo é revelada abaixo.</p>
       {status}
       <form method="post" action="/relatorio">
         <label>IP suspeito</label>
@@ -305,7 +307,7 @@ def relatorio_submit():
         with _lock:
             _state["reported_ok"] = True
         lab.objective_async("flag", evidence=f"reported suspect ip {ip}")
-        body = '<div class="flash ok">IP confirmado. Volte à Sala do lab e envie a flag capturada no tráfego desse host.</div>'
+        body = _flag_reveal_html()
     else:
         body = '<div class="flash err">Esse IP não bate com o padrão descrito no objetivo. Reveja a captura.</div>'
     return shell("Relatório de IP suspeito", f'<div class="panel">{body}</div><p><a href="/relatorio">Tentar novamente</a></p>')

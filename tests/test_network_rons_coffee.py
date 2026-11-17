@@ -17,22 +17,22 @@ def test_network_rons_coffee(lab):
 
     c.post("/connect")
 
-    marker = f"RV-CELL-EVIDENCE:{flag_payload(lab)}".encode()
-    deadline = time.time() + 30
-    found = False
-    while time.time() < deadline:
-        body = c.get("/capture/download").content
-        if marker in body:
-            found = True
-            break
-        time.sleep(1)
-    assert found, "flag marker never showed up in the simulated capture"
+    # The anomalous host's connection pattern (fixed guards, no DNS,
+    # always-on) is visible almost immediately; give the generator a couple
+    # of ticks so the pattern is clearly established in the buffer.
+    time.sleep(5)
 
     wrong = c.post("/relatorio", data={"ip": "10.20.0.99"})
     assert "flash err" in wrong.text
+    assert flag_payload(lab) not in wrong.text
 
     right = c.post("/relatorio", data={"ip": RON_IP})
     assert "flash ok" in right.text
+    assert flag_payload(lab) in right.text
+
+    # Revisiting the report page keeps showing the flag once it's unlocked.
+    again = c.get("/relatorio")
+    assert flag_payload(lab) in again.text
 
     c.post("/disconnect")
     assert c.get("/capture/live").status_code == 409
