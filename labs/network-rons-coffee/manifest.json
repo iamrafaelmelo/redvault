@@ -28,7 +28,8 @@
     "mitigation": "Em um ambiente real, esse tipo de padrão de rede é exatamente o que ferramentas de detecção de anomalias de tráfego (NetFlow/IPFIX baselining, Zeek com regras de conexões de longa duração) são usadas para sinalizar. Monitorar conexões de saída persistentes sem DNS prévio, para destinos fixos e pouco comuns, é uma forma legítima de encontrar exfiltração, C2 ou uso não autorizado de rede em uma organização."
   },
   "references": [
-    {"title": "Tor Project — Guard nodes", "url": "https://support.torproject.org/glossary/guard/", "source_type": "official", "description": "Como o Tor seleciona e mantém os nós de entrada (guards) de um circuito."},
+    {"title": "tshark — manual page", "url": "https://www.wireshark.org/docs/man-pages/tshark.html", "source_type": "official", "description": "Como capturar e filtrar tráfego pela linha de comando, incluindo leitura de um stream pcap via stdin."},
+    {"title": "tcpdump — manual page", "url": "https://www.tcpdump.org/manpages/tcpdump.1.html", "source_type": "official", "description": "Sintaxe de filtros de captura e como ler um arquivo ou stream pcap (`-r -`)."},
     {"title": "Wireshark — Follow TCP Stream", "url": "https://www.wireshark.org/docs/wsug_html_chunked/ChAdvFollowStreamSection.html", "source_type": "official", "description": "Como reconstruir uma conversa TCP completa a partir de uma captura, em vez de ler pacote por pacote."},
     {"title": "OWASP WSTG — Testing for Network Infrastructure Configuration", "url": "https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/01-Information_Gathering/02-Fingerprint_Web_Server", "source_type": "standard", "description": "Metodologia de reconhecimento de rede e identificação de hosts por padrão de tráfego."}
   ]
